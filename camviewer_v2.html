@@ -1,9 +1,10 @@
+<!-- Save as camviewer_with_proxy.html -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live DVR – With Proxy (v28h_with_proxy)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live DVR – With Proxy (v28h)</title>
     <style>
       /* GENERAL STYLES */
       html, body {
@@ -213,9 +214,13 @@
       <button id="saveUrls">Save and Close</button>
     </div>
 
-    <!-- IMPORTANT: Modify HLS requests to go via our proxy -->
+    <!-- IMPORTANT: All HLS requests will be sent through the proxy at Vercel.
+         Update the variable below with your Vercel app URL. -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
+      // Set this to your Vercel deployment URL for the proxy.
+      const PROXY_BASE_URL = "https://your-vercel-app.vercel.app"; // REPLACE WITH YOUR DOMAIN
+
       // Persistent settings functions.
       function loadPlayerSettings(url) {
         const ps = localStorage.getItem("playerSettings");
@@ -317,6 +322,11 @@
           }
         }
 
+        // getProxiedUrl sends the original URL via our Vercel proxy.
+        function getProxiedUrl(videoSrc) {
+          return PROXY_BASE_URL + "/api/proxy?url=" + encodeURIComponent(videoSrc);
+        }
+
         function toggleFullScreen(container) {
           if (!document.fullscreenElement) {
             container.requestFullscreen().catch(err => console.error("Error entering full-screen:", err));
@@ -335,15 +345,6 @@
           const maxPanY = halfH * Z - halfH;
           container.panX = Math.min(maxPanX, Math.max(minPanX, container.panX));
           container.panY = Math.min(maxPanY, Math.max(minPanY, container.panY));
-        }
-
-        // IMPORTANT: Instead of using the HLS source URL directly,
-        // we pass it via our proxy. For example, if videoSrc is the original URL,
-        // then the proxy URL is:
-        //    /api/proxy?url=<encoded original URL>
-        // This ensures all HLS requests are proxied.
-        function getProxiedUrl(videoSrc) {
-          return "/api/proxy?url=" + encodeURIComponent(videoSrc);
         }
 
         function createPlayerContainer(streamConfig) {
@@ -372,7 +373,7 @@
           sourceVideo.crossOrigin = "anonymous";
           container.appendChild(sourceVideo);
 
-          // Use Hls.js to load the proxied video source.
+          // Start the HLS stream using the proxied URL.
           function startStream() {
             if (container.hlsInstance) return;
             if (Hls.isSupported()) {
@@ -392,9 +393,7 @@
                   setTimeout(function() {
                     sourceVideo.play().then(() => {
                       console.log("Playback started successfully");
-                    }).catch(err => {
-                      console.error("Play error:", err);
-                    });
+                    }).catch(err => console.error("Play error:", err));
                   }, 300);
                 }, { once: true });
               });
@@ -425,7 +424,6 @@
               });
             }
           }
-
           function stopStream() {
             if (container.hlsInstance) {
               if (typeof container.hlsInstance.stopLoad === "function") {
@@ -446,7 +444,6 @@
           }
           container.startStream = startStream;
           container.stopStream = stopStream;
-
           if (streamConfig.enabled) {
             startStream();
             container.style.display = "flex";
@@ -477,7 +474,7 @@
             if (e.buttons & 1) {
               const dx = e.clientX - startX;
               const dy = e.clientY - startY;
-              if (!isDragging && Math.sqrt(dx*dx + dy*dy) > dragThreshold) {
+              if (!isDragging && Math.sqrt(dx*dx+dy*dy) > dragThreshold) {
                 isDragging = true;
               }
               if (isDragging) {
@@ -629,7 +626,7 @@
           return container;
         }
 
-        // updateStreamEnabled: if enabling and no container exists, create it; if disabling, stop and remove.
+        // updateStreamEnabled: if enabling and no container exists, create one; if disabling, stop and remove.
         function updateStreamEnabled(url, enabled) {
           let streams = getStreamList();
           const idx = streams.findIndex(s => s.url === url);
@@ -655,9 +652,12 @@
             }
           }
           const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
-          if (checkbox) checkbox.checked = enabled;
+          if (checkbox) {
+            checkbox.checked = enabled;
+          }
         }
 
+        // updateFullUI rebuilds the main content with enabled streams.
         function updateFullUI(refresh = true) {
           if (refresh) {
             const mainContent = document.getElementById("main-content");
@@ -709,13 +709,11 @@
           modal.style.display = "block";
           backdrop.style.display = "block";
         }
-
-        /* hideModal(saveChanges):
-           When saveChanges is true, build a new configuration array:
-           - For each URL in the textarea, if it existed, preserve its state.
-           - Otherwise add it as enabled.
-           - Streams missing from the textarea are removed entirely.
-         */
+        
+        // In hideModal(saveChanges):
+        // Build a new configuration array from the textarea.
+        // Streams not in the new list are deleted entirely.
+        // For streams that remain, preserve their state.
         function hideModal(saveChanges) {
           modal.style.display = "none";
           backdrop.style.display = "none";
@@ -731,16 +729,15 @@
                 newConfig.push({ url: url, enabled: true });
               }
             });
-            // Save the new configuration (existing streams not in newUrls are removed).
             saveStreamList(newConfig);
             updateStreamSidebar();
-            // Stop and remove any currently running players that were removed.
+            // For any stream that was deleted, disable its player.
             oldStreams.forEach(s => {
               if (!newUrls.includes(s.url)) {
                 updateStreamEnabled(s.url, false);
               }
             });
-            // For any new stream added, ensure its container is created.
+            // For any new stream added or enabled in newConfig, update its container.
             newConfig.forEach(s => {
               if (s.enabled) {
                 updateStreamEnabled(s.url, true);
@@ -755,8 +752,8 @@
           hideModal(true);
         });
         window.addEventListener("keydown", function(e) {
-          if (e.key === "Escape" && modal.style.display === "block") {
-            hideModal(false);
+          if (e.key === "Escape") {
+            if (modal.style.display === "block") hideModal(false);
           }
         });
 
