@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live DVR – Full‑Screen & Spacebar Zoom/Pan (v25)</title>
+    <title>Live DVR – With Proxy (v28h_with_proxy)</title>
     <style>
       /* GENERAL STYLES */
       html, body {
@@ -13,7 +13,7 @@
         font-family: Arial, sans-serif;
         background: #222;
         color: #fff;
-        overflow: auto; /* allow normal page scrolling when not fullscreen */
+        overflow: auto;
       }
       .container {
         display: flex;
@@ -48,6 +48,10 @@
       #streamList {
         margin-top: 10px;
         line-height: 1.2;
+      }
+      /* Ensure stream titles are visible */
+      #streamList label {
+        color: #fff;
       }
       .no-streams {
         font-style: italic;
@@ -86,19 +90,19 @@
         box-sizing: border-box;
         margin-bottom: 40px;
       }
-      /* Hidden video element – kept small & invisible via CSS. */
+      /* Hidden video element */
       .source-video {
         visibility: hidden;
         width: 1px;
         height: 1px;
       }
-      /* Visible canvas – logical resolution always 960×540 */
+      /* Canvas – always 960×540 */
       .display-canvas {
         background: black;
         width: 960px;
         height: 540px;
       }
-      /* Controls container – overlay in full‑screen; always visible when windowed */
+      /* Controls overlay */
       .controls-container {
         transition: opacity 0.5s;
       }
@@ -106,7 +110,7 @@
         height: 60px;
         display: flex;
         align-items: center;
-        background: rgba(0, 0, 0, 0.75);
+        background: rgba(0,0,0,0.75);
         padding: 5px 10px;
         gap: 10px;
       }
@@ -126,10 +130,9 @@
       .title-bar {
         text-align: center;
         padding: 2px 10px;
-        background: rgba(0, 0, 0, 0.75);
+        background: rgba(0,0,0,0.75);
         font-size: 16px;
       }
-      /* In fullscreen, place controls overlay at bottom */
       .overlay-controls {
         position: absolute;
         bottom: 0;
@@ -172,12 +175,12 @@
         top: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(0,0,0,0.5);
       }
     </style>
   </head>
   <body>
-    <!-- Global spacebar listeners to capture and prevent default scrolling -->
+    <!-- Global spacebar listeners -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -187,12 +190,10 @@
         }
       });
       window.addEventListener("keyup", function(e) {
-        if (e.code === "Space") {
-          spaceHeld = false;
-        }
+        if (e.code === "Space") spaceHeld = false;
       });
     </script>
-  
+
     <div class="container">
       <div id="sidebar">
         <button id="btn-add-urls">Add URLs</button>
@@ -204,15 +205,15 @@
       </div>
       <div id="main-content"></div>
     </div>
-  
+
     <div id="modalBackdrop"></div>
     <div id="urlModal">
       <h3 style="margin-top: 0; text-align: center;">Paste URLs (one per line)</h3>
       <textarea id="urlInput" placeholder="http://example.com/stream.m3u8"></textarea>
       <button id="saveUrls">Save and Close</button>
     </div>
-  
-    <!-- Include Hls.js from CDN -->
+
+    <!-- IMPORTANT: Modify HLS requests to go via our proxy -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
       // Persistent settings functions.
@@ -242,22 +243,19 @@
         settings[url] = data;
         localStorage.setItem("playerSettings", JSON.stringify(settings));
       }
-  
-      // Main thread code.
+
+      // Main code.
       (function() {
         const storageKey = "streamConfigs";
         const activeLabels = new Set();
-  
-        // extractTitle returns text between "wc-" and "/playlist".
+
         function extractTitle(url) {
           const match = url.match(/wc-([^\/]+)\/playlist/);
           return match ? match[1] : url;
         }
-  
         function saveStreamList(list) {
           localStorage.setItem(storageKey, JSON.stringify(list));
         }
-  
         function getStreamList() {
           const storedData = localStorage.getItem(storageKey);
           if (!storedData) return [];
@@ -268,8 +266,7 @@
             return [];
           }
         }
-  
-        // Update sidebar stream list.
+
         function updateStreamSidebar() {
           const sidebarList = document.getElementById("streamList");
           sidebarList.innerHTML = "";
@@ -319,8 +316,7 @@
             });
           }
         }
-  
-        // Toggle fullscreen.
+
         function toggleFullScreen(container) {
           if (!document.fullscreenElement) {
             container.requestFullscreen().catch(err => console.error("Error entering full-screen:", err));
@@ -328,8 +324,7 @@
             document.exitFullscreen().catch(err => console.error("Error exiting full-screen:", err));
           }
         }
-  
-        // Clamp pan values.
+
         function clampPan(container) {
           const Z = container.zoomScale;
           const halfW = 960 / 2;
@@ -341,10 +336,19 @@
           container.panX = Math.min(maxPanX, Math.max(minPanX, container.panX));
           container.panY = Math.min(maxPanY, Math.max(minPanY, container.panY));
         }
-  
-        // createPlayerContainer creates a player with click/drag and zoom/pan.
+
+        // IMPORTANT: Instead of using the HLS source URL directly,
+        // we pass it via our proxy. For example, if videoSrc is the original URL,
+        // then the proxy URL is:
+        //    /api/proxy?url=<encoded original URL>
+        // This ensures all HLS requests are proxied.
+        function getProxiedUrl(videoSrc) {
+          return "/api/proxy?url=" + encodeURIComponent(videoSrc);
+        }
+
         function createPlayerContainer(streamConfig) {
           const videoSrc = streamConfig.url;
+          const proxiedUrl = getProxiedUrl(videoSrc);
           const title = extractTitle(videoSrc);
           const container = document.createElement("div");
           container.className = "player-container";
@@ -354,13 +358,11 @@
           container.zoomScale = saved.zoomScale;
           container.panX = saved.panX;
           container.panY = saved.panY;
-  
-          // Toggle fullscreen on double-click.
+
           container.addEventListener("dblclick", function(e) {
             toggleFullScreen(container);
           });
-  
-          // Hidden video element.
+
           const sourceVideo = document.createElement("video");
           sourceVideo.className = "source-video";
           sourceVideo.muted = true;
@@ -369,183 +371,8 @@
           sourceVideo.preload = "auto";
           sourceVideo.crossOrigin = "anonymous";
           container.appendChild(sourceVideo);
-  
-          // Debug logging for video events.
-          sourceVideo.addEventListener("loadedmetadata", function() {
-            console.log("loadedmetadata:", sourceVideo.videoWidth, sourceVideo.videoHeight);
-          });
-          sourceVideo.addEventListener("canplay", function() {
-            console.log("canplay:", sourceVideo.src);
-          });
-          sourceVideo.addEventListener("playing", function() {
-            console.log("playing:", sourceVideo.src);
-          });
-          sourceVideo.addEventListener("timeupdate", function() {
-            console.log("timeupdate:", sourceVideo.currentTime);
-          });
-  
-          // Create visible canvas.
-          const displayCanvas = document.createElement("canvas");
-          displayCanvas.className = "display-canvas";
-          displayCanvas.width = 960;
-          displayCanvas.height = 540;
-          container.appendChild(displayCanvas);
-          const ctx = displayCanvas.getContext("2d");
-  
-          // --- Click and Drag Handling on Canvas ---
-          let startX = 0, startY = 0;
-          let isDragging = false;
-          const dragThreshold = 5;
-          displayCanvas.addEventListener("mousedown", function(e) {
-            if (e.button !== 0) return;
-            // For non-fullscreen, allow dragging only if spacebar is held.
-            if (!document.fullscreenElement && !spaceHeld) return;
-            startX = e.clientX;
-            startY = e.clientY;
-            isDragging = false;
-          });
-          displayCanvas.addEventListener("mousemove", function(e) {
-            if (!document.fullscreenElement && !spaceHeld) return;
-            if (e.buttons & 1) {
-              const dx = e.clientX - startX;
-              const dy = e.clientY - startY;
-              if (!isDragging && Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
-                isDragging = true;
-              }
-              if (isDragging) {
-                container.panX += dx;
-                container.panY += dy;
-                clampPan(container);
-                savePlayerSettings(videoSrc, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
-                startX = e.clientX;
-                startY = e.clientY;
-              }
-            }
-          });
-          displayCanvas.addEventListener("click", function(e) {
-            if (!isDragging) {
-              if (sourceVideo.paused) {
-                sourceVideo.play().catch(err => console.error("Play error:", err));
-                playPauseBtn.textContent = "Pause";
-                container.userPaused = false;
-              } else {
-                sourceVideo.pause();
-                playPauseBtn.textContent = "Play";
-                container.userPaused = true;
-              }
-            }
-          });
-          // --- End Click and Drag Handling ---
-  
-          // Controls container.
-          const controlsContainer = document.createElement("div");
-          controlsContainer.className = "controls-container overlay-controls";
-          controlsContainer.style.opacity = 1;
-          container.appendChild(controlsContainer);
-  
-          // Control bar.
-          const controlBar = document.createElement("div");
-          controlBar.className = "control-bar";
-  
-          // Play/Pause Button.
-          const playPauseBtn = document.createElement("button");
-          playPauseBtn.textContent = "Pause";
-          playPauseBtn.addEventListener("click", function(e) {
-            if (sourceVideo.paused) {
-              sourceVideo.play().catch(err => console.error("Play error:", err));
-              playPauseBtn.textContent = "Pause";
-              container.userPaused = false;
-            } else {
-              sourceVideo.pause();
-              playPauseBtn.textContent = "Play";
-              container.userPaused = true;
-            }
-          });
-          controlBar.appendChild(playPauseBtn);
-  
-          // Timeline slider.
-          const timeline = document.createElement("input");
-          timeline.type = "range";
-          timeline.min = 0;
-          timeline.value = 0;
-          timeline.step = 0.1;
-          timeline.style.cursor = "pointer";
-          timeline.addEventListener("input", function(e) {
-            sourceVideo.currentTime = timeline.value;
-          });
-          controlBar.appendChild(timeline);
-  
-          // Fullscreen toggle button.
-          const fsBtn = document.createElement("button");
-          fsBtn.textContent = "Full‑screen";
-          fsBtn.addEventListener("click", function(e) {
-            toggleFullScreen(container);
-          });
-          controlBar.appendChild(fsBtn);
-  
-          // Reset zoom/pan button.
-          const resetBtn = document.createElement("button");
-          resetBtn.textContent = "Reset";
-          resetBtn.addEventListener("click", function(e) {
-            container.zoomScale = 1;
-            container.panX = 0;
-            container.panY = 0;
-            savePlayerSettings(videoSrc, { zoomScale: 1, panX: 0, panY: 0 });
-          });
-          controlBar.appendChild(resetBtn);
-  
-          // Disable stream button.
-          const disableBtn = document.createElement("button");
-          disableBtn.className = "disable-btn";
-          disableBtn.textContent = "X";
-          disableBtn.addEventListener("click", function(e) {
-            e.stopPropagation();
-            updateStreamEnabled(videoSrc, false);
-          });
-          controlBar.appendChild(disableBtn);
-  
-          controlsContainer.appendChild(controlBar);
-  
-          // Title bar.
-          const titleBar = document.createElement("div");
-          titleBar.className = "title-bar";
-          titleBar.textContent = title;
-          controlsContainer.appendChild(titleBar);
-  
-          // Auto-hide controls in fullscreen.
-          let hideControlsTimeout;
-          function scheduleControlsHide() {
-            if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
-              clearTimeout(hideControlsTimeout);
-              hideControlsTimeout = setTimeout(() => { controlsContainer.style.opacity = 0; }, 3000);
-            }
-          }
-          function positionControls() {
-            if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
-              controlsContainer.style.position = "absolute";
-              controlsContainer.style.bottom = "0";
-              controlsContainer.style.left = "0";
-              controlsContainer.style.right = "0";
-              scheduleControlsHide();
-            } else {
-              controlsContainer.style.position = "relative";
-              controlsContainer.style.bottom = "";
-              controlsContainer.style.opacity = 1;
-              clearTimeout(hideControlsTimeout);
-            }
-          }
-          document.addEventListener("fullscreenchange", positionControls);
-          positionControls();
-          document.addEventListener("mousemove", function(e) {
-            if (document.fullscreenElement) {
-              if (e.clientY > document.documentElement.clientHeight - 100) {
-                controlsContainer.style.opacity = 1;
-                scheduleControlsHide();
-              }
-            }
-          });
-  
-          // --- HLS Stream Setup with Recovery and Delayed Playback ---
+
+          // Use Hls.js to load the proxied video source.
           function startStream() {
             if (container.hlsInstance) return;
             if (Hls.isSupported()) {
@@ -556,7 +383,7 @@
                 manifestLoadingTimeOut: 30000,
                 levelLoadingTimeOut: 30000
               });
-              hls.loadSource(videoSrc);
+              hls.loadSource(proxiedUrl);
               hls.attachMedia(sourceVideo);
               hls.on(Hls.Events.MANIFEST_PARSED, function() {
                 console.log("HLS manifest parsed for " + videoSrc);
@@ -592,25 +419,34 @@
               });
               container.hlsInstance = hls;
             } else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
-              sourceVideo.src = videoSrc;
+              sourceVideo.src = proxiedUrl;
               sourceVideo.addEventListener("loadedmetadata", function() {
                 sourceVideo.play().catch(err => console.error("Play error:", err));
               });
             }
           }
+
           function stopStream() {
             if (container.hlsInstance) {
-              if (typeof container.hlsInstance.detachMedia === "function")
+              if (typeof container.hlsInstance.stopLoad === "function") {
+                container.hlsInstance.stopLoad();
+              }
+              if (typeof container.hlsInstance.detachMedia === "function") {
                 container.hlsInstance.detachMedia();
+              }
               container.hlsInstance.destroy();
               container.hlsInstance = null;
             }
             sourceVideo.pause();
             sourceVideo.removeAttribute("src");
             sourceVideo.load();
+            if (sourceVideo.parentNode) {
+              sourceVideo.parentNode.removeChild(sourceVideo);
+            }
           }
           container.startStream = startStream;
           container.stopStream = stopStream;
+
           if (streamConfig.enabled) {
             startStream();
             container.style.display = "flex";
@@ -618,41 +454,151 @@
             stopStream();
             container.style.display = "none";
           }
-  
-          // --- ZOOM & PAN HANDLING via Wheel ---
-          // In fullscreen, the wheel always controls zoom/pan.
-          // In non-fullscreen, wheel zoom/pan is intercepted only if spaceHeld is true.
-          displayCanvas.addEventListener("wheel", function(e) {
+
+          const displayCanvas = document.createElement("canvas");
+          displayCanvas.className = "display-canvas";
+          displayCanvas.width = 960;
+          displayCanvas.height = 540;
+          container.appendChild(displayCanvas);
+          const ctx = displayCanvas.getContext("2d");
+
+          let startX = 0, startY = 0;
+          let isDragging = false;
+          const dragThreshold = 5;
+          displayCanvas.addEventListener("mousedown", function(e) {
+            if (e.button !== 0) return;
             if (!document.fullscreenElement && !spaceHeld) return;
-            e.preventDefault();
-            const rect = displayCanvas.getBoundingClientRect();
-            const cssX = e.clientX - rect.left;
-            const cssY = e.clientY - rect.top;
-            const logicalX = (cssX / rect.width) * 960;
-            const logicalY = (cssY / rect.height) * 540;
-            const centerX = 960 / 2;
-            const centerY = 540 / 2;
-            const oldZoom = container.zoomScale;
-            let newZoom = oldZoom;
-            const sensitivity = 0.1;
-            if (e.deltaY < 0) {
-              newZoom += sensitivity;
-            } else {
-              newZoom -= sensitivity;
+            startX = e.clientX;
+            startY = e.clientY;
+            isDragging = false;
+          });
+          displayCanvas.addEventListener("mousemove", function(e) {
+            if (!document.fullscreenElement && !spaceHeld) return;
+            if (e.buttons & 1) {
+              const dx = e.clientX - startX;
+              const dy = e.clientY - startY;
+              if (!isDragging && Math.sqrt(dx*dx + dy*dy) > dragThreshold) {
+                isDragging = true;
+              }
+              if (isDragging) {
+                container.panX += dx;
+                container.panY += dy;
+                clampPan(container);
+                savePlayerSettings(videoSrc, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
+                startX = e.clientX;
+                startY = e.clientY;
+              }
             }
-            newZoom = Math.max(1, Math.min(newZoom, 3));
-            container.panX += (oldZoom - newZoom) * (logicalX - centerX);
-            container.panY += (oldZoom - newZoom) * (logicalY - centerY);
-            container.zoomScale = newZoom;
-            clampPan(container);
-            savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
-          }, { passive: false });
-  
-          // Render loop.
+          });
+          displayCanvas.addEventListener("click", function(e) {
+            if (!isDragging) {
+              if (sourceVideo.paused) {
+                sourceVideo.play().catch(err => console.error("Play error:", err));
+              } else {
+                sourceVideo.pause();
+              }
+            }
+          });
+
+          const controlsContainer = document.createElement("div");
+          controlsContainer.className = "controls-container overlay-controls";
+          controlsContainer.style.opacity = 1;
+          container.appendChild(controlsContainer);
+
+          const controlBar = document.createElement("div");
+          controlBar.className = "control-bar";
+
+          const playPauseBtn = document.createElement("button");
+          playPauseBtn.textContent = "Pause";
+          playPauseBtn.addEventListener("click", function(e) {
+            if (sourceVideo.paused) {
+              sourceVideo.play().catch(err => console.error("Play error:", err));
+              playPauseBtn.textContent = "Pause";
+            } else {
+              sourceVideo.pause();
+              playPauseBtn.textContent = "Play";
+            }
+          });
+          controlBar.appendChild(playPauseBtn);
+
+          const timeline = document.createElement("input");
+          timeline.type = "range";
+          timeline.min = 0;
+          timeline.value = 0;
+          timeline.step = 0.1;
+          timeline.style.cursor = "pointer";
+          timeline.addEventListener("input", function(e) {
+            sourceVideo.currentTime = timeline.value;
+          });
+          controlBar.appendChild(timeline);
+
+          const fsBtn = document.createElement("button");
+          fsBtn.textContent = "Full‑screen";
+          fsBtn.addEventListener("click", function(e) {
+            toggleFullScreen(container);
+          });
+          controlBar.appendChild(fsBtn);
+
+          const resetBtn = document.createElement("button");
+          resetBtn.textContent = "Reset";
+          resetBtn.addEventListener("click", function(e) {
+            container.zoomScale = 1;
+            container.panX = 0;
+            container.panY = 0;
+            savePlayerSettings(videoSrc, { zoomScale: 1, panX: 0, panY: 0 });
+          });
+          controlBar.appendChild(resetBtn);
+
+          const disableBtn = document.createElement("button");
+          disableBtn.className = "disable-btn";
+          disableBtn.textContent = "X";
+          disableBtn.addEventListener("click", function(e) {
+            e.stopPropagation();
+            updateStreamEnabled(videoSrc, false);
+          });
+          controlBar.appendChild(disableBtn);
+
+          controlsContainer.appendChild(controlBar);
+
+          const titleBar = document.createElement("div");
+          titleBar.className = "title-bar";
+          titleBar.textContent = title;
+          controlsContainer.appendChild(titleBar);
+
+          let hideControlsTimeout;
+          function scheduleControlsHide() {
+            if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
+              clearTimeout(hideControlsTimeout);
+              hideControlsTimeout = setTimeout(() => { controlsContainer.style.opacity = 0; }, 3000);
+            }
+          }
+          function positionControls() {
+            if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
+              controlsContainer.style.position = "absolute";
+              controlsContainer.style.bottom = "0";
+              controlsContainer.style.left = "0";
+              controlsContainer.style.right = "0";
+              scheduleControlsHide();
+            } else {
+              controlsContainer.style.position = "relative";
+              controlsContainer.style.bottom = "";
+              controlsContainer.style.opacity = 1;
+              clearTimeout(hideControlsTimeout);
+            }
+          }
+          document.addEventListener("fullscreenchange", positionControls);
+          positionControls();
+          document.addEventListener("mousemove", function(e) {
+            if (document.fullscreenElement) {
+              if (e.clientY > document.documentElement.clientHeight - 100) {
+                controlsContainer.style.opacity = 1;
+                scheduleControlsHide();
+              }
+            }
+          });
+
           function renderFrame() {
             if (sourceVideo.readyState >= 2) {
-              const vWidth = sourceVideo.videoWidth || 960;
-              const vHeight = sourceVideo.videoHeight || 540;
               if (sourceVideo.duration) {
                 timeline.max = sourceVideo.duration;
                 timeline.value = sourceVideo.currentTime;
@@ -679,51 +625,58 @@
             requestAnimationFrame(renderFrame);
           }
           requestAnimationFrame(renderFrame);
-  
+
           return container;
         }
-  
+
+        // updateStreamEnabled: if enabling and no container exists, create it; if disabling, stop and remove.
         function updateStreamEnabled(url, enabled) {
-          const streams = getStreamList();
+          let streams = getStreamList();
           const idx = streams.findIndex(s => s.url === url);
           if (idx === -1) return;
-          streams[idx].enabled = enabled;
-          saveStreamList(streams);
-          const player = document.querySelector('.player-container[data-url="' + url + '"]');
-          if (player) {
-            if (enabled) {
+          if (streams[idx].enabled !== enabled) {
+            streams[idx].enabled = enabled;
+            saveStreamList(streams);
+          }
+          let player = document.querySelector('.player-container[data-url="' + url + '"]');
+          const mainContent = document.getElementById("main-content");
+          if (enabled) {
+            if (!player) {
+              player = createPlayerContainer(streams[idx]);
+              mainContent.appendChild(player);
+            } else {
               player.style.display = "flex";
               if (typeof player.startStream === "function") player.startStream();
-            } else {
+            }
+          } else {
+            if (player) {
               if (typeof player.stopStream === "function") player.stopStream();
-              player.style.display = "none";
+              if (player.parentNode) player.parentNode.removeChild(player);
             }
           }
           const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
-          if (checkbox) {
-            checkbox.checked = enabled;
-          }
+          if (checkbox) checkbox.checked = enabled;
         }
-  
-        function updateFullUI() {
-          const streamList = getStreamList();
-          const mainContent = document.getElementById("main-content");
-          mainContent.innerHTML = "";
-          if (streamList.length === 0) {
-            const p = document.createElement("p");
-            p.className = "no-streams";
-            p.textContent = "No streams added. Please click 'Add URLs' to add streams.";
-            document.getElementById("streamList").appendChild(p);
-          } else {
-            streamList.forEach(stream => {
-              const videoSrc = stream.url;
-              const playerContainer = createPlayerContainer(stream);
-              if (playerContainer) mainContent.appendChild(playerContainer);
+
+        function updateFullUI(refresh = true) {
+          if (refresh) {
+            const mainContent = document.getElementById("main-content");
+            Array.from(mainContent.querySelectorAll(".player-container")).forEach(player => {
+              if (player.stopStream) player.stopStream();
             });
+            mainContent.innerHTML = "";
+            const streamList = getStreamList();
+            const enabledStreams = streamList.filter(s => s.enabled);
+            if (enabledStreams.length > 0) {
+              enabledStreams.forEach(stream => {
+                const playerContainer = createPlayerContainer(stream);
+                if (playerContainer) mainContent.appendChild(playerContainer);
+              });
+            }
+            updateStreamSidebar();
           }
-          updateStreamSidebar();
         }
-  
+
         document.addEventListener("mouseup", function(e) {
           activeLabels.forEach(function(label) {
             const url = label.getAttribute("data-url");
@@ -732,7 +685,7 @@
           });
           activeLabels.clear();
         });
-  
+
         function showAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
@@ -743,40 +696,70 @@
         }
         document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
         document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
-  
+
         const modal = document.getElementById("urlModal");
         const backdrop = document.getElementById("modalBackdrop");
         const btnAddUrls = document.getElementById("btn-add-urls");
         const btnSaveUrls = document.getElementById("saveUrls");
         const urlInput = document.getElementById("urlInput");
-  
+
         function showModal() {
           const streams = getStreamList();
           urlInput.value = streams.map(s => s.url).join("\n");
           modal.style.display = "block";
           backdrop.style.display = "block";
         }
-        function hideModal() {
+
+        /* hideModal(saveChanges):
+           When saveChanges is true, build a new configuration array:
+           - For each URL in the textarea, if it existed, preserve its state.
+           - Otherwise add it as enabled.
+           - Streams missing from the textarea are removed entirely.
+         */
+        function hideModal(saveChanges) {
           modal.style.display = "none";
           backdrop.style.display = "none";
+          if (saveChanges) {
+            const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u);
+            const oldStreams = getStreamList();
+            const newConfig = [];
+            newUrls.forEach(url => {
+              const existing = oldStreams.find(s => s.url === url);
+              if (existing) {
+                newConfig.push(existing);
+              } else {
+                newConfig.push({ url: url, enabled: true });
+              }
+            });
+            // Save the new configuration (existing streams not in newUrls are removed).
+            saveStreamList(newConfig);
+            updateStreamSidebar();
+            // Stop and remove any currently running players that were removed.
+            oldStreams.forEach(s => {
+              if (!newUrls.includes(s.url)) {
+                updateStreamEnabled(s.url, false);
+              }
+            });
+            // For any new stream added, ensure its container is created.
+            newConfig.forEach(s => {
+              if (s.enabled) {
+                updateStreamEnabled(s.url, true);
+              }
+            });
+          }
           urlInput.value = "";
         }
+
         btnAddUrls.addEventListener("click", showModal);
         btnSaveUrls.addEventListener("click", function() {
-          const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u !== "");
-          // Instead of overwriting enabled states, preserve them
-          const currentStreams = getStreamList();
-          const validStreams = newUrls.map(url => {
-            const existing = currentStreams.find(s => s.url === url);
-            return existing ? existing : { url: url, enabled: true };
-          });
-          saveStreamList(validStreams);
-          updateFullUI();
-          hideModal();
+          hideModal(true);
         });
-        backdrop.addEventListener("click", hideModal);
-  
-        // Initial UI population.
+        window.addEventListener("keydown", function(e) {
+          if (e.key === "Escape" && modal.style.display === "block") {
+            hideModal(false);
+          }
+        });
+
         updateFullUI();
       })();
     </script>
