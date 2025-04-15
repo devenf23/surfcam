@@ -13,7 +13,7 @@
         font-family: Arial, sans-serif;
         background: #222;
         color: #fff;
-        overflow: auto; /* allow normal page scrolling when not fullscreen (but spacebar won't trigger it) */
+        overflow: auto; /* allow normal page scrolling when not fullscreen */
       }
       .container {
         display: flex;
@@ -98,7 +98,7 @@
         width: 960px;
         height: 540px;
       }
-      /* Controls container – overlay in fullscreen; always visible when windowed */
+      /* Controls container – overlay in full‑screen; always visible when windowed */
       .controls-container {
         transition: opacity 0.5s;
       }
@@ -177,12 +177,11 @@
     </style>
   </head>
   <body>
-    <!-- Global spacebar listeners to update spaceHeld flag and prevent default scrolling -->
+    <!-- Global spacebar listeners to capture and prevent default scrolling -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
-        // Prevent default scroll behavior for spacebar unless active in an input field.
-        if (e.code === "Space" && !['input', 'textarea', 'button'].includes(document.activeElement.tagName.toLowerCase())) {
+        if (e.code === "Space" && !['input','textarea','button'].includes(document.activeElement.tagName.toLowerCase())) {
           e.preventDefault();
           spaceHeld = true;
         }
@@ -213,7 +212,7 @@
       <button id="saveUrls">Save and Close</button>
     </div>
   
-    <!-- Include Hls.js -->
+    <!-- Include Hls.js from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
       // Persistent settings functions.
@@ -343,7 +342,7 @@
           container.panY = Math.min(maxPanY, Math.max(minPanY, container.panY));
         }
   
-        // createPlayerContainer builds a video player with click/drag and zoom/pan controls.
+        // createPlayerContainer creates a player with click/drag and zoom/pan.
         function createPlayerContainer(streamConfig) {
           const videoSrc = streamConfig.url;
           const title = extractTitle(videoSrc);
@@ -622,7 +621,7 @@
   
           // --- ZOOM & PAN HANDLING via Wheel ---
           // In fullscreen, the wheel always controls zoom/pan.
-          // In non-fullscreen, wheel zoom/pan is intercepted only when spaceHeld is true.
+          // In non-fullscreen, wheel zoom/pan is intercepted only if spaceHeld is true.
           displayCanvas.addEventListener("wheel", function(e) {
             if (!document.fullscreenElement && !spaceHeld) return;
             e.preventDefault();
@@ -765,9 +764,11 @@
         btnAddUrls.addEventListener("click", showModal);
         btnSaveUrls.addEventListener("click", function() {
           const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u !== "");
-          let validStreams = [];
-          newUrls.forEach(url => {
-            validStreams.push({ url: url, enabled: true });
+          // Instead of overwriting enabled states, preserve them
+          const currentStreams = getStreamList();
+          const validStreams = newUrls.map(url => {
+            const existing = currentStreams.find(s => s.url === url);
+            return existing ? existing : { url: url, enabled: true };
           });
           saveStreamList(validStreams);
           updateFullUI();
