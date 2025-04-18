@@ -218,61 +218,59 @@
       // Custom Loader – Uses per-stream customPlaylistBase stored in its instance.
       class ProxyLoader {
         constructor(config) {
-          // Save the customPlaylistBase from the config (if provided)
-          this.customPlaylistBase = config.customPlaylistBase || "";
-          this.config = config;
-          this.loader = new Hls.DefaultConfig.loader(config);
+        this.customPlaylistBase = config.customPlaylistBase || "";
+        this.config = config;
+        this.loader = new Hls.DefaultConfig.loader(config);
         }
         load(context, config, callbacks) {
-          const proxyPrefix = "surfcam-git-cloud-devens-projects-6d4ef18a.vercel.app";
-          const customBase = this.customPlaylistBase;
-          console.log("ProxyLoader: customPlaylistBase =", customBase);
-          console.log("ProxyLoader: Request type =", context.type);
-          // Treat fragment requests if type is "fragment" or undefined and the URL ends with ".ts"
-          if ((context.type === "fragment" || context.type === undefined) && context.url.endsWith(".ts")) {
-            let rawUrl = context.url;
-            console.log("ProxyLoader: Original fragment URL =", rawUrl);
-            // Unwrap if already proxied
-            if (rawUrl.startsWith(proxyPrefix)) {
-              try {
-                const wrapped = new URL(rawUrl);
-                rawUrl = wrapped.searchParams.get("url") || rawUrl;
-              } catch (e) {
-                console.warn("ProxyLoader: Error unwrapping URL:", e);
-              }
+        // Update the proxyPrefix to your Vercel URL
+        const proxyPrefix = "https://surfcam-git-cloud-devens-projects-6d4ef18a.vercel.app/api/proxy?url=";
+        const customBase = this.customPlaylistBase;
+        console.log("ProxyLoader: customPlaylistBase =", customBase);
+        console.log("ProxyLoader: Request type =", context.type);
+
+        if ((context.type === "fragment" || context.type === undefined) && context.url.endsWith(".ts")) {
+          let rawUrl = context.url;
+          console.log("ProxyLoader: Original fragment URL =", rawUrl);
+          if (rawUrl.startsWith(proxyPrefix)) {
+            try {
+              const wrapped = new URL(rawUrl);
+              rawUrl = wrapped.searchParams.get("url") || rawUrl;
+            } catch (e) {
+              console.warn("ProxyLoader: Error unwrapping URL:", e);
             }
-            console.log("ProxyLoader: Unwrapped fragment URL =", rawUrl);
-            // If rawUrl looks bad (contains localhost or doesn't start with "https://" as expected)
-            if (rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
-              const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
-              rawUrl = customBase + segFilename;
-              console.log("ProxyLoader: Rebuilt fragment URL using custom base:", rawUrl);
-            } else if (customBase && !rawUrl.startsWith(customBase)) {
-              const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
-              rawUrl = customBase + segFilename;
-              console.log("ProxyLoader: Raw fragment URL did not start with custom base; rebuilt as:", rawUrl);
-            } else {
-              console.log("ProxyLoader: Raw fragment URL is correct:", rawUrl);
-            }
-            context.url = proxyPrefix + encodeURIComponent(rawUrl);
-            console.log("ProxyLoader: Final proxied fragment URL =", context.url);
-          } else if (context.type === "manifest") {
-            console.log("ProxyLoader: Original manifest URL =", context.url);
-            if (!context.url.startsWith(proxyPrefix)) {
-              context.url = proxyPrefix + encodeURIComponent(context.url);
-            }
-            console.log("ProxyLoader: Final proxied manifest URL =", context.url);
-          } else {
-            if (!context.url.startsWith(proxyPrefix)) {
-              context.url = proxyPrefix + encodeURIComponent(context.url);
-            }
-            console.log("ProxyLoader: Final generic URL =", context.url);
           }
-          this.loader.load(context, config, callbacks);
+          console.log("ProxyLoader: Unwrapped fragment URL =", rawUrl);
+          if (rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
+            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
+            rawUrl = customBase + segFilename;
+            console.log("ProxyLoader: Rebuilt fragment URL using custom base:", rawUrl);
+          } else if (customBase && !rawUrl.startsWith(customBase)) {
+            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
+            rawUrl = customBase + segFilename;
+            console.log("ProxyLoader: Raw fragment URL did not start with custom base; rebuilt as:", rawUrl);
+          } else {
+            console.log("ProxyLoader: Raw fragment URL is correct:", rawUrl);
+          }
+          context.url = proxyPrefix + encodeURIComponent(rawUrl);
+          console.log("ProxyLoader: Final proxied fragment URL =", context.url);
+        } else if (context.type === "manifest") {
+          console.log("ProxyLoader: Original manifest URL =", context.url);
+          if (!context.url.startsWith(proxyPrefix)) {
+            context.url = proxyPrefix + encodeURIComponent(context.url);
+          }
+          console.log("ProxyLoader: Final proxied manifest URL =", context.url);
+        } else {
+          if (!context.url.startsWith(proxyPrefix)) {
+            context.url = proxyPrefix + encodeURIComponent(context.url);
+          }
+          console.log("ProxyLoader: Final generic URL =", context.url);
         }
-        abort() { if (this.loader.abort) this.loader.abort(); }
-        destroy() { if (this.loader.destroy) this.loader.destroy(); }
-      }
+        this.loader.load(context, config, callbacks);
+        }
+        abort() { if (this.loader.abort) { this.loader.abort(); } }
+        destroy() { if (this.loader.destroy) { this.loader.destroy(); } }
+        }
       // ----------------------------------------------------------------
       
       // Persistent settings functions
