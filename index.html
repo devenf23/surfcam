@@ -3,16 +3,741 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live DVR – With Proxy</title>
+    <title>Live DVR – Full‑Screen & Spacebar Zoom/Pan (v28i)</title>
+    <style>
+      /* GENERAL STYLES */
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: Arial, sans-serif;
+        background: #222;
+        color: #fff;
+        overflow: auto;
+      }
+      .container {
+        display: flex;
+        height: 100vh;
+      }
+      /* SIDEBAR */
+      #sidebar {
+        background-color: #444;
+        width: 220px;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+      }
+      #btn-add-urls {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #sideButtons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .sideBtn {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #streamList {
+        margin-top: 10px;
+        line-height: 1.2;
+      }
+      /* Ensure stream titles are visible */
+      #streamList label {
+        color: #fff;
+      }
+      .no-streams {
+        font-style: italic;
+        color: #bbb;
+        margin-top: 10px;
+      }
+      .stream-item {
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+      }
+      .stream-item label {
+        margin-left: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        user-select: none;
+      }
+      /* MAIN CONTENT / PLAYER CONTAINERS */
+      #main-content {
+        flex: 1;
+        background-color: #333;
+        padding: 20px;
+        box-sizing: border-box;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        overflow-y: auto;
+      }
+      .player-container {
+        width: 960px;
+        height: 600px;
+        background-color: #222;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        box-sizing: border-box;
+        margin-bottom: 40px;
+      }
+      /* Hidden video element */
+      .source-video {
+        visibility: hidden;
+        width: 1px;
+        height: 1px;
+      }
+      /* Canvas – always 960×540 */
+      .display-canvas {
+        background: black;
+        width: 960px;
+        height: 540px;
+      }
+      /* Controls overlay */
+      .controls-container {
+        transition: opacity 0.5s;
+      }
+      .control-bar {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        background: rgba(0,0,0,0.75);
+        padding: 5px 10px;
+        gap: 10px;
+      }
+      .control-bar button {
+        padding: 4px 8px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .disable-btn {
+        background-color: red;
+        color: #fff;
+        border: none;
+      }
+      .control-bar input[type="range"] {
+        flex: 1;
+      }
+      .title-bar {
+        text-align: center;
+        padding: 2px 10px;
+        background: rgba(0,0,0,0.75);
+        font-size: 16px;
+      }
+      /* Fullscreen controls overlay */
+      .overlay-controls {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+      /* URL input modal */
+      #urlModal {
+        display: none;
+        position: fixed;
+        z-index: 10;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 1200px;
+        background-color: #555;
+        border: 2px solid #fff;
+        padding: 15px;
+        box-sizing: border-box;
+      }
+      #urlModal textarea {
+        width: 100%;
+        height: 600px;
+        padding: 10px;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+      #urlModal button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #modalBackdrop {
+        display: none;
+        position: fixed;
+        z-index: 5;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+    </style>
   </head>
   <body>
-    <h1>Stream Viewer (Proxy Enabled)</h1>
+    <!-- Global Spacebar Listeners -->
     <script>
-      const PROXY_BASE_URL = "https://surfcam-git-main-devens-projects-6d4ef18a.vercel.app";
-      function getProxiedUrl(videoSrc) {
-        return PROXY_BASE_URL + "/api/proxy?url=" + encodeURIComponent(videoSrc);
+      let spaceHeld = false;
+      window.addEventListener("keydown", function(e) {
+        if (e.code === "Space" && !['input','textarea','button'].includes(document.activeElement.tagName.toLowerCase())) {
+          e.preventDefault();
+          spaceHeld = true;
+        }
+      });
+      window.addEventListener("keyup", function(e) {
+        if (e.code === "Space") spaceHeld = false;
+      });
+    </script>
+    <div class="container">
+      <div id="sidebar">
+        <button id="btn-add-urls">Add URLs</button>
+        <div id="sideButtons">
+          <button id="btn-show-all" class="sideBtn">Show All</button>
+          <button id="btn-hide-all" class="sideBtn">Hide All</button>
+        </div>
+        <div id="streamList"></div>
+      </div>
+      <div id="main-content"></div>
+    </div>
+    <div id="modalBackdrop"></div>
+    <div id="urlModal">
+      <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3>
+      <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea>
+      <button id="saveUrls">Save and Close</button>
+    </div>
+    <!-- Use a stable version of Hls.js -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
+    <script>
+      // ----------------------------------------------------------------
+      // Custom Loader – Uses per-stream customPlaylistBase stored in its instance.
+      class ProxyLoader {
+        constructor(config) {
+        this.customPlaylistBase = config.customPlaylistBase || "";
+        this.config = config;
+        this.loader = new Hls.DefaultConfig.loader(config);
+        }
+        load(context, config, callbacks) {
+        // Update the proxyPrefix to your Vercel URL
+        const proxyPrefix = "https://surfcam-git-cloud-devens-projects-6d4ef18a.vercel.app/api/proxy?url=";
+        const customBase = this.customPlaylistBase;
+        console.log("ProxyLoader: customPlaylistBase =", customBase);
+        console.log("ProxyLoader: Request type =", context.type);
+
+        if ((context.type === "fragment" || context.type === undefined) && context.url.endsWith(".ts")) {
+          let rawUrl = context.url;
+          console.log("ProxyLoader: Original fragment URL =", rawUrl);
+          if (rawUrl.startsWith(proxyPrefix)) {
+            try {
+              const wrapped = new URL(rawUrl);
+              rawUrl = wrapped.searchParams.get("url") || rawUrl;
+            } catch (e) {
+              console.warn("ProxyLoader: Error unwrapping URL:", e);
+            }
+          }
+          console.log("ProxyLoader: Unwrapped fragment URL =", rawUrl);
+          if (rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
+            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
+            rawUrl = customBase + segFilename;
+            console.log("ProxyLoader: Rebuilt fragment URL using custom base:", rawUrl);
+          } else if (customBase && !rawUrl.startsWith(customBase)) {
+            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
+            rawUrl = customBase + segFilename;
+            console.log("ProxyLoader: Raw fragment URL did not start with custom base; rebuilt as:", rawUrl);
+          } else {
+            console.log("ProxyLoader: Raw fragment URL is correct:", rawUrl);
+          }
+          context.url = proxyPrefix + encodeURIComponent(rawUrl);
+          console.log("ProxyLoader: Final proxied fragment URL =", context.url);
+        } else if (context.type === "manifest") {
+          console.log("ProxyLoader: Original manifest URL =", context.url);
+          if (!context.url.startsWith(proxyPrefix)) {
+            context.url = proxyPrefix + encodeURIComponent(context.url);
+          }
+          console.log("ProxyLoader: Final proxied manifest URL =", context.url);
+        } else {
+          if (!context.url.startsWith(proxyPrefix)) {
+            context.url = proxyPrefix + encodeURIComponent(context.url);
+          }
+          console.log("ProxyLoader: Final generic URL =", context.url);
+        }
+        this.loader.load(context, config, callbacks);
+        }
+        abort() { if (this.loader.abort) { this.loader.abort(); } }
+        destroy() { if (this.loader.destroy) { this.loader.destroy(); } }
+        }
+      // ----------------------------------------------------------------
+      
+      // Persistent settings functions
+      function loadPlayerSettings(url) {
+        const ps = localStorage.getItem("playerSettings");
+        if (ps) {
+          try { 
+            const settings = JSON.parse(ps);
+            return settings[url] || { zoomScale: 1, panX: 0, panY: 0 };
+          } catch (err) {
+            console.error("Error parsing playerSettings", err);
+            return { zoomScale: 1, panX: 0, panY: 0 };
+          }
+        }
+        return { zoomScale: 1, panX: 0, panY: 0 };
       }
-      console.log("Example proxied URL:", getProxiedUrl("https://example.com/stream.m3u8"));
+      function savePlayerSettings(url, data) {
+        const ps = localStorage.getItem("playerSettings");
+        let settings = {};
+        if (ps) {
+          try { settings = JSON.parse(ps); }
+          catch (err) { console.error("Error parsing playerSettings", err); }
+        }
+        settings[url] = data;
+        localStorage.setItem("playerSettings", JSON.stringify(settings));
+      }
+      
+      (function() {
+        const storageKey = "streamConfigs";
+        const activeLabels = new Set();
+        
+        function extractTitle(url) {
+          const match = url.match(/wc-([^\/]+)\/playlist/);
+          return match ? match[1] : url;
+        }
+        function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
+        function getStreamList() {
+          const storedData = localStorage.getItem(storageKey);
+          if (!storedData) return [];
+          try { return JSON.parse(storedData); }
+          catch (e) { console.error("Error parsing stored streams", e); return []; }
+        }
+        function updateStreamSidebar() {
+          const sidebarList = document.getElementById("streamList");
+          sidebarList.innerHTML = "";
+          const streams = getStreamList();
+          if (!streams.length) {
+            const p = document.createElement("p");
+            p.className = "no-streams";
+            p.textContent = "No streams added. Please click 'Add URLs' to add streams.";
+            sidebarList.appendChild(p);
+          } else {
+            streams.forEach(stream => {
+              const videoSrc = stream.url;
+              const title = extractTitle(videoSrc);
+              const item = document.createElement("div");
+              item.className = "stream-item";
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.checked = stream.enabled;
+              checkbox.setAttribute("data-url", videoSrc);
+              checkbox.addEventListener("change", function(e) { updateStreamEnabled(videoSrc, e.target.checked); });
+              item.appendChild(checkbox);
+              const label = document.createElement("label");
+              label.textContent = title;
+              label.setAttribute("data-url", videoSrc);
+              label.addEventListener("mousedown", function(e) {
+                if (e.button === 0) { checkbox.checked = !checkbox.checked; activeLabels.add(label); e.preventDefault(); }
+              });
+              label.addEventListener("mouseenter", function(e) {
+                if (e.buttons & 1 && !activeLabels.has(label)) { checkbox.checked = !checkbox.checked; activeLabels.add(label); }
+              });
+              label.addEventListener("click", function(e) { if (!activeLabels.has(label)) activeLabels.add(label); });
+              item.appendChild(label);
+              sidebarList.appendChild(item);
+            });
+          }
+        }
+        function toggleFullScreen(container) {
+          if (!document.fullscreenElement) {
+            container.requestFullscreen().catch(err => console.error("Error entering full-screen:", err));
+          } else {
+            document.exitFullscreen().catch(err => console.error("Error exiting full-screen:", err));
+          }
+        }
+        function clampPan(container) {
+          const Z = container.zoomScale, halfW = 960/2, halfH = 540/2;
+          container.panX = Math.min(halfW*Z - halfW, Math.max(halfW - halfW*Z, container.panX));
+          container.panY = Math.min(halfH*Z - halfH, Math.max(halfH - halfH*Z, container.panY));
+        }
+        function createPlayerContainer(streamConfig) {
+          // videoSrc is the original, remote playlist URL stored in local storage.
+          const videoSrc = streamConfig.url;
+          const title = extractTitle(videoSrc);
+          const container = document.createElement("div");
+          container.className = "player-container";
+          container.setAttribute("data-url", videoSrc);
+          container.userPaused = false;
+          
+          const saved = loadPlayerSettings(videoSrc);
+          container.zoomScale = saved.zoomScale;
+          container.panX = saved.panX;
+          container.panY = saved.panY;
+          
+          container.addEventListener("dblclick", function(e) { toggleFullScreen(container); });
+          
+          const sourceVideo = document.createElement("video");
+          sourceVideo.className = "source-video";
+          sourceVideo.muted = true;
+          sourceVideo.autoplay = true;
+          sourceVideo.playsInline = true;
+          sourceVideo.preload = "auto";
+          sourceVideo.crossOrigin = "anonymous";
+          container.appendChild(sourceVideo);
+          
+          sourceVideo.addEventListener("loadedmetadata", function() { console.log("loadedmetadata:", sourceVideo.videoWidth, sourceVideo.videoHeight); });
+          sourceVideo.addEventListener("canplay", function() { console.log("canplay:", sourceVideo.src); });
+          sourceVideo.addEventListener("playing", function() { console.log("playing:", sourceVideo.src); });
+          sourceVideo.addEventListener("timeupdate", function() { console.log("timeupdate:", sourceVideo.currentTime); });
+          
+          const displayCanvas = document.createElement("canvas");
+          displayCanvas.className = "display-canvas";
+          displayCanvas.width = 960;
+          displayCanvas.height = 540;
+          container.appendChild(displayCanvas);
+          const ctx = displayCanvas.getContext("2d");
+          
+          let startX = 0, startY = 0, isDragging = false;
+          const dragThreshold = 5;
+          displayCanvas.addEventListener("mousedown", function(e) {
+            if (e.button !== 0) return;
+            if (!document.fullscreenElement && !spaceHeld) return;
+            startX = e.clientX;
+            startY = e.clientY;
+            isDragging = false;
+          });
+          displayCanvas.addEventListener("mousemove", function(e) {
+            if (!document.fullscreenElement && !spaceHeld) return;
+            if (e.buttons & 1) {
+              const dx = e.clientX - startX, dy = e.clientY - startY;
+              if (!isDragging && Math.sqrt(dx*dx+dy*dy) > dragThreshold) isDragging = true;
+              if (isDragging) {
+                container.panX += dx;
+                container.panY += dy;
+                clampPan(container);
+                savePlayerSettings(videoSrc, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
+                startX = e.clientX;
+                startY = e.clientY;
+              }
+            }
+          });
+          displayCanvas.addEventListener("click", function(e) {
+            if (!isDragging) {
+              if (sourceVideo.paused) {
+                sourceVideo.play().catch(err => console.error("Play error:", err));
+                playPauseBtn.textContent = "Pause";
+                container.userPaused = false;
+              } else {
+                sourceVideo.pause();
+                playPauseBtn.textContent = "Play";
+                container.userPaused = true;
+              }
+            }
+          });
+          
+          const controlsContainer = document.createElement("div");
+          controlsContainer.className = "controls-container overlay-controls";
+          controlsContainer.style.opacity = 1;
+          container.appendChild(controlsContainer);
+          
+          const controlBar = document.createElement("div");
+          controlBar.className = "control-bar";
+          
+          const playPauseBtn = document.createElement("button");
+          playPauseBtn.textContent = "Pause";
+          playPauseBtn.addEventListener("click", function(e) {
+            if (sourceVideo.paused) {
+              sourceVideo.play().catch(err => console.error("Play error:", err));
+              playPauseBtn.textContent = "Pause";
+              container.userPaused = false;
+            } else {
+              sourceVideo.pause();
+              playPauseBtn.textContent = "Play";
+              container.userPaused = true;
+            }
+          });
+          controlBar.appendChild(playPauseBtn);
+          
+          const timeline = document.createElement("input");
+          timeline.type = "range";
+          timeline.min = 0;
+          timeline.value = 0;
+          timeline.step = 0.1;
+          timeline.style.cursor = "pointer";
+          timeline.addEventListener("input", function(e) { sourceVideo.currentTime = timeline.value; });
+          controlBar.appendChild(timeline);
+          
+          const fsBtn = document.createElement("button");
+          fsBtn.textContent = "Full‑screen";
+          fsBtn.addEventListener("click", function(e) { toggleFullScreen(container); });
+          controlBar.appendChild(fsBtn);
+          
+          const resetBtn = document.createElement("button");
+          resetBtn.textContent = "Reset";
+          resetBtn.addEventListener("click", function(e) {
+            container.zoomScale = 1;
+            container.panX = 0;
+            container.panY = 0;
+            savePlayerSettings(videoSrc, { zoomScale: 1, panX: 0, panY: 0 });
+          });
+          controlBar.appendChild(resetBtn);
+          
+          const disableBtn = document.createElement("button");
+          disableBtn.className = "disable-btn";
+          disableBtn.textContent = "X";
+          disableBtn.addEventListener("click", function(e) { e.stopPropagation(); updateStreamEnabled(videoSrc, false); });
+          controlBar.appendChild(disableBtn);
+          
+          controlsContainer.appendChild(controlBar);
+          
+          const titleBar = document.createElement("div");
+          titleBar.className = "title-bar";
+          titleBar.textContent = title;
+          controlsContainer.appendChild(titleBar);
+          
+          let hideControlsTimeout;
+          function scheduleControlsHide() {
+            if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
+              clearTimeout(hideControlsTimeout);
+              hideControlsTimeout = setTimeout(() => { controlsContainer.style.opacity = 0; }, 3000);
+            }
+          }
+          function positionControls() {
+            if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
+              controlsContainer.style.position = "absolute";
+              controlsContainer.style.bottom = "0";
+              controlsContainer.style.left = "0";
+              controlsContainer.style.right = "0";
+              scheduleControlsHide();
+            } else {
+              controlsContainer.style.position = "relative";
+              controlsContainer.style.bottom = "";
+              controlsContainer.style.opacity = 1;
+              clearTimeout(hideControlsTimeout);
+            }
+          }
+          document.addEventListener("fullscreenchange", positionControls);
+          positionControls();
+          document.addEventListener("mousemove", function(e) {
+            if (document.fullscreenElement) {
+              if (e.clientY > document.documentElement.clientHeight - 100) {
+                controlsContainer.style.opacity = 1;
+                scheduleControlsHide();
+              }
+            }
+          });
+          
+          function startStream() {
+            if (container.hlsInstance) return;
+            if (Hls.isSupported()) {
+              // Derive customPlaylistBase from the original remote playlist URL.
+              const customPlaylistBase = videoSrc.substring(0, videoSrc.lastIndexOf("/") + 1);
+              console.log("StartStream: customPlaylistBase =", customPlaylistBase);
+              
+              const hls = new Hls({
+                loader: ProxyLoader,
+                customPlaylistBase: customPlaylistBase,
+                maxBufferLength: 120,
+                maxBufferSize: 60 * 1000 * 1024,
+                liveSyncDurationCount: 3,
+                manifestLoadingTimeOut: 30000,
+                levelLoadingTimeOut: 30000
+              });
+              console.log("StartStream: Loading playlist URL =", videoSrc);
+              hls.loadSource(videoSrc);
+              hls.attachMedia(sourceVideo);
+              hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                console.log("Manifest parsed for", videoSrc);
+                sourceVideo.addEventListener("loadedmetadata", function() {
+                  console.log("loadedmetadata event fired");
+                  setTimeout(function() {
+                    sourceVideo.play().then(() => { console.log("Playback started successfully"); })
+                      .catch(err => { console.error("Play error:", err); });
+                  }, 300);
+                }, { once: true });
+              });
+              hls.on(Hls.Events.ERROR, function(event, data) {
+                console.error("Hls.js error:", data);
+                if (data.fatal) {
+                  switch(data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                      console.error("Fatal network error, attempting recovery...");
+                      hls.startLoad();
+                      break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                      console.error("Fatal media error, attempting recovery...");
+                      hls.recoverMediaError();
+                      break;
+                    default:
+                      console.error("Unrecoverable error, destroying HLS instance.");
+                      hls.destroy();
+                      break;
+                  }
+                }
+              });
+              container.hlsInstance = hls;
+            } else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
+              sourceVideo.src = videoSrc;
+              sourceVideo.addEventListener("loadedmetadata", function() {
+                sourceVideo.play().catch(err => console.error("Play error:", err));
+              });
+            }
+          }
+          function stopStream() {
+            if (container.hlsInstance) {
+              if (typeof container.hlsInstance.stopLoad === "function") container.hlsInstance.stopLoad();
+              if (typeof container.hlsInstance.detachMedia === "function") container.hlsInstance.detachMedia();
+              container.hlsInstance.destroy();
+              container.hlsInstance = null;
+            }
+            sourceVideo.pause();
+            sourceVideo.removeAttribute("src");
+            sourceVideo.load();
+            if (sourceVideo.parentNode) sourceVideo.parentNode.removeChild(sourceVideo);
+          }
+          container.startStream = startStream;
+          container.stopStream = stopStream;
+          if (streamConfig.enabled) { startStream(); container.style.display = "flex"; }
+          else { stopStream(); container.style.display = "none"; }
+          
+          displayCanvas.addEventListener("wheel", function(e) {
+            if (!document.fullscreenElement && !spaceHeld) return;
+            e.preventDefault();
+            const rect = displayCanvas.getBoundingClientRect();
+            const cssX = e.clientX - rect.left;
+            const cssY = e.clientY - rect.top;
+            const logicalX = (cssX / rect.width) * 960;
+            const logicalY = (cssY / rect.height) * 540;
+            const centerX = 960 / 2;
+            const centerY = 540 / 2;
+            const oldZoom = container.zoomScale;
+            let newZoom = oldZoom;
+            const sensitivity = 0.1;
+            if (e.deltaY < 0) newZoom += sensitivity; else newZoom -= sensitivity;
+            newZoom = Math.max(1, Math.min(newZoom, 3));
+            container.panX += (oldZoom - newZoom) * (logicalX - centerX);
+            container.panY += (oldZoom - newZoom) * (logicalY - centerY);
+            container.zoomScale = newZoom;
+            clampPan(container);
+            savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
+          }, { passive: false });
+          
+          function renderFrame() {
+            if (sourceVideo.readyState >= 2) {
+              if (sourceVideo.duration) { timeline.max = sourceVideo.duration; timeline.value = sourceVideo.currentTime; }
+              if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
+                displayCanvas.style.width = container.clientWidth + "px";
+                displayCanvas.style.height = container.clientHeight + "px";
+              } else { displayCanvas.style.width = "960px"; displayCanvas.style.height = "540px"; }
+              ctx.clearRect(0, 0, 960, 540);
+              ctx.save();
+              const centerX = 960 / 2, centerY = 540 / 2;
+              ctx.setTransform(container.zoomScale, 0, 0, container.zoomScale,
+                                centerX - container.zoomScale * centerX + container.panX,
+                                centerY - container.zoomScale * centerY + container.panY);
+              ctx.drawImage(sourceVideo, 0, 0, 960, 540);
+              ctx.restore();
+            }
+            requestAnimationFrame(renderFrame);
+          }
+          requestAnimationFrame(renderFrame);
+          return container;
+        }
+        
+        function reorderPlayerContainers() {
+          const mainContent = document.getElementById("main-content");
+          const config = getStreamList();
+          const players = Array.from(mainContent.querySelectorAll(".player-container"));
+          players.sort(function(a, b) {
+            const urlA = a.getAttribute("data-url");
+            const urlB = b.getAttribute("data-url");
+            const indexA = config.findIndex(s => s.url === urlA);
+            const indexB = config.findIndex(s => s.url === urlB);
+            return indexA - indexB;
+          });
+          players.forEach(p => mainContent.appendChild(p));
+        }
+        
+        function updateStreamEnabled(url, enabled) {
+          let streams = getStreamList();
+          const idx = streams.findIndex(s => s.url === url);
+          if (idx === -1) return;
+          if (streams[idx].enabled !== enabled) { streams[idx].enabled = enabled; saveStreamList(streams); }
+          let player = document.querySelector('.player-container[data-url="' + url + '"]');
+          const mainContent = document.getElementById("main-content");
+          if (enabled) {
+            if (!player) { player = createPlayerContainer(streams[idx]); mainContent.appendChild(player); }
+            else { player.style.display = "flex"; if (typeof player.startStream === "function") player.startStream(); }
+          } else {
+            if (player) { if (typeof player.stopStream === "function") player.stopStream(); if (player.parentNode) player.parentNode.removeChild(player); }
+          }
+          reorderPlayerContainers();
+          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
+          if (checkbox) checkbox.checked = enabled;
+        }
+        
+        function updateFullUI(refresh = true) {
+          if (refresh) {
+            const mainContent = document.getElementById("main-content");
+            Array.from(mainContent.querySelectorAll(".player-container")).forEach(p => { if (p.stopStream) p.stopStream(); });
+            mainContent.innerHTML = "";
+            const streamList = getStreamList();
+            const enabledStreams = streamList.filter(s => s.enabled);
+            if (enabledStreams.length > 0) { enabledStreams.forEach(stream => { const player = createPlayerContainer(stream); if (player) mainContent.appendChild(player); }); reorderPlayerContainers(); }
+            updateStreamSidebar();
+          }
+        }
+        
+        document.addEventListener("mouseup", function(e) {
+          activeLabels.forEach(function(label) {
+            const url = label.getAttribute("data-url");
+            const checkbox = label.parentElement.querySelector("input[type='checkbox']");
+            updateStreamEnabled(url, checkbox.checked);
+          });
+          activeLabels.clear();
+        });
+        
+        function showAllStreams() { const streams = getStreamList(); streams.forEach(stream => { updateStreamEnabled(stream.url, true); }); }
+        function hideAllStreams() { const streams = getStreamList(); streams.forEach(stream => { updateStreamEnabled(stream.url, false); }); }
+        document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
+        document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
+        
+        const modal = document.getElementById("urlModal");
+        const backdrop = document.getElementById("modalBackdrop");
+        const btnAddUrls = document.getElementById("btn-add-urls");
+        const btnSaveUrls = document.getElementById("saveUrls");
+        const urlInput = document.getElementById("urlInput");
+        
+        function showModal() {
+          const streams = getStreamList();
+          urlInput.value = streams.map(s => s.url).join("\n");
+          modal.style.display = "block";
+          backdrop.style.display = "block";
+        }
+        
+        function hideModal(saveChanges) {
+          modal.style.display = "none";
+          backdrop.style.display = "none";
+          if (saveChanges) {
+            const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u);
+            const oldStreams = getStreamList();
+            const newConfig = [];
+            newUrls.forEach(url => { const existing = oldStreams.find(s => s.url === url); if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); } });
+            saveStreamList(newConfig);
+            updateStreamSidebar();
+            oldStreams.forEach(s => { if (!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); } });
+            newConfig.forEach(s => { if (s.enabled) { updateStreamEnabled(s.url, true); } });
+          }
+          urlInput.value = "";
+        }
+        
+        btnAddUrls.addEventListener("click", showModal);
+        btnSaveUrls.addEventListener("click", function() { hideModal(true); });
+        window.addEventListener("keydown", function(e) { if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); } });
+        
+        updateFullUI();
+      })();
     </script>
   </body>
-</html>  
+</html>
