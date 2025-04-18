@@ -1,36 +1,39 @@
-// proxy.js
-const express = require('express');
-const fetch = require('node-fetch');   // Make sure you've run: npm install node-fetch
-const { Buffer } = require('buffer');
+// File: api/proxy.js
 
-const app = express();
-const PORT = 3000;  // port for your proxy server
+const fetch = require("node-fetch");
 
-app.get('/api/proxy', async (req, res) => {
-// Set the CORS header immediately.
+module.exports = async (req, res) => {
+// Allow all origins if needed
 res.setHeader("Access-Control-Allow-Origin", "*");
 
-const { url } = req.query;
-if (!url) {
-res.status(400).json({ error: "Missing url query parameter." });
-return;
+// Get the URL from the query parameter.
+const targetUrl = req.query.url;
+if (!targetUrl) {
+return res.status(400).send("Missing 'url' query parameter.");
 }
+
 try {
-const response = await fetch(url, {
+// Set the custom User-Agent header
+const fetchOptions = {
 headers: {
-"User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N)"
+"User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N)",
 }
-});
+};
+
+// Initiate the request
+const response = await fetch(targetUrl, fetchOptions);
+
+// Set appropriate content-type from the response
 const contentType = response.headers.get("content-type") || "application/octet-stream";
 res.setHeader("Content-Type", contentType);
-const data = await response.arrayBuffer();
-res.status(response.status).send(Buffer.from(data));
-} catch (err) {
-console.error("Proxy error:", err);
-res.status(500).json({ error: "Error occurred in proxy." });
-}
-});
 
-  app.listen(PORT, () => {
-     console.log("Proxy server running at http://localhost:" + PORT);
-    });
+// Optionally set caching headers if desired
+// res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate");
+
+// Stream the response directly to the client
+response.body.pipe(res);
+} catch (error) {
+console.error("Error in proxy.js:", error);
+res.status(500).send("Error fetching target URL.");
+}
+};
