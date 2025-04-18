@@ -218,59 +218,59 @@
       // Custom Loader – Uses per-stream customPlaylistBase stored in its instance.
       class ProxyLoader {
         constructor(config) {
-        this.customPlaylistBase = config.customPlaylistBase || "";
-        this.config = config;
-        this.loader = new Hls.DefaultConfig.loader(config);
+          // Save the customPlaylistBase from the config (if provided)
+          this.customPlaylistBase = config.customPlaylistBase || "";
+          this.config = config;
+          this.loader = new Hls.DefaultConfig.loader(config);
         }
         load(context, config, callbacks) {
-        // Update the proxyPrefix to your Vercel URL
-        const proxyPrefix = "surfcam-alpha.vercel.app/api/proxy?url=";
-        const customBase = this.customPlaylistBase;
-        console.log("ProxyLoader: customPlaylistBase =", customBase);
-        console.log("ProxyLoader: Request type =", context.type);
-
-        if ((context.type === "fragment" || context.type === undefined) && context.url.endsWith(".ts")) {
-          let rawUrl = context.url;
-          console.log("ProxyLoader: Original fragment URL =", rawUrl);
-          if (rawUrl.startsWith(proxyPrefix)) {
-            try {
-              const wrapped = new URL(rawUrl);
-              rawUrl = wrapped.searchParams.get("url") || rawUrl;
-            } catch (e) {
-              console.warn("ProxyLoader: Error unwrapping URL:", e);
+          // Use your production Vercel URL here
+          const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+          const customBase = this.customPlaylistBase;
+          console.log("ProxyLoader: customPlaylistBase =", customBase);
+          console.log("ProxyLoader: Request type =", context.type);
+          if ((context.type === "fragment" || context.type === undefined) && context.url.endsWith(".ts")) {
+            let rawUrl = context.url;
+            console.log("ProxyLoader: Original fragment URL =", rawUrl);
+            if (rawUrl.startsWith(proxyPrefix)) {
+              try {
+                const wrapped = new URL(rawUrl);
+                rawUrl = wrapped.searchParams.get("url") || rawUrl;
+              } catch (e) {
+                console.warn("ProxyLoader: Error unwrapping URL:", e);
+              }
             }
-          }
-          console.log("ProxyLoader: Unwrapped fragment URL =", rawUrl);
-          if (rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
-            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
-            rawUrl = customBase + segFilename;
-            console.log("ProxyLoader: Rebuilt fragment URL using custom base:", rawUrl);
-          } else if (customBase && !rawUrl.startsWith(customBase)) {
-            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
-            rawUrl = customBase + segFilename;
-            console.log("ProxyLoader: Raw fragment URL did not start with custom base; rebuilt as:", rawUrl);
+            console.log("ProxyLoader: Unwrapped fragment URL =", rawUrl);
+            if (rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
+              const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
+              rawUrl = customBase + segFilename;
+              console.log("ProxyLoader: Rebuilt fragment URL using custom base:", rawUrl);
+            } else if (customBase && !rawUrl.startsWith(customBase)) {
+              const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
+              rawUrl = customBase + segFilename;
+              console.log("ProxyLoader: Raw fragment URL did not start with custom base; rebuilt as:", rawUrl);
+            } else {
+              console.log("ProxyLoader: Raw fragment URL is correct:", rawUrl);
+            }
+            context.url = proxyPrefix + encodeURIComponent(rawUrl);
+            console.log("ProxyLoader: Final proxied fragment URL =", context.url);
+          } else if (context.type === "manifest") {
+            console.log("ProxyLoader: Original manifest URL =", context.url);
+            if (!context.url.startsWith(proxyPrefix)) {
+              context.url = proxyPrefix + encodeURIComponent(context.url);
+            }
+            console.log("ProxyLoader: Final proxied manifest URL =", context.url);
           } else {
-            console.log("ProxyLoader: Raw fragment URL is correct:", rawUrl);
+            if (!context.url.startsWith(proxyPrefix)) {
+              context.url = proxyPrefix + encodeURIComponent(context.url);
+            }
+            console.log("ProxyLoader: Final generic URL =", context.url);
           }
-          context.url = proxyPrefix + encodeURIComponent(rawUrl);
-          console.log("ProxyLoader: Final proxied fragment URL =", context.url);
-        } else if (context.type === "manifest") {
-          console.log("ProxyLoader: Original manifest URL =", context.url);
-          if (!context.url.startsWith(proxyPrefix)) {
-            context.url = proxyPrefix + encodeURIComponent(context.url);
-          }
-          console.log("ProxyLoader: Final proxied manifest URL =", context.url);
-        } else {
-          if (!context.url.startsWith(proxyPrefix)) {
-            context.url = proxyPrefix + encodeURIComponent(context.url);
-          }
-          console.log("ProxyLoader: Final generic URL =", context.url);
-        }
-        this.loader.load(context, config, callbacks);
+          this.loader.load(context, config, callbacks);
         }
         abort() { if (this.loader.abort) { this.loader.abort(); } }
         destroy() { if (this.loader.destroy) { this.loader.destroy(); } }
-        }
+      }
       // ----------------------------------------------------------------
       
       // Persistent settings functions
@@ -362,7 +362,6 @@
           container.panY = Math.min(halfH*Z - halfH, Math.max(halfH - halfH*Z, container.panY));
         }
         function createPlayerContainer(streamConfig) {
-          // videoSrc is the original, remote playlist URL stored in local storage.
           const videoSrc = streamConfig.url;
           const title = extractTitle(videoSrc);
           const container = document.createElement("div");
@@ -531,7 +530,7 @@
           function startStream() {
             if (container.hlsInstance) return;
             if (Hls.isSupported()) {
-              // Derive customPlaylistBase from the original remote playlist URL.
+              // Derive customPlaylistBase from the playlist URL.
               const customPlaylistBase = videoSrc.substring(0, videoSrc.lastIndexOf("/") + 1);
               console.log("StartStream: customPlaylistBase =", customPlaylistBase);
               
