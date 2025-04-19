@@ -28,13 +28,7 @@
         transition: transform 0.3s ease;
       }
       #sidebar.hidden { transform: translateX(-100%); }
-      #btn-add-urls {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 10px;
-        font-size: 16px;
-        cursor: pointer;
-      }
+      #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; }
       #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; }
       .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; }
       #streamList { margin-top: 10px; line-height: 1.2; }
@@ -127,7 +121,7 @@
       }
     </style>
     <script>
-      // Mark as mobile if detected.
+      // Mark as mobile if a mobile device is detected.
       if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         document.documentElement.classList.add("mobile");
       }
@@ -136,7 +130,7 @@
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global key listeners for optional keyboard control -->
+    <!-- Global key listeners for optional keyboard controls -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -168,9 +162,8 @@
     </div>
     <!-- Load Video.js from CDN -->
     <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script>
-    <!-- We no longer load videojs-panzoom here since its integration with VHS remains problematic. -->
-    
-    <!-- Define our custom ProxyLoader (as in your previous working version) -->
+    <!-- DO NOT load videojs-panzoom here so as to use our previous working logic -->
+    <!-- Define the custom ProxyLoader from your previous working version -->
     <script>
       class ProxyLoader {
         constructor(config) {
@@ -182,17 +175,15 @@
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
           let rawUrl = context.url;
           try {
-            if(rawUrl.startsWith(proxyPrefix)) {
+            if (rawUrl.startsWith(proxyPrefix)) {
               const wrapped = new URL(rawUrl);
               rawUrl = wrapped.searchParams.get("url") || rawUrl;
             }
-          } catch(e) {}
-          // If the URL is from localhost or is not HTTPS, use customPlaylistBase.
+          } catch(e){}
           if(rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
             const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
             rawUrl = this.customPlaylistBase + segFilename;
-          }
-          else if(this.customPlaylistBase && !rawUrl.startsWith(this.customPlaylistBase)) {
+          } else if(this.customPlaylistBase && !rawUrl.startsWith(this.customPlaylistBase)) {
             const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
             rawUrl = this.customPlaylistBase + segFilename;
           }
@@ -203,7 +194,7 @@
         destroy() { if (this.loader.destroy) this.loader.destroy(); }
       }
     </script>
-    <!-- Main UI & Stream Management using Video.js with custom HLS loader. -->
+    <!-- Main UI & Stream Management using Video.js with our custom HLS loader -->
     <script>
       (function(){
         const storageKey = "streamConfigs";
@@ -213,6 +204,7 @@
           const match = url.match(/wc-([^\/]+)\/playlist/);
           return match ? match[1] : url;
         }
+      
         function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
         function getStreamList() {
           try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); }
@@ -270,7 +262,7 @@
           }
         }
       
-        // Create a Video.js player container with our custom HLS loader.
+        // Create a Video.js player container using our custom ProxyLoader.
         function createPlayerContainer(streamConfig) {
           if (!streamConfig.enabled) return null;
           const videoSrcOrig = streamConfig.url;
@@ -283,7 +275,7 @@
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
           container.setAttribute("data-url", videoSrcOrig);
       
-          // Determine manifest base for relative TS fragment resolution.
+          // Compute manifestBase (for resolving relative URLs in the manifest).
           var manifestBase = videoSrcOrig.substring(0, videoSrcOrig.lastIndexOf("/") + 1);
       
           // Create a unique video element.
@@ -299,51 +291,34 @@
             videoEl.style.width = "960px";
             videoEl.style.height = "540px";
           }
-          // Create source element using the proxied manifest URL.
+          // Create source element with the proxied manifest URL.
           const sourceEl = document.createElement("source");
           sourceEl.src = proxiedUrl;
           sourceEl.type = "application/x-mpegURL";
           videoEl.appendChild(sourceEl);
           container.appendChild(videoEl);
       
-          // Video.js options: force autoplay with muted.
+          // Video.js options with our custom HLS loader.
           const vjsOptions = {
             controls: true,
             autoplay: true,
             muted: true,
             preload: "auto",
-            // Pass our custom HLS loader configuration:
             html5: {
-              hls: {
+              vhs: {
                 loader: ProxyLoader,
                 customPlaylistBase: manifestBase
               }
             }
           };
+      
           var vjsPlayer = videojs(videoEl, vjsOptions, function(){
             console.log("Video.js player ready for stream:", videoSrcOrig);
           });
       
-          // (Optional) If you want to attempt panzoom, you could do it here.
-          // For now, we are not integrating panzoom due to compatibility issues with VHS.
-          /*
-          if (!isMobile) {
-            vjsPlayer.ready(function() {
-              var savedState = {}; // Or load your panzoom state if desired.
-              if (typeof vjsPlayer.panzoom === 'function') {
-                vjsPlayer.panzoom(savedState);
-                vjsPlayer.on("panzoomchange", function(){
-                  var state = vjsPlayer.panzoom.getState();
-                  // Save state if needed.
-                });
-              } else {
-                console.error("videojs-panzoom plugin is not available on this player.");
-              }
-            });
-          }
-          */
+          // (If needed, you could add VHS beforeRequest hooks here; since your ProxyLoader handles TS rewriting as before, we do not add extra hooks.)
       
-          // Append a title bar below the player.
+          // Append title bar below the player.
           var titleBar = document.createElement("div");
           titleBar.className = "title-bar";
           titleBar.textContent = title;
@@ -379,9 +354,7 @@
             if (!playerContainer) {
               playerContainer = createPlayerContainer(streams[idx]);
               if (playerContainer) mainContent.appendChild(playerContainer);
-            } else {
-              playerContainer.style.display = "flex";
-            }
+            } else { playerContainer.style.display = "flex"; }
           } else {
             if (playerContainer) {
               if (playerContainer.vjsPlayer) {
@@ -425,12 +398,10 @@
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
         }
-      
         function hideAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
         }
-      
         document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
         document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
       
@@ -447,7 +418,6 @@
           modal.style.display = "block";
           backdrop.style.display = "block";
         }
-      
         function hideModal(saveChanges) {
           modal.style.display = "none";
           backdrop.style.display = "none";
@@ -457,7 +427,8 @@
             const newConfig = [];
             newUrls.forEach(url => {
               const existing = oldStreams.find(s => s.url === url);
-              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
+              if (existing) { newConfig.push(existing); }
+              else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
