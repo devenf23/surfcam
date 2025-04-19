@@ -1,470 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live DVR with Video.js & Custom ProxyLoader</title>
-    <!-- Load Video.js CSS from CDN -->
-    <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet" />
-    <style>
-      /* GENERAL STYLES */
-      html, body {
-        margin: 0;
-        padding: 0;
-        height: 100vh;
-        font-family: Arial, sans-serif;
-        background: #222;
-        color: #fff;
-        overflow: hidden;
-      }
-      .container { display: flex; height: 100vh; }
-      /* SIDEBAR */
-      #sidebar {
-        background: #444;
-        width: 220px;
-        padding: 20px;
-        box-sizing: border-box;
-        overflow-y: auto;
-        transition: transform 0.3s ease;
-      }
-      #sidebar.hidden { transform: translateX(-100%); }
-      #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; }
-      #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; }
-      .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; }
-      #streamList { margin-top: 10px; line-height: 1.2; }
-      #streamList label { color: #fff; }
-      .no-streams { font-style: italic; color: #bbb; margin-top: 10px; }
-      .stream-item { margin-bottom: 5px; display: flex; align-items: center; }
-      .stream-item label { margin-left: 5px; font-size: 16px; cursor: pointer; user-select: none; }
-      /* MAIN CONTENT – PLAYER CONTAINERS */
-      #main-content {
-        flex: 1;
-        background: #333;
-        padding: 20px;
-        box-sizing: border-box;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        overflow: auto;
-      }
-      .player-container.desktop { width: 960px; height: 600px; background: #222; display: flex; flex-direction: column; margin-bottom: 40px; box-sizing: border-box; }
-      .player-container.mobile   { width: 240px; height: 150px; background: #222; display: flex; flex-direction: column; margin-bottom: 20px; box-sizing: border-box; }
-      .player-container .video-js { width: 100%; height: 100%; }
-      .title-bar { background: #333; text-align: center; padding: 5px; font-size: 16px; }
-      /* URL Modal */
-      #urlModal {
-        display: none;
-        position: fixed;
-        z-index: 10;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        width: 1200px;
-        background: #555;
-        border: 2px solid #fff;
-        padding: 15px;
-        box-sizing: border-box;
-      }
-      #urlModal textarea { width: 100%; height: 600px; padding: 10px; font-size: 14px; box-sizing: border-box; }
-      #urlModal button { width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; cursor: pointer; }
-      #modalBackdrop {
-        display: none;
-        position: fixed;
-        z-index: 5;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-      }
-      /* Mobile adjustments */
-      html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; }
-      html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; }
-      html.mobile #urlModal button { padding: 5px; font-size: 12px; }
-      html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; }
-      html.mobile #main-content { margin-left: 0; }
-      #sidebarToggle { display: none; }
-      html.mobile #sidebarToggle {
-        display: block;
-        position: fixed;
-        top: 50%;
-        left: 0;
-        transform: translate(-50%, -50%);
-        z-index: 1100;
-        background: #444;
-        border: none;
-        padding: 10px 12px;
-        font-size: 24px;
-        color: #fff;
-        cursor: pointer;
-      }
-    </style>
-    <script>
-      // Mark as mobile if a mobile device is detected.
-      if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-        document.documentElement.classList.add("mobile");
-      }
-    </script>
-  </head>
-  <body>
-    <!-- Mobile sidebar toggle -->
-    <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global key listeners for optional keyboard controls -->
-    <script>
-      let spaceHeld = false;
-      window.addEventListener("keydown", function(e) {
-        if(e.code === "Space" && !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())){
-          e.preventDefault();
-          spaceHeld = true;
-        }
-      });
-      window.addEventListener("keyup", function(e) {
-        if(e.code === "Space") spaceHeld = false;
-      });
-    </script>
-    <div class="container">
-      <div id="sidebar">
-        <button id="btn-add-urls">Add URLs</button>
-        <div id="sideButtons">
-          <button id="btn-show-all" class="sideBtn">Show All</button>
-          <button id="btn-hide-all" class="sideBtn">Hide All</button>
-        </div>
-        <div id="streamList"></div>
-      </div>
-      <div id="main-content"></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Live DVR w/ Hls.js + Panzoom</title>
+  <style>
+    html,body{margin:0;padding:0;height:100vh;overflow:hidden;background:#222;color:#fff;font-family:sans-serif}
+    .container{display:flex;height:100vh}
+    #sidebar{width:220px;background:#444;padding:20px;box-sizing:border-box;overflow-y:auto;transition:transform .3s}
+    #sidebar.hidden{transform:translateX(-100%)}
+    button, input[type=range]{cursor:pointer}
+    #btn-add-urls{width:100%;padding:8px;margin-bottom:8px}
+    .sideBtn{flex:1;padding:8px;font-size:14px}
+    #sideButtons{display:flex;gap:8px;margin-bottom:8px}
+    #streamList .stream-item{display:flex;align-items:center;margin-bottom:4px}
+    #streamList label{margin-left:4px;user-select:none}
+    #main-content{flex:1;background:#333;padding:20px;box-sizing:border-box;display:flex;flex-wrap:wrap;gap:20px;overflow:auto}
+    .player-container{background:#222;display:flex;flex-direction:column;position:relative;box-sizing:border-box}
+    .player-container.desktop{width:960px;height:600px}
+    .player-container.mobile{width:240px;height:150px}
+    canvas{background:black;touch-action:none}
+    .controls{display:flex;align-items:center;background:rgba(0,0,0,.6);padding:4px;gap:8px}
+    .controls button{padding:4px 8px;font-size:14px}
+    .controls input[type=range]{flex:1}
+    .title-bar{background:#111;color:#fff;text-align:center;padding:4px;font-size:14px}
+    #urlModal{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:800px;max-width:90%;background:#555;border:2px solid #fff;padding:16px;box-sizing:border-box;z-index:10}
+    #urlModal textarea{width:100%;height:200px;box-sizing:border-box;font-size:14px;padding:8px}
+    #modalBackdrop{display:none;position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:5}
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div id="sidebar">
+    <button id="btn-add-urls">Add URLs</button>
+    <div id="sideButtons">
+      <button id="btn-show-all" class="sideBtn">Show All</button>
+      <button id="btn-hide-all" class="sideBtn">Hide All</button>
     </div>
-    <div id="modalBackdrop"></div>
-    <div id="urlModal">
-      <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3>
-      <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea>
-      <button id="saveUrls">Save and Close</button>
-    </div>
-    <!-- Load Video.js from CDN -->
-    <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script>
-    <!-- Do NOT load videojs-panzoom so we use our previous working loader approach -->
-    <!-- Define the custom ProxyLoader (from your previous working version) -->
-    <script>
-      class ProxyLoader {
-        constructor(config) {
-          this.customPlaylistBase = config.customPlaylistBase || "";
-          this.config = config;
-          this.loader = new Hls.DefaultConfig.loader(config);
+    <div id="streamList"></div>
+  </div>
+  <div id="main-content"></div>
+</div>
+
+<div id="modalBackdrop"></div>
+<div id="urlModal">
+  <h3>Add HLS URLs (one per line)</h3>
+  <textarea id="urlInput"></textarea>
+  <button id="saveUrls">Save & Close</button>
+</div>
+
+<!-- Hls.js -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<!-- Panzoom -->
+<script src="https://unpkg.com/@panzoom/panzoom@9.4.0/dist/panzoom.min.js"></script>
+<script>
+  // ProxyLoader as you had it
+  class ProxyLoader {
+    constructor(config) {
+      this.customPlaylistBase = config.customPlaylistBase||"";
+      this.loader = new Hls.DefaultConfig.loader(config);
+    }
+    load(context, config, callbacks) {
+      const proxy = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+      let raw = context.url;
+      try {
+        if(raw.startsWith(proxy)) {
+          const u=new URL(raw); raw=u.searchParams.get("url")||raw;
         }
-        load(context, config, callbacks) {
-          const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
-          let rawUrl = context.url;
-          try {
-            if(rawUrl.startsWith(proxyPrefix)) {
-              const wrapped = new URL(rawUrl);
-              rawUrl = wrapped.searchParams.get("url") || rawUrl;
-            }
-          } catch(e){}
-          if(rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
-            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
-            rawUrl = this.customPlaylistBase + segFilename;
-          }
-          else if(this.customPlaylistBase && !rawUrl.startsWith(this.customPlaylistBase)) {
-            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
-            rawUrl = this.customPlaylistBase + segFilename;
-          }
-          context.url = proxyPrefix + encodeURIComponent(rawUrl);
-          this.loader.load(context, config, callbacks);
-        }
-        abort() { if (this.loader.abort) this.loader.abort(); }
-        destroy() { if (this.loader.destroy) this.loader.destroy(); }
+      }catch(e){}
+      // fragments or playlists
+      if(!raw.startsWith("https://")) {
+        // relative or local
+        const seg=raw.substring(raw.lastIndexOf("/")+1);
+        raw=this.customPlaylistBase+seg;
       }
-    </script>
-    <!-- Main UI & Stream Management using Video.js with our custom HLS loader -->
-    <script>
-      (function(){
-        const storageKey = "streamConfigs";
-        const activeLabels = new Set();
-      
-        function extractTitle(url) {
-          const match = url.match(/wc-([^\/]+)\/playlist/);
-          return match ? match[1] : url;
-        }
-      
-        function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
-        function getStreamList() {
-          try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); }
-          catch(e){ return []; }
-        }
-      
-        function updateStreamSidebar() {
-          const sidebarList = document.getElementById("streamList");
-          sidebarList.innerHTML = "";
-          const streams = getStreamList();
-          if (streams.length === 0) {
-            const p = document.createElement("p");
-            p.className = "no-streams";
-            p.textContent = "No streams added. Click 'Add URLs' to add streams.";
-            sidebarList.appendChild(p);
-          } else {
-            streams.forEach(stream => {
-              const videoSrc = stream.url;
-              const title = extractTitle(videoSrc);
-              const item = document.createElement("div");
-              item.className = "stream-item";
-              const checkbox = document.createElement("input");
-              checkbox.type = "checkbox";
-              checkbox.checked = stream.enabled;
-              checkbox.setAttribute("data-url", videoSrc);
-              checkbox.addEventListener("change", (e)=> { updateStreamEnabled(videoSrc, e.target.checked); });
-              item.appendChild(checkbox);
-              const label = document.createElement("label");
-              label.textContent = title;
-              label.setAttribute("data-url", videoSrc);
-              label.addEventListener("mousedown", (e)=>{
-                if(e.button===0){ 
-                  checkbox.checked = !checkbox.checked; 
-                  activeLabels.add(label); 
-                  e.preventDefault(); 
-                }
-              });
-              label.addEventListener("mouseenter", (e)=>{
-                if(e.buttons & 1 && !activeLabels.has(label)){ 
-                  checkbox.checked = !checkbox.checked; 
-                  activeLabels.add(label); 
-                }
-              });
-              item.appendChild(label);
-              sidebarList.appendChild(item);
-            });
-          }
-        }
-      
-        function toggleFullScreen(container) {
-          if (!document.fullscreenElement) {
-            container.requestFullscreen().catch(err => console.error("Full screen error:", err));
-          } else {
-            document.exitFullscreen().catch(err => console.error("Exit full screen error:", err));
-          }
-        }
-      
-        // Create a Video.js player container with our custom HLS loader.
-        function createPlayerContainer(streamConfig) {
-          if (!streamConfig.enabled) return null;
-          const videoSrcOrig = streamConfig.url;
-          const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
-          // Use encodeURIComponent here just like your previous version.
-          const proxiedUrl = proxyPrefix + encodeURIComponent(videoSrcOrig);
-          const title = extractTitle(videoSrcOrig);
-          const isMobile = document.documentElement.classList.contains("mobile");
-          const container = document.createElement("div");
-          container.className = "player-container " + (isMobile ? "mobile" : "desktop");
-          container.setAttribute("data-url", videoSrcOrig);
-      
-          // Compute manifestBase from the original URL.
-          var manifestBase = videoSrcOrig.substring(0, videoSrcOrig.lastIndexOf("/") + 1);
-      
-          // Create a unique video element.
-          const videoId = "vid_" + Math.random().toString(36).substring(2,10);
-          const videoEl = document.createElement("video");
-          videoEl.id = videoId;
-          videoEl.className = "video-js vjs-default-skin";
-          videoEl.playsInline = true;
-          if (isMobile) {
-            videoEl.style.width = "240px";
-            videoEl.style.height = "135px";
-          } else {
-            videoEl.style.width = "960px";
-            videoEl.style.height = "540px";
-          }
-          // Create source element with the proxied manifest URL.
-          const sourceEl = document.createElement("source");
-          sourceEl.src = proxiedUrl;
-          sourceEl.type = "application/x-mpegURL";
-          videoEl.appendChild(sourceEl);
-          container.appendChild(videoEl);
-      
-          // Video.js options: Force autoplay with muted.
-          const vjsOptions = {
-            controls: true,
-            autoplay: true,
-            muted: true,
-            preload: "auto",
-            // Pass our custom HLS loader via html5.vhs options.
-            html5: {
-              vhs: {
-                loader: ProxyLoader,
-                customPlaylistBase: manifestBase
-              }
-            }
-          };
-          var vjsPlayer = videojs(videoEl, vjsOptions, function(){
-            console.log("Video.js player ready for stream:", videoSrcOrig);
-          });
-      
-          // VHS beforeRequest hook: resolve relative URLs against manifestBase and wrap them.
-          vjsPlayer.ready(function() {
-            if (vjsPlayer.tech(true) && vjsPlayer.tech(true).vhs) {
-              var vhsOptions = vjsPlayer.tech(true).vhs.options_ || {};
-              vhsOptions.beforeRequest = function(options) {
-                // If the URL is relative, resolve it against manifestBase.
-                if (!/^https?:\/\//.test(options.uri)) {
-                  options.uri = new URL(options.uri, manifestBase).toString();
-                }
-                // Use encodeURIComponent (as in your previous version) so the fragment filename is preserved.
-                if (!options.uri.startsWith(proxyPrefix)) {
-                  options.uri = proxyPrefix + encodeURIComponent(options.uri);
-                }
-                console.log("Rewritten request URI:", options.uri);
-                return options;
-              };
-              vjsPlayer.tech(true).vhs.options_ = vhsOptions;
-            }
-          });
-      
-          // Append title bar below the player.
-          var titleBar = document.createElement("div");
-          titleBar.className = "title-bar";
-          titleBar.textContent = title;
-          container.appendChild(titleBar);
-      
-          container.vjsPlayer = vjsPlayer;
-          return container;
-        }
-      
-        function reorderPlayerContainers() {
-          const mainContent = document.getElementById("main-content");
-          const config = getStreamList();
-          const players = Array.from(mainContent.querySelectorAll(".player-container"));
-          players.sort((a, b) => {
-            let indexA = config.findIndex(s => s.url === a.getAttribute("data-url"));
-            let indexB = config.findIndex(s => s.url === b.getAttribute("data-url"));
-            return indexA - indexB;
-          });
-          players.forEach(p => mainContent.appendChild(p));
-        }
-      
-        function updateStreamEnabled(url, enabled) {
-          let streams = getStreamList();
-          const idx = streams.findIndex(s => s.url === url);
-          if (idx === -1) return;
-          if (streams[idx].enabled !== enabled) {
-            streams[idx].enabled = enabled;
-            saveStreamList(streams);
-          }
-          let playerContainer = document.querySelector('.player-container[data-url="'+url+'"]');
-          const mainContent = document.getElementById("main-content");
-          if (enabled) {
-            if (!playerContainer) {
-              playerContainer = createPlayerContainer(streams[idx]);
-              if (playerContainer) mainContent.appendChild(playerContainer);
-            } else {
-              playerContainer.style.display = "flex";
-            }
-          } else {
-            if (playerContainer) {
-              if (playerContainer.vjsPlayer) {
-                playerContainer.vjsPlayer.dispose();
-              }
-              if (playerContainer.parentNode) playerContainer.parentNode.removeChild(playerContainer);
-            }
-          }
-          reorderPlayerContainers();
-          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="'+url+'"]');
-          if (checkbox) checkbox.checked = enabled;
-        }
-      
-        function updateFullUI(refresh = true) {
-          if (refresh) {
-            const mainContent = document.getElementById("main-content");
-            mainContent.innerHTML = "";
-            const streamList = getStreamList();
-            const enabledStreams = streamList.filter(s => s.enabled);
-            if (enabledStreams.length > 0) {
-              enabledStreams.forEach(stream => {
-                const player = createPlayerContainer(stream);
-                if (player) mainContent.appendChild(player);
-              });
-              reorderPlayerContainers();
-            }
-            updateStreamSidebar();
-          }
-        }
-      
-        document.addEventListener("mouseup", function() {
-          activeLabels.forEach(function(label) {
-            const url = label.getAttribute("data-url");
-            const checkbox = label.parentElement.querySelector("input[type='checkbox']");
-            updateStreamEnabled(url, checkbox.checked);
-          });
-          activeLabels.clear();
+      context.url=proxy+encodeURIComponent(raw);
+      this.loader.load(context,config,callbacks);
+    }
+    abort(){this.loader.abort&&this.loader.abort()}
+    destroy(){this.loader.destroy&&this.loader.destroy()}
+  }
+
+  // Sidebar & streams
+  const storageKey="streamConfigs";
+  function getList(){try{return JSON.parse(localStorage.getItem(storageKey)||"[]")}catch(e){return[]}}
+  function saveList(l){localStorage.setItem(storageKey,JSON.stringify(l))}
+  const activeLabels=new Set();
+
+  function extractTitle(u){
+    const m=u.match(/wc-([^/]+)\//);
+    return m?m[1]:u;
+  }
+
+  function updateSidebar(){
+    const parent=document.getElementById("streamList");
+    parent.innerHTML="";
+    const list=getList();
+    if(!list.length){
+      const p=document.createElement("p");p.className="no-streams";p.textContent="No streams";parent.appendChild(p);
+      return;
+    }
+    list.forEach(s=>{
+      const row=document.createElement("div");row.className="stream-item";
+      const cb=document.createElement("input");cb.type="checkbox";cb.checked=s.enabled;cb.dataset.url=s.url;
+      cb.onchange=e=>toggleStream(s.url,e.target.checked);
+      row.appendChild(cb);
+      const lbl=document.createElement("label");lbl.textContent=extractTitle(s.url);lbl.dataset.url=s.url;
+      lbl.onmousedown=e=>{
+        if(e.button===0){cb.checked=!cb.checked;activeLabels.add(lbl);e.preventDefault()}
+      };
+      lbl.onmouseenter=e=>{
+        if(e.buttons&1&&!activeLabels.has(lbl)){cb.checked=!cb.checked;activeLabels.add(lbl)}
+      };
+      row.appendChild(lbl);
+      parent.appendChild(row);
+    });
+  }
+
+  function toggleStream(url,on){
+    let cfg=getList();
+    const idx=cfg.findIndex(x=>x.url===url);
+    if(idx>=0)cfg[idx].enabled=on; else return;
+    saveList(cfg);
+    renderStreams();
+    updateSidebar();
+  }
+
+  document.addEventListener("mouseup",()=>{
+    activeLabels.forEach(lbl=>{
+      const url=lbl.dataset.url;
+      const cb=document.querySelector(`input[data-url="${url}"]`);
+      toggleStream(url,cb.checked);
+    });
+    activeLabels.clear();
+  });
+
+  document.getElementById("btn-show-all").onclick=()=>getList().forEach(s=>toggleStream(s.url,true));
+  document.getElementById("btn-hide-all").onclick=()=>getList().forEach(s=>toggleStream(s.url,false));
+
+  // Modal
+  const modal=document.getElementById("urlModal"),back=document.getElementById("modalBackdrop");
+  document.getElementById("btn-add-urls").onclick=()=>{
+    document.getElementById("urlInput").value=getList().map(x=>x.url).join("\n");
+    modal.style.display="block";back.style.display="block";
+  };
+  document.getElementById("saveUrls").onclick=()=>{
+    const lines=document.getElementById("urlInput").value.split("\n").map(x=>x.trim()).filter(x=>x);
+    const old=getList(),newCfg=[];
+    lines.forEach(u=>{
+      const ex=old.find(x=>x.url===u);
+      newCfg.push(ex||{url:u,enabled:true});
+    });
+    saveList(newCfg);
+    modal.style.display="none";back.style.display="none";
+    renderStreams();updateSidebar();
+  };
+  window.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.style.display==="block"){modal.style.display="none";back.style.display="none"}});
+
+  // Render streams
+  function renderStreams(){
+    const main=document.getElementById("main-content");main.innerHTML="";
+    getList().filter(s=>s.enabled).forEach(s=>{
+      const url=s.url;
+      const isMobile=document.documentElement.classList.contains("mobile");
+      const cont=document.createElement("div");
+      cont.className="player-container "+(isMobile?"mobile":"desktop");
+      cont.dataset.url=url;
+      // create video element
+      const v=document.createElement("video");
+      v.crossOrigin="anonymous";
+      v.muted=true; // for autoplay
+      v.autoplay=true;
+      v.playsInline=true;
+      v.controls=!isMobile; // mobile show native controls
+      cont.appendChild(v);
+      // timeline & play/pause
+      const controls=document.createElement("div");controls.className="controls";
+      const btn=document.createElement("button");btn.textContent="Pause";
+      const range=document.createElement("input");range.type="range";range.min=0;range.step=0.1;
+      controls.appendChild(btn);controls.appendChild(range);
+      cont.appendChild(controls);
+      // title
+      const tbar=document.createElement("div");tbar.className="title-bar";tbar.textContent=extractTitle(url);
+      cont.appendChild(tbar);
+      main.appendChild(cont);
+
+      // setup Hls.js
+      if(Hls.isSupported()){
+        const hls=new Hls({
+          loader:ProxyLoader,
+          customPlaylistBase:url.substring(0,url.lastIndexOf("/")+1)
         });
-      
-        function showAllStreams() {
-          const streams = getStreamList();
-          streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
-        }
-        function hideAllStreams() {
-          const streams = getStreamList();
-          streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
-        }
-        document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
-        document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
-      
-        // URL Modal Logic.
-        const modal = document.getElementById("urlModal");
-        const backdrop = document.getElementById("modalBackdrop");
-        const btnAddUrls = document.getElementById("btn-add-urls");
-        const btnSaveUrls = document.getElementById("saveUrls");
-        const urlInput = document.getElementById("urlInput");
-      
-        function showModal() {
-          const streams = getStreamList();
-          urlInput.value = streams.map(s => s.url).join("\n");
-          modal.style.display = "block";
-          backdrop.style.display = "block";
-        }
-        function hideModal(saveChanges) {
-          modal.style.display = "none";
-          backdrop.style.display = "none";
-          if (saveChanges) {
-            const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u);
-            const oldStreams = getStreamList();
-            const newConfig = [];
-            newUrls.forEach(url => {
-              const existing = oldStreams.find(s => s.url === url);
-              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
-            });
-            saveStreamList(newConfig);
-            updateStreamSidebar();
-            oldStreams.forEach(s => { if (!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); } });
-            newConfig.forEach(s => { if (s.enabled) { updateStreamEnabled(s.url, true); } });
-          }
-          urlInput.value = "";
-        }
-      
-        btnAddUrls.addEventListener("click", showModal);
-        btnSaveUrls.addEventListener("click", function() { hideModal(true); });
-        window.addEventListener("keydown", function(e) {
-          if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); }
+        hls.loadSource(url);
+        hls.attachMedia(v);
+        hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+          v.play().catch(()=>{/*ignore*/});
         });
-      
-        updateFullUI();
-      })();
-      
-      // Mobile: Sidebar swipe handling.
-      (function(){
-        if (!document.documentElement.classList.contains("mobile")) return;
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("sidebarToggle");
-        let touchStartX = 0, touchEndX = 0;
-        const swipeThreshold = 50;
-        sidebar.addEventListener("touchstart", function(e) { touchStartX = e.changedTouches[0].screenX; });
-        sidebar.addEventListener("touchend", function(e) {
-          touchEndX = e.changedTouches[0].screenX;
-          if (touchStartX - touchEndX > swipeThreshold) { sidebar.classList.add("hidden"); toggleBtn.style.display = "block"; }
+        // timeupdate
+        v.ontimeupdate=()=>{
+          range.max=v.duration||0;
+          range.value=v.currentTime;
+        };
+        btn.onclick=()=>{
+          if(v.paused){v.play();btn.textContent="Pause"}else{v.pause();btn.textContent="Play"}
+        };
+        range.oninput=()=>v.currentTime=range.value;
+      }
+      // panzoom on container for desktop
+      if(!isMobile){
+        const panzoomInstance=Panzoom(cont.querySelector("video"),{
+          contain:"outside",
+          maxScale:3,
+          step:0.1
         });
-        toggleBtn.addEventListener("click", function() { sidebar.classList.remove("hidden"); toggleBtn.style.display = "none"; });
-      })();
-      
-      // Desktop: Listen for fullscreen changes.
-      document.addEventListener("fullscreenchange", function() {
-        console.log("Fullscreen changed. Now", document.fullscreenElement ? "Full screen" : "Windowed");
-      });
-    </script>
-  </body>
+        // save and restore state
+        const key="pz_"+url;
+        const saved=localStorage.getItem(key);
+        if(saved)panzoomInstance.zoomAbs(0,0,JSON.parse(saved).scale);
+        panzoomInstance.on("transform",()=>{
+          const s=panzoomInstance.getScale();
+          localStorage.setItem(key,JSON.stringify({scale:s}));
+        });
+      }
+    });
+  }
+
+  // init
+  updateSidebar();
+  renderStreams();
+</script>
+</body>
 </html>
