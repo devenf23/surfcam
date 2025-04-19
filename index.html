@@ -3,106 +3,193 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live DVR – Full‑Screen, Zoom/Pan & Timeline (vFinal)</title>
+    <title>Live DVR – Desktop: Full‑Screen, Zoom/Pan, Timeline; Mobile: Native Playback (vFinal2)</title>
     <style>
-      /* GENERAL */
+      /* GENERAL STYLES */
       html, body {
-        margin: 0; padding: 0;
+        margin: 0;
+        padding: 0;
         height: 100vh;
-        background: #222;
         font-family: Arial, sans-serif;
+        background: #222;
         color: #fff;
         overflow: hidden;
       }
-      .container { display: flex; height: 100vh; }
+      .container {
+        display: flex;
+        height: 100vh;
+      }
       /* SIDEBAR */
       #sidebar {
-        background: #444;
+        background-color: #444;
         width: 220px;
         padding: 20px;
         box-sizing: border-box;
         overflow-y: auto;
         transition: transform 0.3s ease;
       }
-      #sidebar.hidden { transform: translateX(-100%); }
-      #btn-add-urls { width: 100%; padding: 10px; font-size: 16px; cursor: pointer; margin-bottom: 10px; }
-      #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; }
-      .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; }
-      #streamList { margin-top: 10px; line-height: 1.2; }
-      #streamList label { color: #fff; }
-      .no-streams { font-style: italic; color: #bbb; margin-top: 10px; }
-      .stream-item { margin-bottom: 5px; display: flex; align-items: center; }
-      .stream-item label { margin-left: 5px; font-size: 16px; cursor: pointer; user-select: none; }
+      #sidebar.hidden {
+        transform: translateX(-100%);
+      }
+      #btn-add-urls {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #sideButtons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .sideBtn {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #streamList {
+        margin-top: 10px;
+        line-height: 1.2;
+      }
+      #streamList label {
+        color: #fff;
+      }
+      .no-streams {
+        font-style: italic;
+        color: #bbb;
+        margin-top: 10px;
+      }
+      .stream-item {
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+      }
+      .stream-item label {
+        margin-left: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        user-select: none;
+      }
       /* MAIN CONTENT / PLAYER CONTAINERS */
       #main-content {
         flex: 1;
-        background: #333;
+        background-color: #333;
         padding: 20px;
+        box-sizing: border-box;
         display: flex;
         flex-wrap: wrap;
         gap: 20px;
-        box-sizing: border-box;
         overflow: auto;
       }
-      /* Desktop player container (full‐size player) */
+      /* Desktop player container – full-size layout */
       .player-container.desktop {
         width: 960px;
         height: 600px;
-        background: #222;
+        background-color: #222;
         display: flex;
         flex-direction: column;
         position: relative;
         margin-bottom: 40px;
         box-sizing: border-box;
       }
-      /* Mobile player container (roughly 4× smaller) */
+      /* Mobile player container – roughly 4× smaller */
       .player-container.mobile {
         width: 240px;
         height: 150px;
-        background: #222;
+        background-color: #222;
         display: flex;
         flex-direction: column;
         position: relative;
         margin-bottom: 20px;
         box-sizing: border-box;
       }
-      /* Desktop video element is hidden (but still playing) */
+      /* Desktop: The video element is kept in the DOM (with opacity:0, but must remain playing) */
       .player-container.desktop .source-video {
         opacity: 0;
         position: absolute;
-        left: 0; top: 0;
+        left: 0;
+        top: 0;
         width: 960px;
         height: 540px;
         pointer-events: none;
       }
-      /* Desktop visible output is via canvas */
-      .player-container.desktop .display-canvas { background: black; width: 960px; height: 540px; }
-      /* Mobile: Show native video with controls */
-      .player-container.mobile .source-video { width: 240px; height: 135px; }
-      .player-container.mobile .display-canvas { display: none; }
-      /* Desktop Control Overlay */
+      /* Desktop: Canvas shows the output */
+      .player-container.desktop .display-canvas {
+        background: black;
+        width: 960px;
+        height: 540px;
+      }
+      /* Mobile: The video element is visible with native controls, canvas hidden */
+      .player-container.mobile .source-video {
+        width: 240px;
+        height: 135px;
+      }
+      .player-container.mobile .display-canvas {
+        display: none;
+      }
+      /* Desktop custom controls (overlay) */
       .controls-container {
         transition: opacity 0.5s;
         position: relative;
         z-index: 2;
       }
       .control-bar {
-        height: 60px; display: flex; align-items: center;
+        height: 60px;
+        display: flex;
+        align-items: center;
         background: rgba(0,0,0,0.75);
         padding: 5px 10px;
         gap: 10px;
       }
-      .control-bar button { padding: 4px 8px; font-size: 14px; cursor: pointer; }
-      .disable-btn { background: red; color: #fff; border: none; }
-      .control-bar input[type=range] { flex: 1; }
-      .title-bar { text-align: center; padding: 2px 10px; background: rgba(0,0,0,0.75); font-size: 16px; }
+      .control-bar button {
+        padding: 4px 8px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .disable-btn {
+        background-color: red;
+        color: #fff;
+        border: none;
+      }
+      .control-bar input[type="range"] {
+        flex: 1;
+      }
+      .title-bar {
+        text-align: center;
+        padding: 2px 10px;
+        background: rgba(0,0,0,0.75);
+        font-size: 16px;
+      }
       /* Fullscreen overlay (desktop) */
-      .overlay-controls { position: absolute; bottom: 0; left: 0; right: 0; }
-      /* Mobile “Tap to Play” – now removed in favor of native controls */
+      .overlay-controls {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+      /* For mobile, we now rely solely on native controls – add a “Tap to Start” overlay */
+      .mobile-play-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 24px;
+        z-index: 10;
+      }
       /* URL Modal */
       #urlModal {
-        display: none; position: fixed; z-index: 10;
-        left: 50%; top: 50%;
+        display: none;
+        position: fixed;
+        z-index: 10;
+        left: 50%;
+        top: 50%;
         transform: translate(-50%, -50%);
         width: 1200px;
         background: #555;
@@ -111,22 +198,58 @@
         box-sizing: border-box;
       }
       #urlModal textarea {
-        width: 100%; height: 600px; padding: 10px; font-size: 14px; box-sizing: border-box;
+        width: 100%;
+        height: 600px;
+        padding: 10px;
+        font-size: 14px;
+        box-sizing: border-box;
       }
-      #urlModal button { width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; cursor: pointer; }
+      #urlModal button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
       #modalBackdrop {
-        display: none; position: fixed; z-index: 5;
-        left: 0; top: 0; width: 100%; height: 100%;
+        display: none;
+        position: fixed;
+        z-index: 5;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
         background: rgba(0,0,0,0.5);
       }
-      /* Mobile adjustments */
-      html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; }
-      html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; }
-      html.mobile #urlModal button { padding: 5px; font-size: 12px; }
-      html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; }
-      html.mobile #main-content { margin-left: 0; }
-      /* Sidebar toggle arrow for mobile */
-      #sidebarToggle { display: none; }
+      /* Mobile-specific adjustments */
+      html.mobile #urlModal {
+        width: 300px;
+        padding: 4px;
+        font-size: 12px;
+      }
+      html.mobile #urlModal textarea {
+        height: 150px;
+        padding: 5px;
+        font-size: 12px;
+      }
+      html.mobile #urlModal button {
+        padding: 5px;
+        font-size: 12px;
+      }
+      html.mobile #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        z-index: 1000;
+      }
+      html.mobile #main-content {
+        margin-left: 0;
+      }
+      /* Sidebar toggle arrow */
+      #sidebarToggle {
+        display: none;
+      }
       html.mobile #sidebarToggle {
         display: block;
         position: fixed;
@@ -143,7 +266,7 @@
       }
     </style>
     <script>
-      // Add a "mobile" class if a mobile device is detected
+      // Add "mobile" class if the user agent indicates a mobile device.
       if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         document.documentElement.classList.add("mobile");
       }
@@ -152,7 +275,7 @@
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners (used for desktop pan/zoom) -->
+    <!-- Global Spacebar Listeners (for desktop pan/zoom) -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -186,8 +309,8 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
     <script>
       /* ----------------------------------------------------------------
-         Desktop: Custom Loader using our proxy
-         (ProxyLoader remains similar to previous versions)
+         Desktop: Custom Loader using our proxy.
+         (ProxyLoader is similar to earlier versions.)
       ---------------------------------------------------------------- */
       class ProxyLoader {
         constructor(config) {
@@ -198,13 +321,12 @@
         load(context, config, callbacks) {
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
           let rawUrl = context.url;
-          if (rawUrl.startsWith(proxyPrefix)) {
-            try {
+          try {
+            if (rawUrl.startsWith(proxyPrefix)) {
               const wrapped = new URL(rawUrl);
               rawUrl = wrapped.searchParams.get("url") || rawUrl;
-            } catch(e){}
-          }
-          // If necessary, rebuild URL using custom base.
+            }
+          } catch(e){}
           if (rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
             const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
             rawUrl = this.customPlaylistBase + segFilename;
@@ -220,24 +342,23 @@
       }
       /* ---------------------------------------------------------------- */
       
-      // Utility functions for persistent settings.
+      // Utility functions for storing/retrieving settings.
       function loadPlayerSettings(url) {
         const ps = localStorage.getItem("playerSettings");
         if (ps) {
           try {
             const settings = JSON.parse(ps);
             return settings[url] || { zoomScale: 1, panX: 0, panY: 0 };
-          } catch (e) { return { zoomScale: 1, panX: 0, panY: 0 }; }
+          } catch (e) {
+            return { zoomScale: 1, panX: 0, panY: 0 };
+          }
         }
         return { zoomScale: 1, panX: 0, panY: 0 };
       }
-      
       function savePlayerSettings(url, data) {
         const ps = localStorage.getItem("playerSettings");
         let settings = {};
-        if (ps) {
-          try { settings = JSON.parse(ps); } catch (e){}
-        }
+        if (ps) { try { settings = JSON.parse(ps); } catch (e) {} }
         settings[url] = data;
         localStorage.setItem("playerSettings", JSON.stringify(settings));
       }
@@ -250,7 +371,9 @@
           const match = url.match(/wc-([^\/]+)\/playlist/);
           return match ? match[1] : url;
         }
-        function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
+        function saveStreamList(list) {
+          localStorage.setItem(storageKey, JSON.stringify(list));
+        }
         function getStreamList() {
           const storedData = localStorage.getItem(storageKey);
           if (!storedData) return [];
@@ -282,10 +405,10 @@
               label.textContent = title;
               label.setAttribute("data-url", videoSrc);
               label.addEventListener("mousedown", function(e) {
-                if(e.button===0){ checkbox.checked=!checkbox.checked; activeLabels.add(label); e.preventDefault(); }
+                if (e.button === 0) { checkbox.checked = !checkbox.checked; activeLabels.add(label); e.preventDefault(); }
               });
               label.addEventListener("mouseenter", function(e) {
-                if(e.buttons&1 && !activeLabels.has(label)){ checkbox.checked=!checkbox.checked; activeLabels.add(label); }
+                if (e.buttons & 1 && !activeLabels.has(label)) { checkbox.checked = !checkbox.checked; activeLabels.add(label); }
               });
               item.appendChild(label);
               sidebarList.appendChild(item);
@@ -293,28 +416,29 @@
           }
         }
         function toggleFullScreen(container) {
-          if (!document.fullscreenElement) { 
-            container.requestFullscreen().catch(err => console.error("Full screen error:", err));
-          } else { document.exitFullscreen().catch(err => console.error(err)); }
+          if (!document.fullscreenElement) {
+            container.requestFullscreen().catch(err => console.error("Error entering full-screen:", err));
+          } else {
+            document.exitFullscreen().catch(err => console.error("Error exiting full-screen:", err));
+          }
         }
         function clampPan(container) {
           const Z = container.zoomScale, halfW = 960/2, halfH = 540/2;
           container.panX = Math.min(halfW*Z - halfW, Math.max(halfW - halfW*Z, container.panX));
           container.panY = Math.min(halfH*Z - halfH, Math.max(halfH - halfH*Z, container.panY));
         }
-        // Create a player container.
-        // Desktop: Uses a hidden video element and a canvas with a render loop
-        // Mobile: Uses a native video element with controls.
+        // Create a player container for a given stream.
+        // The approach differs for desktop and mobile.
         function createPlayerContainer(streamConfig) {
           if (!streamConfig.enabled) return null;
           const videoSrc = streamConfig.url;
           const title = extractTitle(videoSrc);
           const isMobile = document.documentElement.classList.contains("mobile");
           const container = document.createElement("div");
-          container.className = "player-container " + (isMobile ?"mobile":"desktop");
+          container.className = "player-container " + (isMobile ? "mobile" : "desktop");
           container.setAttribute("data-url", videoSrc);
           container.userPaused = false;
-          // Load desktop zoom/pan settings
+          // Desktop: load zoom/pan settings.
           const saved = loadPlayerSettings(videoSrc);
           container.zoomScale = saved.zoomScale;
           container.panX = saved.panX;
@@ -325,119 +449,128 @@
           sourceVideo.className = "source-video";
           sourceVideo.muted = true;
           sourceVideo.playsInline = true;
-          sourceVideo.setAttribute("playsinline","true");
-          sourceVideo.setAttribute("webkit-playsinline","true");
+          sourceVideo.setAttribute("playsinline", "true");
+          sourceVideo.setAttribute("webkit-playsinline", "true");
           sourceVideo.preload = "auto";
           sourceVideo.crossOrigin = "anonymous";
-          if(isMobile){
-            // On mobile, use native playback. Do not auto-call play().
-            sourceVideo.setAttribute("controls","true");
+          if (isMobile) {
+            // For mobile, use native playback. Do not auto-call play().
+            sourceVideo.setAttribute("controls", "true");
             sourceVideo.src = videoSrc;
           } else {
             sourceVideo.autoplay = true;
           }
           container.appendChild(sourceVideo);
-          sourceVideo.addEventListener("loadedmetadata", function(){
+          // Update timeline max on metadata load.
+          sourceVideo.addEventListener("loadedmetadata", function() {
             console.log("loadedmetadata:", sourceVideo.videoWidth, sourceVideo.videoHeight);
-            if(!isMobile) timeline.max = sourceVideo.duration || 0;
+            if (!isMobile && timeline) timeline.max = sourceVideo.duration || 0;
           });
-          sourceVideo.addEventListener("timeupdate", function(){
-            if(!isMobile && timeline) timeline.value = sourceVideo.currentTime;
+          sourceVideo.addEventListener("timeupdate", function() {
+            if (!isMobile && timeline) timeline.value = sourceVideo.currentTime;
           });
-          // Desktop: Create and append canvas.
-          let displayCanvas=null, ctx=null;
-          if(!isMobile){
+          let timeline = null;
+          // Desktop: create a canvas and a render loop.
+          let displayCanvas = null, ctx = null;
+          if (!isMobile) {
             displayCanvas = document.createElement("canvas");
             displayCanvas.className = "display-canvas";
-            // Set default canvas size; in full-screen we update it.
+            // In non-fullscreen, keep standard size; we update size on fullscreenchange.
             displayCanvas.width = 960;
             displayCanvas.height = 540;
             container.appendChild(displayCanvas);
             ctx = displayCanvas.getContext("2d");
-            // Render loop: clear and draw video frame applying pan/zoom.
-            function renderFrame(){
-              if(sourceVideo.readyState>=2){
-                // If in full screen update canvas size from container.
-                if(document.fullscreenElement && container.contains(document.fullscreenElement)){
+            function renderFrame() {
+              if (sourceVideo.readyState >= 2) {
+                // Adjust canvas size if fullscreen.
+                if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
                   displayCanvas.width = container.clientWidth;
                   displayCanvas.height = container.clientHeight;
                 } else {
                   displayCanvas.width = 960;
                   displayCanvas.height = 540;
                 }
-                ctx.clearRect(0,0,displayCanvas.width,displayCanvas.height);
+                ctx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
                 ctx.save();
-                let cX = displayCanvas.width/2, cY = displayCanvas.height/2;
-                ctx.translate(cX, cY);
+                let centerX = displayCanvas.width / 2;
+                let centerY = displayCanvas.height / 2;
+                ctx.translate(centerX, centerY);
                 ctx.scale(container.zoomScale, container.zoomScale);
                 ctx.translate(container.panX, container.panY);
-                ctx.translate(-cX, -cY);
-                try { ctx.drawImage(sourceVideo,0,0,displayCanvas.width,displayCanvas.height); }
-                catch(err){ console.error("drawImage error:", err); }
+                ctx.translate(-centerX, -centerY);
+                try { ctx.drawImage(sourceVideo, 0, 0, displayCanvas.width, displayCanvas.height); }
+                catch(err) { console.error("drawImage error:", err); }
                 ctx.restore();
               }
               requestAnimationFrame(renderFrame);
             }
             requestAnimationFrame(renderFrame);
-            // Desktop: Enable pan/zoom using mouse if spacebar held.
-            let startX=0, startY=0, dragging=false;
-            const dragThreshold=5;
-            displayCanvas.addEventListener("mousedown", function(e){
-              if(e.button!==0)return;
-              if(!document.fullscreenElement && !spaceHeld)return;
-              startX = e.clientX; startY = e.clientY; dragging=false;
+            // Desktop: Pan/Zoom events (only if spacebar held or fullscreen)
+            let startX = 0, startY = 0, isDragging = false;
+            const dragThreshold = 5;
+            displayCanvas.addEventListener("mousedown", function(e) {
+              if (e.button !== 0) return;
+              if (!document.fullscreenElement && !spaceHeld) return;
+              startX = e.clientX;
+              startY = e.clientY;
+              isDragging = false;
             });
-            displayCanvas.addEventListener("mousemove", function(e){
-              if(e.buttons&1){
-                if(!document.fullscreenElement && !spaceHeld)return;
-                let dx = e.clientX - startX, dy = e.clientY - startY;
-                if(!dragging && Math.sqrt(dx*dx+dy*dy)>dragThreshold) dragging = true;
-                if(dragging){
-                  container.panX += dx/container.zoomScale;
-                  container.panY += dy/container.zoomScale;
+            displayCanvas.addEventListener("mousemove", function(e) {
+              if (e.buttons & 1) {
+                if (!document.fullscreenElement && !spaceHeld) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                if (!isDragging && Math.sqrt(dx*dx+dy*dy) > dragThreshold) { isDragging = true; }
+                if (isDragging) {
+                  container.panX += dx / container.zoomScale;
+                  container.panY += dy / container.zoomScale;
                   clampPan(container);
-                  savePlayerSettings(videoSrc, {zoomScale:container.zoomScale, panX:container.panX, panY:container.panY});
-                  startX = e.clientX; startY = e.clientY;
+                  savePlayerSettings(videoSrc, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
+                  startX = e.clientX;
+                  startY = e.clientY;
                 }
               }
             });
-            displayCanvas.addEventListener("wheel", function(e){
-              if(!document.fullscreenElement && !spaceHeld)return;
+            displayCanvas.addEventListener("wheel", function(e) {
+              if (!document.fullscreenElement && !spaceHeld) return;
               e.preventDefault();
               const rect = displayCanvas.getBoundingClientRect();
-              const cssX = e.clientX - rect.left, cssY = e.clientY - rect.top;
+              const cssX = e.clientX - rect.left;
+              const cssY = e.clientY - rect.top;
               const logicalX = (cssX/rect.width)*displayCanvas.width;
               const logicalY = (cssY/rect.height)*displayCanvas.height;
-              let oldZoom = container.zoomScale;
-              let sensitivity=0.1;
-              let newZoom = container.zoomScale + (e.deltaY<0? sensitivity : -sensitivity);
-              newZoom = Math.max(1, Math.min(newZoom,3));
-              // Adjust pan so that zoom is centered at pointer.
-              container.panX += (oldZoom - newZoom) * ((logicalX - displayCanvas.width/2) / newZoom);
-              container.panY += (oldZoom - newZoom) * ((logicalY - displayCanvas.height/2) / newZoom);
+              const centerX = displayCanvas.width / 2, centerY = displayCanvas.height / 2;
+              const oldZoom = container.zoomScale;
+              let sensitivity = 0.1;
+              let newZoom = container.zoomScale + (e.deltaY < 0 ? sensitivity : -sensitivity);
+              newZoom = Math.max(1, Math.min(newZoom, 3));
+              container.panX += (oldZoom - newZoom) * ((logicalX - centerX) / newZoom);
+              container.panY += (oldZoom - newZoom) * ((logicalY - centerY) / newZoom);
               container.zoomScale = newZoom;
               clampPan(container);
-              savePlayerSettings(videoSrc, {zoomScale:newZoom, panX:container.panX, panY:container.panY});
-            },{passive:false});
-            // Additionally, allow clicking the canvas to toggle play/pause.
-            displayCanvas.addEventListener("click", function(e){
-              if(sourceVideo.paused){
-                sourceVideo.play().catch(err=>console.error("Play error:", err));
-              } else {
-                sourceVideo.pause();
-              }
+              savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
+            }, { passive: false });
+            // Also, clicking the canvas toggles play/pause.
+            displayCanvas.addEventListener("click", function(e) {
+              if (sourceVideo.paused) { sourceVideo.play().catch(err => console.error("Play error:", err)); }
+              else { sourceVideo.pause(); }
             });
           } else {
-            // Mobile: For native playback, simply let controls work.
-            sourceVideo.addEventListener("touchend", function(e){
-              if(sourceVideo.paused){
-                sourceVideo.play().catch(err=>console.error(err));
-              }
+            // Mobile: For native playback, add a "Tap to Start" overlay.
+            let overlay = document.createElement("div");
+            overlay.className = "mobile-play-overlay";
+            overlay.innerText = "Tap to Start";
+            container.appendChild(overlay);
+            sourceVideo.addEventListener("play", function() { overlay.style.display = "none"; });
+            sourceVideo.addEventListener("pause", function() { overlay.style.display = "flex"; });
+            overlay.addEventListener("click", function() {
+              sourceVideo.play().then(() => { overlay.style.display = "none"; })
+              .catch(err => console.error("Overlay play error:", err));
             });
           }
-          // Desktop: Create control bar overlay.
-          let playPauseBtn = null, timeline = null;
-          if(!isMobile){
+          // Desktop: Create a control bar.
+          let playPauseBtn = null;
+          if (!isMobile) {
             const controlsContainer = document.createElement("div");
             controlsContainer.className = "controls-container overlay-controls";
             controlsContainer.style.opacity = 1;
@@ -445,15 +578,13 @@
             const controlBar = document.createElement("div");
             controlBar.className = "control-bar";
             playPauseBtn = document.createElement("button");
+            // Update button text on play/pause events.
+            sourceVideo.addEventListener("play", function() { playPauseBtn.textContent = "Pause"; });
+            sourceVideo.addEventListener("pause", function() { playPauseBtn.textContent = "Play"; });
             playPauseBtn.textContent = "Play";
-            playPauseBtn.addEventListener("click", function(){
-              if(sourceVideo.paused){
-                sourceVideo.play().catch(err=>console.error("Play error (button):", err));
-                playPauseBtn.textContent = "Pause";
-              } else {
-                sourceVideo.pause();
-                playPauseBtn.textContent = "Play";
-              }
+            playPauseBtn.addEventListener("click", function() {
+              if (sourceVideo.paused) { sourceVideo.play().catch(err => console.error("Play error (button):", err)); }
+              else { sourceVideo.pause(); }
             });
             controlBar.appendChild(playPauseBtn);
             timeline = document.createElement("input");
@@ -462,54 +593,52 @@
             timeline.value = 0;
             timeline.step = 0.1;
             timeline.style.cursor = "pointer";
-            timeline.addEventListener("input", function(){ sourceVideo.currentTime = timeline.value; });
+            timeline.addEventListener("input", function() { sourceVideo.currentTime = timeline.value; });
             controlBar.appendChild(timeline);
             const fsBtn = document.createElement("button");
             fsBtn.textContent = "Full‑screen";
-            fsBtn.addEventListener("click", function(){ toggleFullScreen(container); });
+            fsBtn.addEventListener("click", function() { toggleFullScreen(container); });
             controlBar.appendChild(fsBtn);
             const resetBtn = document.createElement("button");
             resetBtn.textContent = "Reset";
-            resetBtn.addEventListener("click", function(){
-              container.zoomScale = 1;
-              container.panX = 0;
-              container.panY = 0;
-              savePlayerSettings(videoSrc, {zoomScale:1, panX:0, panY:0});
+            resetBtn.addEventListener("click", function() {
+              container.zoomScale = 1; container.panX = 0; container.panY = 0;
+              savePlayerSettings(videoSrc, { zoomScale: 1, panX: 0, panY: 0 });
             });
             controlBar.appendChild(resetBtn);
             const disableBtn = document.createElement("button");
             disableBtn.className = "disable-btn";
             disableBtn.textContent = "X";
-            disableBtn.addEventListener("click", function(e){ e.stopPropagation(); updateStreamEnabled(videoSrc, false); });
+            disableBtn.addEventListener("click", function(e) { e.stopPropagation(); updateStreamEnabled(videoSrc, false); });
             controlBar.appendChild(disableBtn);
             controlsContainer.appendChild(controlBar);
             const titleBar = document.createElement("div");
             titleBar.className = "title-bar";
             titleBar.textContent = title;
             controlsContainer.appendChild(titleBar);
-            // In full screen, fade control bar after 3 sec if mouse is near bottom.
-            let hideControlsTimeout=null;
-            function scheduleControlsHide(){
-              if(document.fullscreenElement && container.contains(document.fullscreenElement)){
+            // In full screen, fade controls after 3s if mouse near bottom.
+            let hideControlsTimeout = null;
+            function scheduleHide() {
+              if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
                 clearTimeout(hideControlsTimeout);
-                hideControlsTimeout = setTimeout(()=>{ controlsContainer.style.opacity = 0; },3000);
+                hideControlsTimeout = setTimeout(() => { controlsContainer.style.opacity = 0; }, 3000);
               }
             }
-            document.addEventListener("mousemove", function(e){
-              if(document.fullscreenElement && container.contains(document.fullscreenElement)){
-                if(e.clientY > window.innerHeight-100){
+            document.addEventListener("mousemove", function(e) {
+              if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
+                if (e.clientY > window.innerHeight - 100) {
                   controlsContainer.style.opacity = 1;
-                  scheduleControlsHide();
+                  scheduleHide();
                 }
               }
             });
           }
-          // Initialize Hls.js if supported and on desktop.
-          if(Hls.isSupported()){
-            if(!isMobile){
+          // On desktop, initialize Hls.js if supported.
+          if (Hls.isSupported()) {
+            if (!isMobile) {
               const hlsConfig = {
                 maxBufferLength: 120,
-                maxBufferSize: 60*1000*1024,
+                maxBufferSize: 60 * 1000 * 1024,
                 liveSyncDurationCount: 3,
                 manifestLoadingTimeOut: 30000,
                 levelLoadingTimeOut: 30000,
@@ -520,17 +649,17 @@
               console.log("Loading playlist URL (desktop) =", videoSrc);
               hls.loadSource(videoSrc);
               hls.attachMedia(sourceVideo);
-              hls.on(Hls.Events.MANIFEST_PARSED, function(){
-                console.log("Manifest parsed:", videoSrc);
-                sourceVideo.play().then(()=>{
+              hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                console.log("Manifest parsed for", videoSrc);
+                sourceVideo.play().then(() => {
                   console.log("Autoplay initiated");
-                  if(!isMobile && playPauseBtn) playPauseBtn.textContent="Pause";
-                }).catch(err=>console.error("Autoplay error:", err));
+                  if (!isMobile && playPauseBtn) playPauseBtn.textContent = "Pause";
+                }).catch(err => console.error("Autoplay error:", err));
               });
-              hls.on(Hls.Events.ERROR, function(event, data){
+              hls.on(Hls.Events.ERROR, function(event, data) {
                 console.error("Hls.js error:", data);
-                if(data.fatal){
-                  switch(data.type){
+                if (data.fatal) {
+                  switch(data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                       hls.startLoad();
                       break;
@@ -545,11 +674,11 @@
               });
               container.hlsInstance = hls;
             } else {
-              // Mobile fallback: For mobile, if native HLS isn’t used, try Hls.js.
-              if(!sourceVideo.src){
+              // Mobile fallback if needed.
+              if (!sourceVideo.src) {
                 const hlsConfig = {
                   maxBufferLength: 120,
-                  maxBufferSize: 60*1000*1024,
+                  maxBufferSize: 60 * 1000 * 1024,
                   liveSyncDurationCount: 3,
                   manifestLoadingTimeOut: 30000,
                   levelLoadingTimeOut: 30000
@@ -558,13 +687,13 @@
                 console.log("Loading playlist URL (mobile fallback) =", videoSrc);
                 hls.loadSource(videoSrc);
                 hls.attachMedia(sourceVideo);
-                sourceVideo.addEventListener("loadedmetadata", function(){
+                sourceVideo.addEventListener("loadedmetadata", function() {
                   console.log("Mobile fallback: manifest loaded; waiting for user tap.");
                 });
-                hls.on(Hls.Events.ERROR, function(event,data){
+                hls.on(Hls.Events.ERROR, function(event, data) {
                   console.error("Hls.js mobile error:", data);
-                  if(data.fatal){
-                    switch(data.type){
+                  if (data.fatal) {
+                    switch(data.type) {
                       case Hls.ErrorTypes.NETWORK_ERROR:
                         hls.startLoad();
                         break;
@@ -580,85 +709,84 @@
                 container.hlsInstance = hls;
               }
             }
-          }
-          else if(sourceVideo.canPlayType("application/vnd.apple.mpegurl")){
+          } else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
             sourceVideo.src = videoSrc;
-            sourceVideo.addEventListener("loadedmetadata", function(){
-              sourceVideo.play().catch(err=>console.error("Native play error:", err));
+            sourceVideo.addEventListener("loadedmetadata", function() {
+              sourceVideo.play().catch(err => console.error("Native play error:", err));
             });
           }
           return container;
         }
-        function reorderPlayerContainers(){
+        function reorderPlayerContainers() {
           const mainContent = document.getElementById("main-content");
           const config = getStreamList();
           const players = Array.from(mainContent.querySelectorAll(".player-container"));
-          players.sort((a,b)=>{
-            let indexA = config.findIndex(s=> s.url===a.getAttribute("data-url"));
-            let indexB = config.findIndex(s=> s.url===b.getAttribute("data-url"));
+          players.sort((a, b) => {
+            let indexA = config.findIndex(s => s.url === a.getAttribute("data-url"));
+            let indexB = config.findIndex(s => s.url === b.getAttribute("data-url"));
             return indexA - indexB;
           });
-          players.forEach(p=> mainContent.appendChild(p));
+          players.forEach(p => mainContent.appendChild(p));
         }
-        function updateStreamEnabled(url, enabled){
+        function updateStreamEnabled(url, enabled) {
           let streams = getStreamList();
-          const idx = streams.findIndex(s=> s.url===url);
-          if(idx===-1)return;
-          if(streams[idx].enabled!==enabled){
+          const idx = streams.findIndex(s => s.url === url);
+          if (idx === -1) return;
+          if (streams[idx].enabled !== enabled) {
             streams[idx].enabled = enabled;
             saveStreamList(streams);
           }
-          let player = document.querySelector('.player-container[data-url="'+url+'"]');
+          let player = document.querySelector('.player-container[data-url="' + url + '"]');
           const mainContent = document.getElementById("main-content");
-          if(enabled){
-            if(!player){
+          if (enabled) {
+            if (!player) {
               player = createPlayerContainer(streams[idx]);
-              if(player) mainContent.appendChild(player);
+              if (player) mainContent.appendChild(player);
+            } else {
+              player.style.display = "flex";
             }
-            else player.style.display = "flex";
           } else {
-            if(player){
-              if(player.hlsInstance){
+            if (player) {
+              if (player.hlsInstance) {
                 player.hlsInstance.destroy();
                 player.hlsInstance = null;
               }
-              if(player.parentNode)
-                player.parentNode.removeChild(player);
+              if (player.parentNode) player.parentNode.removeChild(player);
             }
           }
           reorderPlayerContainers();
-          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="'+url+'"]');
-          if(checkbox) checkbox.checked = enabled;
+          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
+          if (checkbox) checkbox.checked = enabled;
         }
-        function updateFullUI(refresh=true){
-          if(refresh){
+        function updateFullUI(refresh = true) {
+          if (refresh) {
             const mainContent = document.getElementById("main-content");
             mainContent.innerHTML = "";
             const streamList = getStreamList();
-            const enabledStreams = streamList.filter(s=> s.enabled);
-            if(enabledStreams.length>0){
-              enabledStreams.forEach(stream=>{
+            const enabledStreams = streamList.filter(s => s.enabled);
+            if (enabledStreams.length > 0) {
+              enabledStreams.forEach(stream => {
                 const player = createPlayerContainer(stream);
-                if(player) mainContent.appendChild(player);
+                if (player) mainContent.appendChild(player);
               });
               reorderPlayerContainers();
             }
             updateStreamSidebar();
           }
         }
-        document.addEventListener("mouseup", function(){
-          activeLabels.forEach(function(label){
+        document.addEventListener("mouseup", function() {
+          activeLabels.forEach(function(label) {
             const url = label.getAttribute("data-url");
             const checkbox = label.parentElement.querySelector("input[type='checkbox']");
             updateStreamEnabled(url, checkbox.checked);
           });
           activeLabels.clear();
         });
-        function showAllStreams(){
+        function showAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
         }
-        function hideAllStreams(){
+        function hideAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
         }
@@ -669,63 +797,64 @@
         const btnAddUrls = document.getElementById("btn-add-urls");
         const btnSaveUrls = document.getElementById("saveUrls");
         const urlInput = document.getElementById("urlInput");
-        function showModal(){
+        function showModal() {
           const streams = getStreamList();
           urlInput.value = streams.map(s => s.url).join("\n");
           modal.style.display = "block";
           backdrop.style.display = "block";
         }
-        function hideModal(saveChanges){
+        function hideModal(saveChanges) {
           modal.style.display = "none";
           backdrop.style.display = "none";
-          if(saveChanges){
-            const newUrls = urlInput.value.split("\n").map(u=> u.trim()).filter(u=>u);
+          if (saveChanges) {
+            const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u);
             const oldStreams = getStreamList();
             const newConfig = [];
-            newUrls.forEach(url=>{
-              const existing = oldStreams.find(s=> s.url===url);
-              if(existing){ newConfig.push(existing); }
-              else { newConfig.push({ url:url, enabled:true }); }
+            newUrls.forEach(url => {
+              const existing = oldStreams.find(s => s.url === url);
+              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
-            oldStreams.forEach(s=>{
-              if(!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); }
-            });
-            newConfig.forEach(s=>{
-              if(s.enabled){ updateStreamEnabled(s.url, true); }
-            });
+            oldStreams.forEach(s => { if (!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); } });
+            newConfig.forEach(s => { if (s.enabled) { updateStreamEnabled(s.url, true); } });
           }
-          urlInput.value="";
+          urlInput.value = "";
         }
         btnAddUrls.addEventListener("click", showModal);
-        btnSaveUrls.addEventListener("click", function(){ hideModal(true); });
-        window.addEventListener("keydown", function(e){
-          if(e.key==="Escape"){ if(modal.style.display==="block") hideModal(false); }
+        btnSaveUrls.addEventListener("click", function() { hideModal(true); });
+        window.addEventListener("keydown", function(e) {
+          if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); }
         });
         updateFullUI();
       })();
       
       // Mobile: Sidebar swipe handling.
-      (function(){
-        if(!document.documentElement.classList.contains("mobile")) return;
+      (function() {
+        if (!document.documentElement.classList.contains("mobile")) return;
         const sidebar = document.getElementById("sidebar");
         const toggleBtn = document.getElementById("sidebarToggle");
-        let touchStartX=0, touchEndX=0;
+        let touchStartX = 0, touchEndX = 0;
         const swipeThreshold = 50;
-        sidebar.addEventListener("touchstart", function(e){ touchStartX = e.changedTouches[0].screenX; });
-        sidebar.addEventListener("touchend", function(e){
+        sidebar.addEventListener("touchstart", function(e) { touchStartX = e.changedTouches[0].screenX; });
+        sidebar.addEventListener("touchend", function(e) {
           touchEndX = e.changedTouches[0].screenX;
-          if(touchStartX - touchEndX > swipeThreshold){
+          if (touchStartX - touchEndX > swipeThreshold) {
             sidebar.classList.add("hidden");
-            toggleBtn.style.display="block";
+            toggleBtn.style.display = "block";
           }
         });
-        toggleBtn.addEventListener("click", function(){
+        toggleBtn.addEventListener("click", function() {
           sidebar.classList.remove("hidden");
-          toggleBtn.style.display="none";
+          toggleBtn.style.display = "none";
         });
       })();
+      
+      // Desktop: Listen for fullscreen change so we can update canvas dimensions if needed.
+      document.addEventListener("fullscreenchange", function() {
+        // When the document enters/exits full screen, all render loop operations will adjust the canvas size accordingly.
+        console.log("Fullscreen change: now ", document.fullscreenElement ? "in full screen" : "not full screen");
+      });
     </script>
   </body>
 </html>
