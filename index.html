@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Live DVR with Video.js Panzoom</title>
-    <!-- Video.js CSS -->
-    <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet">
+    <!-- Load Video.js CSS from CDN -->
+    <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet" />
     <style>
       /* GENERAL STYLES */
       html, body {
@@ -112,7 +112,7 @@
         width: 100%;
         height: 100%;
       }
-      /* Title bar below video player */
+      /* Title bar below player */
       .title-bar {
         background: #333;
         text-align: center;
@@ -205,17 +205,17 @@
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners (if additional keyboard pan/zoom is desired) -->
+    <!-- Global Spacebar Listeners (for potential keyboard control) -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
-        if (e.code === "Space" && !["input", "textarea", "button"].includes(document.activeElement.tagName.toLowerCase())) {
+        if(e.code === "Space" && !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())){
           e.preventDefault();
           spaceHeld = true;
         }
       });
       window.addEventListener("keyup", function(e) {
-        if (e.code === "Space") spaceHeld = false;
+        if(e.code === "Space") spaceHeld = false;
       });
     </script>
     <div class="container">
@@ -232,15 +232,15 @@
     <div id="modalBackdrop"></div>
     <div id="urlModal">
       <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3>
-      <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-cowells/playlist.m3u8"></textarea>
+      <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea>
       <button id="saveUrls">Save and Close</button>
     </div>
     <!-- Load Video.js from CDN -->
     <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script>
-    <!-- Load videojs-panzoom plugin (version 2.0.0 used for compatibility) -->
+    <!-- Load videojs-panzoom plugin (version 2.0.0) -->
     <script src="https://unpkg.com/videojs-panzoom@2.0.0/dist/videojs-panzoom.min.js"></script>
     <script>
-      // Ensure the panzoom plugin is registered.
+      // Register panzoom plugin if not already registered.
       if (typeof videojs.getPlugin('panzoom') !== 'function' && typeof panzoom === 'function') {
           videojs.registerPlugin('panzoom', panzoom);
       }
@@ -251,16 +251,12 @@
       function loadPanzoomState(url) {
         const key = "panzoomState_" + url;
         const state = localStorage.getItem(key);
-        if (state) {
-          try {
-            return JSON.parse(state);
-          } catch (e) {
-            return {};
-          }
+        if(state){
+          try { return JSON.parse(state); }
+          catch(e){ return {}; }
         }
         return {};
       }
-      
       function savePanzoomState(url, state) {
         const key = "panzoomState_" + url;
         localStorage.setItem(key, JSON.stringify(state));
@@ -268,33 +264,33 @@
       
       /* ----------------------------------------------------------------
          MAIN UI & STREAM MANAGEMENT
-         (Sidebar, URL modal, multi-stream enabling with Video.js)
+         (Sidebar, URL modal, multi-stream selection, and Video.js integration)
       ---------------------------------------------------------------- */
       (function(){
         const storageKey = "streamConfigs";
         const activeLabels = new Set();
-        
+      
         function extractTitle(url) {
           const match = url.match(/wc-([^\/]+)\/playlist/);
           return match ? match[1] : url;
         }
-        
+      
         function saveStreamList(list) {
           localStorage.setItem(storageKey, JSON.stringify(list));
         }
-        
+      
         function getStreamList() {
           const stored = localStorage.getItem(storageKey);
-          if (!stored) return [];
+          if(!stored) return [];
           try { return JSON.parse(stored); }
           catch(e){ return []; }
         }
-        
+      
         function updateStreamSidebar() {
           const sidebarList = document.getElementById("streamList");
           sidebarList.innerHTML = "";
           const streams = getStreamList();
-          if (streams.length === 0) {
+          if(streams.length === 0) {
             const p = document.createElement("p");
             p.className = "no-streams";
             p.textContent = "No streams added. Click 'Add URLs' to add streams.";
@@ -332,29 +328,29 @@
             });
           }
         }
-        
+      
         function toggleFullScreen(container) {
-          if (!document.fullscreenElement) {
+          if(!document.fullscreenElement) {
             container.requestFullscreen().catch(err => console.error("Full screen error:", err));
           } else {
             document.exitFullscreen().catch(err => console.error("Exit full screen error:", err));
           }
         }
-        
-        // Create a Video.js player container for a given stream.
+      
+        // Create a Video.js player container using videojs-panzoom.
         function createPlayerContainer(streamConfig) {
-          if (!streamConfig.enabled) return null;
+          if(!streamConfig.enabled) return null;
           const videoSrcOrig = streamConfig.url;
-          // Wrap the original URL with the proxy so that both the manifest and fragments are routed through
+          // Wrap the original URL via the proxy. This ensures the manifest and all fragment URLs are routed through your proxy.
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
           const proxiedUrl = proxyPrefix + encodeURIComponent(videoSrcOrig);
-          
           const title = extractTitle(videoSrcOrig);
           const isMobile = document.documentElement.classList.contains("mobile");
           const container = document.createElement("div");
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
+          // We still store the original (unproxied) URL in the container.
           container.setAttribute("data-url", videoSrcOrig);
-          
+      
           // Create a unique video element.
           const videoId = "vid_" + Math.random().toString(36).substring(2,10);
           const videoEl = document.createElement("video");
@@ -367,26 +363,42 @@
             videoEl.style.width = "960px";
             videoEl.style.height = "540px";
           }
-          // Add the source element with our proxied URL.
           const sourceEl = document.createElement("source");
           sourceEl.src = proxiedUrl;
           sourceEl.type = "application/x-mpegURL";
           videoEl.appendChild(sourceEl);
-          
           container.appendChild(videoEl);
-          
+      
+          // Options: enable autoplay and mute (required by most modern browsers).
           const vjsOptions = {
             controls: true,
             autoplay: true,
+            muted: true,
             preload: "auto"
           };
-          // Initialize Video.js by passing the video element directly.
+      
+          // Initialize Video.js by passing the video element.
           var vjsPlayer = videojs(videoEl, vjsOptions, function(){
             console.log("Video.js player ready for stream:", videoSrcOrig);
           });
-          
-          // On desktop, initialize the panzoom plugin and load saved state.
-          if(!isMobile) {
+      
+          // Set VHS beforeRequest hook to rewrite all requests (manifest & fragments) through the proxy.
+          // Modern Video.js uses VHS (HTTP Streaming); we can use its beforeRequest hook.
+          if (vjsPlayer.tech(true) && vjsPlayer.tech(true).vhs) {
+            var vhsOptions = vjsPlayer.tech(true).vhs.options_ || {};
+            vhsOptions.beforeRequest = function(options) {
+              // Only rewrite if the URL is not already prefixed.
+              var proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+              if (!options.uri.startsWith(proxyPrefix)) {
+                options.uri = proxyPrefix + encodeURIComponent(options.uri);
+              }
+              return options;
+            };
+            vjsPlayer.tech(true).vhs.options_ = vhsOptions;
+          }
+      
+          // On desktop, initialize videojs-panzoom.
+          if (!isMobile) {
             var savedState = loadPanzoomState(videoSrcOrig);
             if (typeof vjsPlayer.panzoom === 'function') {
               vjsPlayer.panzoom(savedState);
@@ -398,7 +410,7 @@
               console.error("videojs-panzoom plugin is not available on this player.");
             }
           }
-          
+      
           // Append a title below the player.
           var titleBar = document.createElement("div");
           titleBar.className = "title-bar";
@@ -408,7 +420,7 @@
           container.vjsPlayer = vjsPlayer;
           return container;
         }
-        
+      
         function reorderPlayerContainers() {
           const mainContent = document.getElementById("main-content");
           const config = getStreamList();
@@ -420,7 +432,7 @@
           });
           players.forEach(p => mainContent.appendChild(p));
         }
-        
+      
         function updateStreamEnabled(url, enabled) {
           let streams = getStreamList();
           const idx = streams.findIndex(s => s.url === url);
@@ -429,7 +441,7 @@
             streams[idx].enabled = enabled;
             saveStreamList(streams);
           }
-          let playerContainer = document.querySelector('.player-container[data-url="'+url+'"]');
+          let playerContainer = document.querySelector('.player-container[data-url="' + url + '"]');
           const mainContent = document.getElementById("main-content");
           if (enabled) {
             if (!playerContainer) {
@@ -447,10 +459,10 @@
             }
           }
           reorderPlayerContainers();
-          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="'+url+'"]');
+          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
           if (checkbox) checkbox.checked = enabled;
         }
-        
+      
         function updateFullUI(refresh = true) {
           if (refresh) {
             const mainContent = document.getElementById("main-content");
@@ -467,7 +479,7 @@
             updateStreamSidebar();
           }
         }
-        
+      
         document.addEventListener("mouseup", function() {
           activeLabels.forEach(function(label) {
             const url = label.getAttribute("data-url");
@@ -476,34 +488,32 @@
           });
           activeLabels.clear();
         });
-        
+      
         function showAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
         }
-        
         function hideAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
         }
-        
         document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
         document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
-        
-        // URL Modal Handling
+      
+        // URL Modal Logic
         const modal = document.getElementById("urlModal");
         const backdrop = document.getElementById("modalBackdrop");
         const btnAddUrls = document.getElementById("btn-add-urls");
         const btnSaveUrls = document.getElementById("saveUrls");
         const urlInput = document.getElementById("urlInput");
-        
+      
         function showModal() {
           const streams = getStreamList();
           urlInput.value = streams.map(s => s.url).join("\n");
           modal.style.display = "block";
           backdrop.style.display = "block";
         }
-        
+      
         function hideModal(saveChanges) {
           modal.style.display = "none";
           backdrop.style.display = "none";
@@ -513,7 +523,8 @@
             const newConfig = [];
             newUrls.forEach(url => {
               const existing = oldStreams.find(s => s.url === url);
-              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
+              if (existing) { newConfig.push(existing); }
+              else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
@@ -522,18 +533,18 @@
           }
           urlInput.value = "";
         }
-        
+      
         btnAddUrls.addEventListener("click", showModal);
         btnSaveUrls.addEventListener("click", function() { hideModal(true); });
         window.addEventListener("keydown", function(e) {
           if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); }
         });
-        
+      
         updateFullUI();
       })();
       
       // Mobile: Sidebar swipe handling.
-      (function() {
+      (function(){
         if (!document.documentElement.classList.contains("mobile")) return;
         const sidebar = document.getElementById("sidebar");
         const toggleBtn = document.getElementById("sidebarToggle");
