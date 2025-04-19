@@ -1,661 +1,658 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Live DVR – Desktop & Mobile</title>
-    <style>
-      /* ---------- GENERAL ---------- */
-      html, body {
-        margin: 0; padding: 0; height: 100vh;
-        font-family: Arial, sans-serif;
-        background: #222; color: #fff;
-        overflow: hidden;
-      }
-      .container { display: flex; height: 100vh; }
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live DVR – Desktop & Mobile</title>
+  <style>
+    /* ---------- GENERAL ---------- */
+    html, body {
+      margin: 0; padding: 0; height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #222; color: #fff;
+      overflow: hidden;
+    }
+    .container { display: flex; height: 100vh; }
 
-      /* ---------- SIDEBAR ---------- */
-      #sidebar {
-        background: #444; width: 220px; padding: 20px;
-        box-sizing: border-box; overflow-y: auto;
-        transition: transform 0.3s ease;
-      }
-      #sidebar.hidden {
-        transform: translateX(-100%);
-      }
-      #btn-add-urls, .sideBtn, #urlModal button {
-        width: 100%; padding: 10px; margin-bottom: 10px;
-        font-size: 16px; cursor: pointer;
-      }
-      #sideButtons { display: flex; gap: 10px; }
-      .sideBtn { flex: 1; }
-      #streamList { margin-top: 10px; line-height: 1.2; }
-      .no-streams { font-style: italic; color: #bbb; }
-      .stream-item { display: flex; align-items: center; margin-bottom: 5px; }
-      .stream-item label { margin-left: 5px; cursor: pointer; user-select: none; }
+    /* ---------- SIDEBAR ---------- */
+    #sidebar {
+      background: #444; width: 220px; padding: 20px;
+      box-sizing: border-box; overflow-y: auto;
+      transition: transform 0.3s ease;
+    }
+    #sidebar.hidden { transform: translateX(-100%); }
+    #btn-add-urls, .sideBtn, #urlModal button {
+      width: 100%; padding: 10px; margin-bottom: 10px;
+      font-size: 16px; cursor: pointer;
+    }
+    #sideButtons { display: flex; gap: 10px; }
+    .sideBtn { flex: 1; }
+    #streamList { margin-top: 10px; line-height: 1.2; }
+    .no-streams { font-style: italic; color: #bbb; }
+    .stream-item { display: flex; align-items: center; margin-bottom: 5px; }
+    .stream-item label { margin-left: 5px; cursor: pointer; user-select: none; }
 
-      /* ---------- MAIN CONTENT ---------- */
-      #main-content {
-        flex: 1; background: #333; padding: 20px;
-        box-sizing: border-box; display: flex;
-        flex-wrap: wrap; gap: 20px; overflow: auto;
-      }
-      /* Center mobile players in a column */
-      html.mobile #main-content {
-        margin-left: 0;
-        flex-direction: column;
-        align-items: center;
-      }
+    /* ---------- MAIN CONTENT ---------- */
+    #main-content {
+      flex: 1; background: #333; padding: 20px;
+      box-sizing: border-box; display: flex;
+      flex-wrap: wrap; gap: 20px; overflow: auto;
+    }
+    /* Mobile: single column, centered */
+    html.mobile #main-content {
+      flex-direction: column;
+      align-items: center;
+      margin-left: 0;
+    }
 
-      /* ---------- PLAYER CONTAINERS ---------- */
-      .player-container {
-        background: #222; display: flex; flex-direction: column;
-        position: relative; box-sizing: border-box;
-      }
-      .player-container.desktop {
-        width: 960px; height: 600px; margin-bottom: 40px;
-      }
-      .player-container.mobile {
-        width: 240px;
-        background: #222;
-        display: flex; flex-direction: column;
-        position: relative;
-        margin: 0 auto 20px;   /* centered, no gray bar under video */
-        box-sizing: border-box;
-      }
+    /* ---------- PLAYER CONTAINERS ---------- */
+    .player-container {
+      background: #222; display: flex; flex-direction: column;
+      position: relative; box-sizing: border-box;
+    }
+    .player-container.desktop {
+      width: 960px; height: 600px; margin-bottom: 40px;
+    }
+    .player-container.mobile {
+      width: 240px;
+      background: #222;
+      display: flex; flex-direction: column;
+      position: relative;
+      margin: 0 auto 20px; /* centered, no gray gap */
+      box-sizing: border-box;
+    }
 
-      /* --------- VIDEO & CANVAS --------- */
-      .player-container.desktop .source-video {
-        opacity: 0; position: absolute; top: 0; left: 0;
-        width: 960px; height: 540px; pointer-events: none;
-      }
-      .player-container.desktop .display-canvas {
-        background: black; width: 960px; height: 540px;
-      }
-      .player-container.mobile .source-video {
-        width: 240px; height: 135px;
-      }
-      .player-container.mobile .display-canvas { display: none; }
+    /* --------- VIDEO & CANVAS --------- */
+    .player-container.desktop .source-video {
+      opacity: 0; position: absolute; top: 0; left: 0;
+      width: 960px; height: 540px; pointer-events: none;
+    }
+    .player-container.desktop .display-canvas {
+      background: black; width: 960px; height: 540px;
+    }
+    .player-container.mobile .source-video {
+      width: 240px; height: 135px;
+    }
+    .player-container.mobile .display-canvas { display: none; }
 
-      /* ------ CONTROLS & OVERLAYS ------ */
-      .controls-container { position: relative; z-index: 2; }
-      .control-bar {
-        display: flex; align-items: center; gap: 10px;
-        background: rgba(0,0,0,0.75); padding: 5px 10px;
-      }
-      .control-bar button { padding: 4px 8px; cursor: pointer; }
-      .control-bar input[type="range"] { flex: 1; cursor: pointer; }
-      .disable-btn { background: red; color: #fff; border: none; }
-      .title-bar {
-        text-align: center; background: rgba(0,0,0,0.75);
-        padding: 2px 10px; font-size: 16px;
-      }
-      .overlay-controls {
-        position: absolute; bottom: 0; left: 0; right: 0;
-      }
-      .mobile-play-overlay {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.6); display: flex;
-        align-items: center; justify-content: center;
-        color: #fff; font-size: 24px; z-index: 10;
-      }
+    /* ------ CONTROLS & OVERLAYS ------ */
+    .controls-container { position: relative; z-index: 2; }
+    .control-bar {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(0,0,0,0.75); padding: 5px 10px;
+    }
+    .control-bar button { padding: 4px 8px; cursor: pointer; }
+    .control-bar input[type="range"] { flex: 1; cursor: pointer; }
+    .disable-btn { background: red; color: #fff; border: none; }
+    .title-bar {
+      text-align: center; background: rgba(0,0,0,0.75);
+      padding: 2px 10px; font-size: 16px;
+    }
+    .overlay-controls {
+      position: absolute; bottom: 0; left: 0; right: 0;
+    }
+    .mobile-play-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); display: flex;
+      align-items: center; justify-content: center;
+      color: #fff; font-size: 24px; z-index: 10;
+    }
 
-      /* ------- URL MODAL & BACKDROP ------- */
-      #modalBackdrop {
-        display: none; position: fixed; z-index: 5;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5);
-      }
-      #urlModal {
-        display: none; position: fixed; z-index: 10;
-        left: 50%; top: 50%; transform: translate(-50%, -50%);
-        width: 1200px; background: #555; border: 2px solid #fff;
-        padding: 15px; box-sizing: border-box;
-      }
-      #urlModal textarea {
-        width: 100%; height: 600px; padding: 10px;
-        font-size: 14px; box-sizing: border-box;
-      }
+    /* ------- URL MODAL & BACKDROP ------- */
+    #modalBackdrop {
+      display: none; position: fixed; z-index: 5;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+    }
+    #urlModal {
+      display: none; position: fixed; z-index: 10;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 1200px; background: #555; border: 2px solid #fff;
+      padding: 15px; box-sizing: border-box;
+    }
+    #urlModal textarea {
+      width: 100%; height: 600px; padding: 10px;
+      font-size: 14px; box-sizing: border-box;
+    }
 
-      /* ----- MOBILE ADJUSTMENTS ----- */
-      html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; }
-      html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; }
-      html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; }
-      #sidebarToggle { display: none; }
-      html.mobile #sidebarToggle {
-        display: block; position: fixed; top: 50%; left: 0;
-        transform: translate(-50%, -50%); z-index: 1100;
-        background: #444; border: none; padding: 10px 12px;
-        font-size: 24px; color: #fff; cursor: pointer;
-      }
+    /* ----- MOBILE SIDEBAR ----- */
+    html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; }
+    html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; }
+    html.mobile #sidebar {
+      position: fixed; top: 0; left: 0; height: 100%; z-index: 1000;
+    }
+    #sidebarToggle { display: none; }
+    html.mobile #sidebarToggle {
+      display: block; position: fixed; top: 50%; left: 0;
+      transform: translate(-50%, -50%); z-index: 1100;
+      background: #444; border: none; padding: 10px 12px;
+      font-size: 24px; color: #fff; cursor: pointer;
+    }
 
-      /* -- Stretch canvas in full‑screen -- */
-      .player-container:fullscreen .display-canvas,
-      .player-container:-webkit-full-screen .display-canvas {
-        width: 100% !important; height: 100% !important;
+    /* -- Stretch canvas full-screen -- */
+    .player-container:fullscreen .display-canvas,
+    .player-container:-webkit-full-screen .display-canvas {
+      width: 100% !important; height: 100% !important;
+    }
+  </style>
+  <script>
+    // detect mobile UA
+    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      document.documentElement.classList.add("mobile");
+    }
+    // spacebar for pan/zoom
+    let spaceHeld = false;
+    window.addEventListener("keydown", e => {
+      if (e.code === "Space" &&
+         !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) {
+        e.preventDefault(); spaceHeld = true;
       }
-    </style>
-    <script>
-      // Mark mobile UA
-      if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-        document.documentElement.classList.add("mobile");
-      }
-      // Spacebar tracker for desktop pan/zoom
-      let spaceHeld = false;
-      window.addEventListener("keydown", e => {
-        if (e.code === "Space" &&
-           !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) {
-          e.preventDefault(); spaceHeld = true;
-        }
-      });
-      window.addEventListener("keyup", e => { if (e.code === "Space") spaceHeld = false; });
-    </script>
-  </head>
-  <body>
-    <button id="sidebarToggle">&#x25B6;</button>
-    <div class="container">
-      <div id="sidebar">
-        <button id="btn-add-urls">Add URLs</button>
-        <div id="sideButtons">
-          <button id="btn-show-all" class="sideBtn">Show All</button>
-          <button id="btn-hide-all" class="sideBtn">Hide All</button>
-        </div>
-        <div id="streamList"></div>
+    });
+    window.addEventListener("keyup", e => { if (e.code === "Space") spaceHeld = false; });
+  </script>
+</head>
+<body>
+  <button id="sidebarToggle">&#x25B6;</button>
+  <div class="container">
+    <div id="sidebar">
+      <button id="btn-add-urls">Add URLs</button>
+      <div id="sideButtons">
+        <button id="btn-show-all" class="sideBtn">Show All</button>
+        <button id="btn-hide-all" class="sideBtn">Hide All</button>
       </div>
-      <div id="main-content"></div>
+      <div id="streamList"></div>
     </div>
-    <div id="modalBackdrop"></div>
-    <div id="urlModal">
-      <h3 style="margin-top:0; text-align:center;">Paste Playlist URLs (one per line)</h3>
-      <textarea id="urlInput" placeholder="https://…/playlist.m3u8"></textarea>
-      <button id="saveUrls">Save and Close</button>
-    </div>
+    <div id="main-content"></div>
+  </div>
+  <div id="modalBackdrop"></div>
+  <div id="urlModal">
+    <h3 style="margin-top:0; text-align:center;">Paste Playlist URLs (one per line)</h3>
+    <textarea id="urlInput" placeholder="https://…/playlist.m3u8"></textarea>
+    <button id="saveUrls">Save and Close</button>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
-    <script>
-      // Fullscreen helpers
-      function enterFullScreen(el) {
-        const req = el.requestFullscreen ||
-                    el.webkitRequestFullscreen ||
-                    el.mozRequestFullScreen ||
-                    el.msRequestFullscreen;
-        if (req) return req.call(el);
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
+  <script>
+    // fullscreen helpers
+    function enterFullScreen(el) {
+      const req = el.requestFullscreen ||
+                  el.webkitRequestFullscreen ||
+                  el.mozRequestFullScreen ||
+                  el.msRequestFullscreen;
+      if (req) return req.call(el);
+    }
+    function exitFullScreen() {
+      const ex = document.exitFullscreen ||
+                 document.webkitExitFullscreen ||
+                 document.mozCancelFullScreen ||
+                 document.msExitFullscreen;
+      if (ex) return ex.call(document);
+    }
+
+    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+
+    function loadPlayerSettings(url) {
+      try { return JSON.parse(localStorage.playerSettings||"{}")[url] || {zoomScale:1,panX:0,panY:0}; }
+      catch { return {zoomScale:1,panX:0,panY:0}; }
+    }
+    function savePlayerSettings(url,data) {
+      let obj={};
+      try { obj=JSON.parse(localStorage.playerSettings||"{}"); }catch{}
+      obj[url]=data;
+      localStorage.playerSettings=JSON.stringify(obj);
+    }
+
+    (function(){
+      const storageKey="streamConfigs", activeLabels=new Set();
+
+      function getStreamList(){
+        try{ return JSON.parse(localStorage[storageKey]||"[]"); }catch{return [];}
       }
-      function exitFullScreen() {
-        const ex = document.exitFullscreen ||
-                   document.webkitExitFullscreen ||
-                   document.mozCancelFullScreen ||
-                   document.msExitFullscreen;
-        if (ex) return ex.call(document);
+      function saveStreamList(list){
+        localStorage[storageKey]=JSON.stringify(list);
+      }
+      function extractTitle(url){
+        const m=url.match(/wc-([^\/]+)\/playlist/);
+        return m?m[1]:url;
       }
 
-      const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
-
-      function loadPlayerSettings(url) {
-        try { return JSON.parse(localStorage.playerSettings||"{}")[url] || {zoomScale:1,panX:0,panY:0}; }
-        catch { return {zoomScale:1,panX:0,panY:0}; }
-      }
-      function savePlayerSettings(url,data) {
-        let obj = {};
-        try { obj = JSON.parse(localStorage.playerSettings||"{}"); } catch {}
-        obj[url] = data;
-        localStorage.playerSettings = JSON.stringify(obj);
-      }
-
-      (function(){
-        const storageKey = "streamConfigs", activeLabels = new Set();
-
-        function getStreamList() {
-          try { return JSON.parse(localStorage[storageKey]||"[]"); } catch { return []; }
-        }
-        function saveStreamList(list) {
-          localStorage[storageKey] = JSON.stringify(list);
-        }
-        function extractTitle(url) {
-          const m = url.match(/wc-([^\/]+)\/playlist/);
-          return m ? m[1] : url;
-        }
-
-        function updateStreamSidebar() {
-          const sb = document.getElementById("streamList");
-          sb.innerHTML = "";
-          const streams = getStreamList();
-          if (!streams.length) {
-            const p = document.createElement("p");
-            p.className = "no-streams";
-            p.textContent = "No streams added. Click 'Add URLs'.";
-            sb.appendChild(p);
-          } else {
-            streams.forEach(s => {
-              const item = document.createElement("div");
-              item.className = "stream-item";
-              const cb = document.createElement("input");
-              cb.type = "checkbox"; cb.checked = s.enabled;
-              cb.dataset.url = s.url;
-              cb.addEventListener("change", e => updateStreamEnabled(s.url, e.target.checked));
-              item.appendChild(cb);
-              const lbl = document.createElement("label");
-              lbl.textContent = extractTitle(s.url);
-              lbl.dataset.url = s.url;
-              lbl.addEventListener("mousedown", e => {
-                if (e.button === 0) { cb.checked = !cb.checked; activeLabels.add(lbl); e.preventDefault(); }
-              });
-              lbl.addEventListener("mouseenter", e => {
-                if (e.buttons & 1 && !activeLabels.has(lbl)) {
-                  cb.checked = !cb.checked; activeLabels.add(lbl);
-                }
-              });
-              item.appendChild(lbl);
-              sb.appendChild(item);
+      function updateStreamSidebar(){
+        const sb=document.getElementById("streamList");
+        sb.innerHTML="";
+        const streams=getStreamList();
+        if(!streams.length){
+          const p=document.createElement("p");
+          p.className="no-streams";
+          p.textContent="No streams added. Click 'Add URLs'.";
+          sb.appendChild(p);
+        } else {
+          streams.forEach(s=>{
+            const item=document.createElement("div");
+            item.className="stream-item";
+            const cb=document.createElement("input");
+            cb.type="checkbox"; cb.checked=s.enabled;
+            cb.dataset.url=s.url;
+            cb.addEventListener("change",e=>updateStreamEnabled(s.url,e.target.checked));
+            item.appendChild(cb);
+            const lbl=document.createElement("label");
+            lbl.textContent=extractTitle(s.url);
+            lbl.dataset.url=s.url;
+            lbl.addEventListener("mousedown",e=>{
+              if(e.button===0){ cb.checked=!cb.checked; activeLabels.add(lbl); e.preventDefault(); }
             });
-          }
-        }
-        document.addEventListener("mouseup", () => {
-          activeLabels.forEach(lbl => {
-            const url = lbl.dataset.url;
-            const cb  = lbl.parentNode.querySelector("input");
-            updateStreamEnabled(url, cb.checked);
+            lbl.addEventListener("mouseenter",e=>{
+              if(e.buttons&1 && !activeLabels.has(lbl)){ cb.checked=!cb.checked; activeLabels.add(lbl); }
+            });
+            item.appendChild(lbl);
+            sb.appendChild(item);
           });
-          activeLabels.clear();
+        }
+      }
+      document.addEventListener("mouseup",()=>{
+        activeLabels.forEach(lbl=>{
+          const url=lbl.dataset.url;
+          const cb = lbl.parentNode.querySelector("input");
+          updateStreamEnabled(url,cb.checked);
         });
+        activeLabels.clear();
+      });
 
-        function reorderPlayers() {
-          const main = document.getElementById("main-content");
-          const cfg  = getStreamList();
-          Array.from(main.children)
-            .sort((a,b) =>
-              cfg.findIndex(x=>x.url===a.dataset.url)
-              - cfg.findIndex(x=>x.url===b.dataset.url)
-            )
-            .forEach(el => main.appendChild(el));
-        }
+      function reorderPlayers(){
+        const main=document.getElementById("main-content");
+        const cfg=getStreamList();
+        Array.from(main.children)
+          .sort((a,b)=>cfg.findIndex(x=>x.url===a.dataset.url)
+                        -cfg.findIndex(x=>x.url===b.dataset.url))
+          .forEach(el=>main.appendChild(el));
+      }
 
-        function updateStreamEnabled(url, enabled) {
-          let streams = getStreamList();
-          const idx = streams.findIndex(s=>s.url===url);
-          if (idx === -1) return;
-          streams[idx].enabled = enabled;
-          saveStreamList(streams);
-          const main = document.getElementById("main-content");
-          let player = main.querySelector(`.player-container[data-url="${url}"]`);
-          if (enabled) {
-            if (!player) {
-              player = createPlayerContainer(streams[idx]);
-              if (player) main.appendChild(player);
-            } else {
-              player.style.display = "flex";
-            }
-          } else if (player) {
-            if (player.hls) player.hls.destroy();
-            player.remove();
-          }
-          reorderPlayers();
-          updateStreamSidebar();
-        }
-
-        function createPlayerContainer(stream) {
-          if (!stream.enabled) return null;
-          const url      = stream.url;
-          const isMobile = document.documentElement.classList.contains("mobile");
-          const saved    = loadPlayerSettings(url);
-
-          const container = document.createElement("div");
-          container.className = "player-container " + (isMobile ? "mobile" : "desktop");
-          container.dataset.url = url;
-          container.zoomScale = saved.zoomScale;
-          container.panX      = saved.panX;
-          container.panY      = saved.panY;
-
-          // VIDEO ELEMENT
-          const video = document.createElement("video");
-          video.className = "source-video";
-          video.setAttribute("playsinline","true");
-          video.setAttribute("webkit-playsinline","true");
-          video.setAttribute("crossorigin","anonymous");
-          video.muted    = true;
-          video.preload  = "auto";
-          if (isMobile) {
-            video.controls = true;
-            video.src      = PROXY_PREFIX + encodeURIComponent(url);
+      function updateStreamEnabled(url,enabled){
+        let streams=getStreamList();
+        const idx=streams.findIndex(s=>s.url===url);
+        if(idx===-1) return;
+        streams[idx].enabled=enabled;
+        saveStreamList(streams);
+        const main=document.getElementById("main-content");
+        let player=main.querySelector(`.player-container[data-url="${url}"]`);
+        if(enabled){
+          if(!player){
+            player=createPlayerContainer(streams[idx]);
+            if(player) main.appendChild(player);
           } else {
-            video.autoplay = true;
+            player.style.display="flex";
           }
-          container.appendChild(video);
+        } else if(player){
+          if(player.hls) player.hls.destroy();
+          player.remove();
+        }
+        reorderPlayers();
+        updateStreamSidebar();
+      }
 
-          // MOBILE: overlay + scrubbable timeline
-          if (isMobile) {
-            const overlay = document.createElement("div");
-            overlay.className = "mobile-play-overlay";
-            overlay.innerText = "Tap to Start";
-            container.appendChild(overlay);
-            overlay.addEventListener("click", () => {
-              if (container.hls) container.hls.startLoad();
-              video.play().then(()=>overlay.style.display="none").catch(console.error);
-            });
-            video.addEventListener("play",  ()=>overlay.style.display="none");
-            video.addEventListener("pause", ()=>overlay.style.display="flex");
+      function createPlayerContainer(stream){
+        if(!stream.enabled) return null;
+        const url=stream.url;
+        const isMobile=document.documentElement.classList.contains("mobile");
+        const saved=loadPlayerSettings(url);
 
-            const mobileControls = document.createElement("div");
-            mobileControls.className = "controls-container";
-            container.appendChild(mobileControls);
-            const mobileBar = document.createElement("div");
-            mobileBar.className = "control-bar";
-            mobileControls.appendChild(mobileBar);
+        const container=document.createElement("div");
+        container.className="player-container "+(isMobile?"mobile":"desktop");
+        container.dataset.url=url;
+        container.zoomScale=saved.zoomScale;
+        container.panX=saved.panX;
+        container.panY=saved.panY;
 
-            const mobileTimeline = document.createElement("input");
-            mobileTimeline.type = "range";
-            mobileTimeline.min  = 0;
-            mobileTimeline.step = 0.1;
-            mobileTimeline.value= 0;
-            let isSeekingMobile = false;
-            mobileTimeline.addEventListener("mousedown", ()=>isSeekingMobile=true);
-            mobileTimeline.addEventListener("mouseup",   ()=>isSeekingMobile=false);
-            mobileTimeline.addEventListener("input",     ()=>video.currentTime = parseFloat(mobileTimeline.value));
-            video.addEventListener("loadedmetadata", ()=>{
-              mobileTimeline.max   = video.duration||0;
-              mobileTimeline.value = video.currentTime||0;
-            });
-            video.addEventListener("timeupdate", ()=>{
-              if (!isSeekingMobile) {
-                mobileTimeline.value = video.currentTime;
-              }
-            });
-            mobileBar.appendChild(mobileTimeline);
+        // VIDEO
+        const video=document.createElement("video");
+        video.className="source-video";
+        video.setAttribute("playsinline","true");
+        video.setAttribute("webkit-playsinline","true");
+        video.setAttribute("crossorigin","anonymous");
+        video.muted=true; video.preload="auto";
+        if(isMobile){
+          video.controls=true;
+          video.src=PROXY_PREFIX+encodeURIComponent(url);
+        } else {
+          video.autoplay=true;
+        }
+        container.appendChild(video);
 
-          } else {
-            // DESKTOP: canvas & render loop
-            const canvas = document.createElement("canvas");
-            canvas.className = "display-canvas";
-            canvas.width  = 960;
-            canvas.height = 540;
-            container.appendChild(canvas);
-            const ctx = canvas.getContext("2d");
-            (function render(){
-              if (video.readyState >= 2) {
-                if (document.fullscreenElement === container) {
-                  canvas.width  = container.clientWidth;
-                  canvas.height = container.clientHeight;
-                } else {
-                  canvas.width  = 960;
-                  canvas.height = 540;
-                }
-                ctx.save();
-                ctx.clearRect(0,0,canvas.width,canvas.height);
-                const cx = canvas.width/2, cy = canvas.height/2;
-                ctx.translate(cx,cy);
-                ctx.scale(container.zoomScale,container.zoomScale);
-                ctx.translate(container.panX,container.panY);
-                ctx.translate(-cx,-cy);
-                try{ ctx.drawImage(video,0,0,canvas.width,canvas.height); }catch{}
-                ctx.restore();
-              }
-              requestAnimationFrame(render);
-            })();
+        // MOBILE: overlay + custom scrub bar
+        if(isMobile){
+          const overlay=document.createElement("div");
+          overlay.className="mobile-play-overlay";
+          overlay.innerText="Tap to Start";
+          container.appendChild(overlay);
+          overlay.addEventListener("click",()=>{
+            if(container.hls) container.hls.startLoad();
+            video.play().then(()=>overlay.style.display="none").catch(console.error);
+          });
+          video.addEventListener("play",()=>overlay.style.display="none");
+          video.addEventListener("pause",()=>overlay.style.display="flex");
 
-            // PAN/ZOOM
-            let sx, sy, dragging=false;
-            canvas.addEventListener("mousedown", e=>{
-              if (e.button!==0 || (!spaceHeld && document.fullscreenElement!==container)) return;
-              sx = e.clientX; sy = e.clientY; dragging = false;
-            });
-            canvas.addEventListener("mousemove", e=>{
-              if (!(e.buttons&1) || (!spaceHeld && document.fullscreenElement!==container)) return;
-              const dx = e.clientX - sx, dy = e.clientY - sy;
-              if (!dragging && Math.hypot(dx,dy)>5) dragging = true;
-              if (dragging) {
-                container.panX += dx/container.zoomScale;
-                container.panY += dy/container.zoomScale;
-                const halfW=480, halfH=270, z=container.zoomScale;
-                container.panX = Math.min(halfW*z-halfW, Math.max(halfW-halfW*z, container.panX));
-                container.panY = Math.min(halfH*z-halfH, Math.max(halfH-halfH*z, container.panY));
-                savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
-                sx=e.clientX; sy=e.clientY;
-              }
-            });
-            canvas.addEventListener("wheel", e=>{
-              if (!spaceHeld && document.fullscreenElement!==container) return;
-              e.preventDefault();
-              const rect = canvas.getBoundingClientRect();
-              const lx = (e.clientX-rect.left)/rect.width * canvas.width;
-              const ly = (e.clientY-rect.top)/rect.height*canvas.height;
-              const oldZ = container.zoomScale;
-              let z = oldZ + (e.deltaY<0?0.1:-0.1);
-              z = Math.max(1,Math.min(3,z));
-              container.panX += (oldZ-z)*((lx-canvas.width/2)/z);
-              container.panY += (oldZ-z)*((ly-canvas.height/2)/z);
-              container.zoomScale = z;
-              const halfW=480, halfH=270;
-              container.panX = Math.min(halfW*z-halfW, Math.max(halfW-halfW*z, container.panX));
-              container.panY = Math.min(halfH*z-halfH, Math.max(halfH-halfH*z, container.panY));
-              savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
-            },{passive:false});
-            canvas.addEventListener("click", ()=>{
-              if (video.paused) video.play().catch(console.error);
-              else video.pause();
-            });
-          }
+          const mobileControls=document.createElement("div");
+          mobileControls.className="controls-container";
+          container.appendChild(mobileControls);
+          const mobileBar=document.createElement("div");
+          mobileBar.className="control-bar";
+          mobileControls.appendChild(mobileBar);
 
-          // DESKTOP CONTROLS
-          if (!isMobile) {
-            const cc = document.createElement("div");
-            cc.className = "controls-container overlay-controls";
-            container.appendChild(cc);
-            const bar = document.createElement("div");
-            bar.className = "control-bar";
+          const mobileTimeline=document.createElement("input");
+          mobileTimeline.type="range"; mobileTimeline.min=0; mobileTimeline.step=0.1; mobileTimeline.value=0;
+          let isSeekingMobile=false;
+          mobileTimeline.addEventListener("mousedown",()=>isSeekingMobile=true);
+          mobileTimeline.addEventListener("mouseup",  ()=>isSeekingMobile=false);
+          mobileTimeline.addEventListener("input",    ()=>video.currentTime=parseFloat(mobileTimeline.value));
+          video.addEventListener("loadedmetadata",()=>{
+            mobileTimeline.max=video.duration||0;
+            mobileTimeline.value=video.currentTime||0;
+          });
+          video.addEventListener("timeupdate",()=>{
+            if(!isSeekingMobile) mobileTimeline.value=video.currentTime;
+          });
+          mobileBar.appendChild(mobileTimeline);
 
-            // Play/Pause
-            const playBtn = document.createElement("button");
-            playBtn.textContent = "Play";
-            video.addEventListener("play", ()=>playBtn.textContent="Pause");
-            video.addEventListener("pause",()=>playBtn.textContent="Play");
-            playBtn.addEventListener("click", ()=>{
-              if (video.paused) video.play().catch(console.error);
-              else video.pause();
-            });
-            bar.appendChild(playBtn);
-
-            // TIMELINE WITH BUFFER GRADIENT
-            const timeline = document.createElement("input");
-            timeline.type  = "range";
-            timeline.min   = 0;
-            timeline.step  = 0.1;
-            timeline.value = 0;
-            let isSeeking = false;
-            timeline.addEventListener("mousedown", ()=>isSeeking=true);
-            timeline.addEventListener("mouseup",   ()=>isSeeking=false);
-            timeline.addEventListener("input",     ()=>{
-              const base = parseFloat(timeline.dataset.base) || 0;
-              video.currentTime = base + parseFloat(timeline.value);
-            });
-            video.addEventListener("timeupdate", ()=>{
-              if (video.buffered.length) {
-                const start  = video.buffered.start(0);
-                const end    = video.buffered.end(0);
-                const played = video.currentTime;
-                const win    = end - start;
-                timeline.dataset.base = start;
-                timeline.max = win;
-                if (!isSeeking) timeline.value = played - start;
-                const pct = ((played - start) / win) * 100;
-                timeline.style.background =
-                  `linear-gradient(to right,
-                    #4d90fe 0%, #4d90fe ${pct}%,
-                    #888 ${pct}%, #888 100%)`;
-              }
-            });
-            bar.appendChild(timeline);
-
-            // Fullscreen button
-            const fsBtn = document.createElement("button");
-            fsBtn.textContent = "⛶";
-            fsBtn.addEventListener("click", ()=>{
-              if (!document.fullscreenElement) enterFullScreen(container);
-              else exitFullScreen();
-            });
-            bar.appendChild(fsBtn);
-
-            // Reset
-            const resetBtn = document.createElement("button");
-            resetBtn.textContent = "Reset";
-            resetBtn.addEventListener("click", ()=>{
-              container.zoomScale = 1; container.panX = 0; container.panY = 0;
-              savePlayerSettings(url,{zoomScale:1,panX:0,panY:0});
-            });
-            bar.appendChild(resetBtn);
-
-            // Disable
-            const disableBtn = document.createElement("button");
-            disableBtn.className = "disable-btn";
-            disableBtn.textContent = "X";
-            disableBtn.addEventListener("click", e=>{
-              e.stopPropagation();
-              updateStreamEnabled(url,false);
-            });
-            bar.appendChild(disableBtn);
-
-            cc.appendChild(bar);
-            const titleBar = document.createElement("div");
-            titleBar.className = "title-bar";
-            titleBar.textContent = extractTitle(url);
-            cc.appendChild(titleBar);
-
-            // fade controls only in fullscreen
-            let hideTO;
-            function scheduleHide() {
-              hideTO = setTimeout(()=>cc.style.opacity=0,3000);
-            }
-            document.addEventListener("fullscreenchange", ()=>{
-              if (document.fullscreenElement === container) {
-                cc.style.opacity = 1; scheduleHide();
+        } else {
+          // DESKTOP: canvas & render
+          const canvas=document.createElement("canvas");
+          canvas.className="display-canvas";
+          canvas.width=960; canvas.height=540;
+          container.appendChild(canvas);
+          const ctx=canvas.getContext("2d");
+          (function render(){
+            if(video.readyState>=2){
+              if(document.fullscreenElement===container){
+                canvas.width=container.clientWidth;
+                canvas.height=container.clientHeight;
               } else {
-                cc.style.opacity = 1; clearTimeout(hideTO);
+                canvas.width=960; canvas.height=540;
               }
-            });
-            document.addEventListener("mousemove", e=>{
-              if (document.fullscreenElement===container && e.clientY>window.innerHeight-100) {
-                cc.style.opacity = 1; clearTimeout(hideTO); scheduleHide();
-              }
-            });
-          }
+              ctx.save();
+              ctx.clearRect(0,0,canvas.width,canvas.height);
+              const cx=canvas.width/2, cy=canvas.height/2;
+              ctx.translate(cx,cy);
+              ctx.scale(container.zoomScale,container.zoomScale);
+              ctx.translate(container.panX,container.panY);
+              ctx.translate(-cx,-cy);
+              try{ ctx.drawImage(video,0,0,canvas.width,canvas.height); }catch{}
+              ctx.restore();
+            }
+            requestAnimationFrame(render);
+          })();
 
-          // HLS.js vs. native HLS
-          const canNative = video.canPlayType("application/vnd.apple.mpegurl");
-          if (Hls.isSupported() && !canNative) {
-            const hls = new Hls({
-              maxBufferLength: 120,
-              maxBufferSize: 60*1000*1024,
-              liveSyncDurationCount: 3,
-              manifestLoadingTimeOut: 30000,
-              levelLoadingTimeOut: 30000,
-              loader: class extends Hls.DefaultConfig.loader {
-                load(ctx, cfg, cb) {
-                  let u = ctx.url;
-                  while (u.startsWith(PROXY_PREFIX)) {
-                    u = decodeURIComponent(u.slice(PROXY_PREFIX.length));
-                  }
-                  ctx.url = PROXY_PREFIX + encodeURIComponent(u);
-                  super.load(ctx, cfg, cb);
-                }
-              }
-            });
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play().catch(console.error));
-            hls.loadSource(url);
-            hls.on(Hls.Events.ERROR, (_, data)=> {
-              if (data.fatal) {
-                switch(data.type) {
-                  case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
-                  case Hls.ErrorTypes.MEDIA_ERROR:   hls.recoverMediaError(); break;
-                  default:                            hls.destroy(); break;
-                }
-              }
-            });
-            container.hls = hls;
-          }
-          else if (canNative) {
-            video.src = PROXY_PREFIX + encodeURIComponent(url);
-            if (!isMobile) video.play().catch(console.error);
-          }
+          // PAN/ZOOM
+          let sx, sy, dragging=false;
+          canvas.addEventListener("mousedown", e=>{
+            if(e.button!==0||(!spaceHeld&&document.fullscreenElement!==container))return;
+            sx=e.clientX; sy=e.clientY; dragging=false;
+          });
+          canvas.addEventListener("mousemove", e=>{
+            if(!(e.buttons&1)||(!spaceHeld&&document.fullscreenElement!==container))return;
+            const dx=e.clientX-sx, dy=e.clientY-sy;
+            if(!dragging&&Math.hypot(dx,dy)>5) dragging=true;
+            if(dragging){
+              container.panX+=dx/container.zoomScale;
+              container.panY+=dy/container.zoomScale;
+              const halfW=480, halfH=270, z=container.zoomScale;
+              container.panX=Math.min(halfW*z-halfW,Math.max(halfW-halfW*z,container.panX));
+              container.panY=Math.min(halfH*z-halfH,Math.max(halfH-halfH*z,container.panY));
+              savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
+              sx=e.clientX; sy=e.clientY;
+            }
+          });
+          canvas.addEventListener("wheel", e=>{
+            if(!spaceHeld&&document.fullscreenElement!==container) return;
+            e.preventDefault();
+            const rect=canvas.getBoundingClientRect();
+            const lx=(e.clientX-rect.left)/rect.width*canvas.width;
+            const ly=(e.clientY-rect.top)/rect.height*canvas.height;
+            const oldZ=container.zoomScale;
+            let z=oldZ+(e.deltaY<0?0.1:-0.1);
+            z=Math.max(1,Math.min(3,z));
+            container.panX+=(oldZ-z)*((lx-canvas.width/2)/z);
+            container.panY+=(oldZ-z)*((ly-canvas.height/2)/z);
+            container.zoomScale=z;
+            const halfW=480, halfH=270;
+            container.panX=Math.min(halfW*z-halfW,Math.max(halfW-halfW*z,container.panX));
+            container.panY=Math.min(halfH*z-halfH,Math.max(halfH-halfH*z,container.panY));
+            savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
+          },{passive:false});
 
-          // dblclick → fullscreen
-          container.addEventListener("dblclick", ()=>{
-            if (!document.fullscreenElement) enterFullScreen(container);
+          // CLICK vs PAN: only toggle on quick small click
+          let clickTime=0, clickX=0, clickY=0;
+          canvas.addEventListener("mousedown", e=>{
+            if(e.button!==0) return;
+            clickTime = Date.now();
+            clickX = e.clientX; clickY = e.clientY;
+          });
+          canvas.addEventListener("mouseup", e=>{
+            const dt=Date.now()-clickTime;
+            const dx=e.clientX-clickX, dy=e.clientY-clickY;
+            if(dt<200 && Math.hypot(dx,dy)<5){
+              if(video.paused) video.play().catch(console.error);
+              else video.pause();
+            }
+          });
+        }
+
+        // DESKTOP CONTROLS
+        if(!isMobile){
+          const cc=document.createElement("div");
+          cc.className="controls-container overlay-controls";
+          container.appendChild(cc);
+          const bar=document.createElement("div");
+          bar.className="control-bar";
+
+          // Play/Pause
+          const playBtn=document.createElement("button");
+          playBtn.textContent="Play";
+          video.addEventListener("play", ()=>playBtn.textContent="Pause");
+          video.addEventListener("pause",()=>playBtn.textContent="Play");
+          playBtn.addEventListener("click", ()=>{
+            if(video.paused) video.play().catch(console.error);
+            else video.pause();
+          });
+          bar.appendChild(playBtn);
+
+          // TIMELINE WITH BUFFER GRADIENT
+          const timeline=document.createElement("input");
+          timeline.type="range"; timeline.min=0; timeline.step=0.1; timeline.value=0;
+          let isSeeking=false;
+          timeline.addEventListener("mousedown",()=>isSeeking=true);
+          timeline.addEventListener("mouseup",  ()=>isSeeking=false);
+          timeline.addEventListener("input",    ()=>{
+            const base=parseFloat(timeline.dataset.base)||0;
+            video.currentTime = base + parseFloat(timeline.value);
+          });
+          function updateBuffer(){
+            if(video.buffered.length){
+              const start=video.buffered.start(0),
+                    end  =video.buffered.end(0),
+                    cur  =video.currentTime,
+                    win  =end-start;
+              timeline.dataset.base=start;
+              timeline.max=win;
+              if(!isSeeking) timeline.value=cur-start;
+              const pct=((cur-start)/win)*100;
+              timeline.style.background=
+                `linear-gradient(to right,
+                  #4d90fe 0%, #4d90fe ${pct}%,
+                  #888 ${pct}%, #888 100%)`;
+            }
+          }
+          video.addEventListener("timeupdate", updateBuffer);
+          video.addEventListener("progress",   updateBuffer);
+          bar.appendChild(timeline);
+
+          // Fullscreen
+          const fsBtn=document.createElement("button");
+          fsBtn.textContent="⛶";
+          fsBtn.addEventListener("click", ()=>{
+            if(!document.fullscreenElement) enterFullScreen(container);
             else exitFullScreen();
           });
+          bar.appendChild(fsBtn);
 
-          return container;
-        }
-
-        // Show/hide all
-        document.getElementById("btn-show-all")
-          .addEventListener("click", ()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,true)));
-        document.getElementById("btn-hide-all")
-          .addEventListener("click", ()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
-
-        // URL modal logic
-        const modal    = document.getElementById("urlModal"),
-              backdrop = document.getElementById("modalBackdrop"),
-              btnAdd   = document.getElementById("btn-add-urls"),
-              btnSave  = document.getElementById("saveUrls"),
-              urlInput = document.getElementById("urlInput");
-        btnAdd.addEventListener("click", ()=>{
-          urlInput.value = getStreamList().map(s=>s.url).join("\n");
-          modal.style.display = backdrop.style.display = "block";
-        });
-        btnSave.addEventListener("click", ()=>{
-          const lines = urlInput.value.split("\n").map(u=>u.trim()).filter(Boolean),
-                old   = getStreamList(), newCfg=[];
-          lines.forEach(u=>{
-            const ex = old.find(s=>s.url===u);
-            newCfg.push(ex?ex:{url:u,enabled:true});
+          // Reset
+          const resetBtn=document.createElement("button");
+          resetBtn.textContent="Reset";
+          resetBtn.addEventListener("click", ()=>{
+            container.zoomScale=1; container.panX=0; container.panY=0;
+            savePlayerSettings(url,{zoomScale:1,panX:0,panY:0});
           });
-          saveStreamList(newCfg);
-          old.forEach(s=>{ if (!lines.includes(s.url)) updateStreamEnabled(s.url,false); });
-          newCfg.forEach(s=>{ if (s.enabled) updateStreamEnabled(s.url,true); });
-          updateStreamSidebar();
-          modal.style.display = backdrop.style.display = "none";
-          urlInput.value = "";
-        });
-        backdrop.addEventListener("click", ()=>{
-          modal.style.display = backdrop.style.display = "none";
-        });
-        window.addEventListener("keydown", e=>{
-          if (e.key==="Escape" && backdrop.style.display==="block") backdrop.click();
-        });
+          bar.appendChild(resetBtn);
 
-        // Mobile: hide sidebar when tapping outside
-        if (document.documentElement.classList.contains("mobile")) {
-          const sidebar = document.getElementById("sidebar"),
-                toggle  = document.getElementById("sidebarToggle"),
-                main    = document.getElementById("main-content");
-          let sx, ex;
-          sidebar.addEventListener("touchstart", e=> sx = e.changedTouches[0].screenX);
-          sidebar.addEventListener("touchend",   e=>{
-            ex = e.changedTouches[0].screenX;
-            if (sx - ex > 50) {
-              sidebar.classList.add("hidden");
-              toggle.style.display = "block";
+          // Disable
+          const disableBtn=document.createElement("button");
+          disableBtn.className="disable-btn";
+          disableBtn.textContent="X";
+          disableBtn.addEventListener("click", e=>{
+            e.stopPropagation();
+            updateStreamEnabled(url,false);
+          });
+          bar.appendChild(disableBtn);
+
+          cc.appendChild(bar);
+          const titleBar=document.createElement("div");
+          titleBar.className="title-bar";
+          titleBar.textContent=extractTitle(url);
+          cc.appendChild(titleBar);
+
+          // fade controls only in fullscreen
+          let hideTO;
+          function scheduleHide(){ hideTO=setTimeout(()=>cc.style.opacity=0,3000); }
+          document.addEventListener("fullscreenchange", ()=>{
+            if(document.fullscreenElement===container){
+              cc.style.opacity=1; scheduleHide();
+            } else {
+              cc.style.opacity=1; clearTimeout(hideTO);
             }
           });
-          toggle.addEventListener("click", ()=>{
-            sidebar.classList.remove("hidden");
-            toggle.style.display = "none";
-          });
-          main.addEventListener("touchstart", ()=>{
-            sidebar.classList.add("hidden");
-            toggle.style.display = "block";
+          document.addEventListener("mousemove", e=>{
+            if(document.fullscreenElement===container && e.clientY>window.innerHeight-100){
+              cc.style.opacity=1; clearTimeout(hideTO); scheduleHide();
+            }
           });
         }
 
-        // Initial render
-        updateStreamSidebar();
-        getStreamList().forEach(s=>{ if (s.enabled) updateStreamEnabled(s.url,true); });
-      })();
+        // HLS vs Native
+        const canNative = video.canPlayType("application/vnd.apple.mpegurl");
+        if(Hls.isSupported() && !canNative){
+          const hls=new Hls({
+            maxBufferLength:120,
+            maxBufferSize:60*1000*1024,
+            liveSyncDurationCount:3,
+            manifestLoadingTimeOut:30000,
+            levelLoadingTimeOut:30000,
+            loader: class extends Hls.DefaultConfig.loader {
+              load(ctx,cfg,cb){
+                let u=ctx.url;
+                while(u.startsWith(PROXY_PREFIX)){
+                  u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
+                }
+                ctx.url=PROXY_PREFIX+encodeURIComponent(u);
+                super.load(ctx,cfg,cb);
+              }
+            }
+          });
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play().catch(console.error));
+          hls.loadSource(url);
+          hls.on(Hls.Events.ERROR,(_,data)=>{
+            if(data.fatal){
+              switch(data.type){
+                case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                case Hls.ErrorTypes.MEDIA_ERROR:   hls.recoverMediaError(); break;
+                default:                            hls.destroy(); break;
+              }
+            }
+          });
+          container.hls=hls;
+        }
+        else if(canNative){
+          video.src=PROXY_PREFIX+encodeURIComponent(url);
+          if(!isMobile) video.play().catch(console.error);
+        }
 
-      // Debug fullscreenchange
-      document.addEventListener("fullscreenchange", ()=>{
-        console.log("Fullscreen:", !!document.fullscreenElement);
+        // dblclick → fullscreen
+        container.addEventListener("dblclick", ()=>{
+          if(!document.fullscreenElement) enterFullScreen(container);
+          else exitFullScreen();
+        });
+
+        return container;
+      }
+
+      // show/hide all
+      document.getElementById("btn-show-all")
+        .addEventListener("click", ()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,true)));
+      document.getElementById("btn-hide-all")
+        .addEventListener("click", ()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
+
+      // URL modal
+      const modal=document.getElementById("urlModal"),
+            backdrop=document.getElementById("modalBackdrop"),
+            btnAdd=document.getElementById("btn-add-urls"),
+            btnSave=document.getElementById("saveUrls"),
+            urlInput=document.getElementById("urlInput");
+      btnAdd.addEventListener("click",()=>{
+        urlInput.value=getStreamList().map(s=>s.url).join("\n");
+        modal.style.display=backdrop.style.display="block";
       });
-    </script>
-  </body>
+      btnSave.addEventListener("click",()=>{
+        const lines=urlInput.value.split("\n").map(u=>u.trim()).filter(Boolean),
+              old=getStreamList(), newCfg=[];
+        lines.forEach(u=>{
+          const ex=old.find(s=>s.url===u);
+          newCfg.push(ex?ex:{url:u,enabled:true});
+        });
+        saveStreamList(newCfg);
+        old.forEach(s=>{ if(!lines.includes(s.url)) updateStreamEnabled(s.url,false); });
+        newCfg.forEach(s=>{ if(s.enabled) updateStreamEnabled(s.url,true); });
+        updateStreamSidebar();
+        modal.style.display=backdrop.style.display="none";
+        urlInput.value="";
+      });
+      backdrop.addEventListener("click",()=>{
+        modal.style.display=backdrop.style.display="none";
+      });
+      window.addEventListener("keydown",e=>{
+        if(e.key==="Escape" && backdrop.style.display==="block") backdrop.click();
+      });
+
+      // Mobile: tap outside sidebar hides it
+      if(document.documentElement.classList.contains("mobile")){
+        const sidebar=document.getElementById("sidebar"),
+              toggle=document.getElementById("sidebarToggle"),
+              main=document.getElementById("main-content");
+        let sx,ex;
+        sidebar.addEventListener("touchstart",e=>sx=e.changedTouches[0].screenX);
+        sidebar.addEventListener("touchend",e=>{
+          ex=e.changedTouches[0].screenX;
+          if(sx-ex>50){
+            sidebar.classList.add("hidden");
+            toggle.style.display="block";
+          }
+        });
+        toggle.addEventListener("click",()=>{
+          sidebar.classList.remove("hidden");
+          toggle.style.display="none";
+        });
+        main.addEventListener("touchstart",()=>{
+          sidebar.classList.add("hidden");
+          toggle.style.display="block";
+        });
+      }
+
+      // initial
+      updateStreamSidebar();
+      getStreamList().forEach(s=>{ if(s.enabled) updateStreamEnabled(s.url,true); });
+    })();
+
+    // debug
+    document.addEventListener("fullscreenchange",()=>{
+      console.log("Fullscreen:",!!document.fullscreenElement);
+    });
+  </script>
+</body>
 </html>
