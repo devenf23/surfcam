@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live DVR with Video.js Panzoom (Integrated)</title>
+    <title>Live DVR with Video.js & Custom ProxyLoader</title>
     <!-- Load Video.js CSS from CDN -->
     <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet" />
     <style>
@@ -28,7 +28,13 @@
         transition: transform 0.3s ease;
       }
       #sidebar.hidden { transform: translateX(-100%); }
-      #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; }
+      #btn-add-urls {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
       #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; }
       .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; }
       #streamList { margin-top: 10px; line-height: 1.2; }
@@ -121,7 +127,7 @@
       }
     </style>
     <script>
-      // Detect mobile devices.
+      // Mark as mobile if detected.
       if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         document.documentElement.classList.add("mobile");
       }
@@ -130,7 +136,7 @@
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global key listeners for optional keyboard controls -->
+    <!-- Global key listeners for optional keyboard control -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -162,43 +168,57 @@
     </div>
     <!-- Load Video.js from CDN -->
     <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script>
-    <!-- Load videojs-panzoom (we use version 2.0.2) from jsDelivr -->
-    <script src="https://cdn.jsdelivr.net/npm/videojs-panzoom@2.0.2/dist/videojs-panzoom.min.js"></script>
+    <!-- We no longer load videojs-panzoom here since its integration with VHS remains problematic. -->
+    
+    <!-- Define our custom ProxyLoader (as in your previous working version) -->
     <script>
-      console.log("videojs-panzoom loaded, type of panzoom:", typeof panzoom);
-      // Register panzoom if needed.
-      if (typeof videojs.getPlugin('panzoom') !== 'function' && typeof panzoom === 'function') {
-        videojs.registerPlugin('panzoom', panzoom);
-        console.log("videojs-panzoom plugin registered.");
+      class ProxyLoader {
+        constructor(config) {
+          this.customPlaylistBase = config.customPlaylistBase || "";
+          this.config = config;
+          this.loader = new Hls.DefaultConfig.loader(config);
+        }
+        load(context, config, callbacks) {
+          const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+          let rawUrl = context.url;
+          try {
+            if(rawUrl.startsWith(proxyPrefix)) {
+              const wrapped = new URL(rawUrl);
+              rawUrl = wrapped.searchParams.get("url") || rawUrl;
+            }
+          } catch(e) {}
+          // If the URL is from localhost or is not HTTPS, use customPlaylistBase.
+          if(rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
+            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
+            rawUrl = this.customPlaylistBase + segFilename;
+          }
+          else if(this.customPlaylistBase && !rawUrl.startsWith(this.customPlaylistBase)) {
+            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
+            rawUrl = this.customPlaylistBase + segFilename;
+          }
+          context.url = proxyPrefix + encodeURIComponent(rawUrl);
+          this.loader.load(context, config, callbacks);
+        }
+        abort() { if (this.loader.abort) this.loader.abort(); }
+        destroy() { if (this.loader.destroy) this.loader.destroy(); }
       }
-      
-      /* Utility functions for persisting panzoom state */
-      function loadPanzoomState(url) {
-        const key = "panzoomState_" + url;
-        try { return JSON.parse(localStorage.getItem(key) || "{}"); }
-        catch(e) { return {}; }
-      }
-      function savePanzoomState(url, state) {
-        const key = "panzoomState_" + url;
-        localStorage.setItem(key, JSON.stringify(state));
-      }
-      
-      /* MAIN UI & STREAM MANAGEMENT */
+    </script>
+    <!-- Main UI & Stream Management using Video.js with custom HLS loader. -->
+    <script>
       (function(){
         const storageKey = "streamConfigs";
         const activeLabels = new Set();
-        
+      
         function extractTitle(url) {
           const match = url.match(/wc-([^\/]+)\/playlist/);
           return match ? match[1] : url;
         }
-        
         function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
         function getStreamList() {
           try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); }
           catch(e){ return []; }
         }
-        
+      
         function updateStreamSidebar() {
           const sidebarList = document.getElementById("streamList");
           sidebarList.innerHTML = "";
@@ -227,7 +247,7 @@
                 if(e.button===0){ 
                   checkbox.checked = !checkbox.checked; 
                   activeLabels.add(label); 
-                  e.preventDefault(); 
+                  e.preventDefault();
                 }
               });
               label.addEventListener("mouseenter", (e)=>{
@@ -250,12 +270,12 @@
           }
         }
       
-        // Create a Video.js player container using videojs-panzoom.
+        // Create a Video.js player container with our custom HLS loader.
         function createPlayerContainer(streamConfig) {
           if (!streamConfig.enabled) return null;
           const videoSrcOrig = streamConfig.url;
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
-          // In our previous version, encodeURIComponent produced correct fragment URLs.
+          // Use encodeURIComponent as in your previous version.
           const proxiedUrl = proxyPrefix + encodeURIComponent(videoSrcOrig);
           const title = extractTitle(videoSrcOrig);
           const isMobile = document.documentElement.classList.contains("mobile");
@@ -263,7 +283,7 @@
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
           container.setAttribute("data-url", videoSrcOrig);
       
-          // Base URL for resolving relative fragment URLs.
+          // Determine manifest base for relative TS fragment resolution.
           var manifestBase = videoSrcOrig.substring(0, videoSrcOrig.lastIndexOf("/") + 1);
       
           // Create a unique video element.
@@ -279,65 +299,51 @@
             videoEl.style.width = "960px";
             videoEl.style.height = "540px";
           }
-          // Create source element with the proxied manifest URL.
+          // Create source element using the proxied manifest URL.
           const sourceEl = document.createElement("source");
           sourceEl.src = proxiedUrl;
           sourceEl.type = "application/x-mpegURL";
           videoEl.appendChild(sourceEl);
           container.appendChild(videoEl);
       
-          // Video.js options: autoplay & muted.
+          // Video.js options: force autoplay with muted.
           const vjsOptions = {
             controls: true,
             autoplay: true,
             muted: true,
-            preload: "auto"
+            preload: "auto",
+            // Pass our custom HLS loader configuration:
+            html5: {
+              hls: {
+                loader: ProxyLoader,
+                customPlaylistBase: manifestBase
+              }
+            }
           };
           var vjsPlayer = videojs(videoEl, vjsOptions, function(){
             console.log("Video.js player ready for stream:", videoSrcOrig);
           });
       
-          // Set VHS beforeRequest hook so that every request gets wrapped by the proxy.
-          vjsPlayer.ready(function() {
-            if (vjsPlayer.tech(true) && vjsPlayer.tech(true).vhs) {
-              var vhsOptions = vjsPlayer.tech(true).vhs.options_ || {};
-              vhsOptions.beforeRequest = function(options) {
-                // Resolve relative URLs against manifestBase.
-                if (!/^https?:\/\//.test(options.uri)) {
-                  options.uri = new URL(options.uri, manifestBase).toString();
-                }
-                // Use encodeURIComponent to preserve the proper fragment filename.
-                if (!options.uri.startsWith(proxyPrefix)) {
-                  options.uri = proxyPrefix + encodeURIComponent(options.uri);
-                }
-                console.log("Rewritten request URI:", options.uri);
-                return options;
-              };
-              vjsPlayer.tech(true).vhs.options_ = vhsOptions;
-            }
-          });
-      
-          // On desktop, initialize panzoom after a slight delay.
+          // (Optional) If you want to attempt panzoom, you could do it here.
+          // For now, we are not integrating panzoom due to compatibility issues with VHS.
+          /*
           if (!isMobile) {
             vjsPlayer.ready(function() {
-              var savedState = loadPanzoomState(videoSrcOrig);
-              // Delay initialization to ensure VHS is fully set up.
-              setTimeout(function() {
-                if (typeof vjsPlayer.panzoom === 'function') {
-                  vjsPlayer.panzoom(savedState);
-                  vjsPlayer.on("panzoomchange", function(){
-                    var state = vjsPlayer.panzoom.getState();
-                    savePanzoomState(videoSrcOrig, state);
-                  });
-                  console.log("videojs-panzoom initialized.");
-                } else {
-                  console.error("videojs-panzoom plugin is not available on this player.");
-                }
-              }, 500);
+              var savedState = {}; // Or load your panzoom state if desired.
+              if (typeof vjsPlayer.panzoom === 'function') {
+                vjsPlayer.panzoom(savedState);
+                vjsPlayer.on("panzoomchange", function(){
+                  var state = vjsPlayer.panzoom.getState();
+                  // Save state if needed.
+                });
+              } else {
+                console.error("videojs-panzoom plugin is not available on this player.");
+              }
             });
           }
+          */
       
-          // Append a title bar.
+          // Append a title bar below the player.
           var titleBar = document.createElement("div");
           titleBar.className = "title-bar";
           titleBar.textContent = title;
@@ -373,7 +379,9 @@
             if (!playerContainer) {
               playerContainer = createPlayerContainer(streams[idx]);
               if (playerContainer) mainContent.appendChild(playerContainer);
-            } else { playerContainer.style.display = "flex"; }
+            } else {
+              playerContainer.style.display = "flex";
+            }
           } else {
             if (playerContainer) {
               if (playerContainer.vjsPlayer) {
@@ -417,10 +425,12 @@
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
         }
+      
         function hideAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
         }
+      
         document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
         document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
       
@@ -437,6 +447,7 @@
           modal.style.display = "block";
           backdrop.style.display = "block";
         }
+      
         function hideModal(saveChanges) {
           modal.style.display = "none";
           backdrop.style.display = "none";
@@ -446,8 +457,7 @@
             const newConfig = [];
             newUrls.forEach(url => {
               const existing = oldStreams.find(s => s.url === url);
-              if (existing) { newConfig.push(existing); }
-              else { newConfig.push({ url: url, enabled: true }); }
+              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
