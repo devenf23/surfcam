@@ -1,59 +1,60 @@
 const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
-  // 1) Always set CORS & Range headers
+  // CORS & Range support
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Range, Content-Type");
   res.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 
-  // 2) Handle preflight
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
 
-  // 3) Validate
   const targetUrl = req.query.url;
-  if (!targetUrl) {
-    return res.status(400).send("Missing 'url' query parameter.");
-  }
+  if (!targetUrl) return res.status(400).send("Missing 'url' query param");
 
   try {
-    // 4) Forward Range headers if present
-    const headers = {
-      "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N)"
-    };
-    if (req.headers.range) {
-      headers.Range = req.headers.range;
-    }
-
-    // 5) Fetch upstream
-    const upstream = await fetch(targetUrl, {
+    // Forward any Range
+    const upstream = await fetch(decodeURIComponent(targetUrl), {
       method: "GET",
-      headers,
+      headers: req.headers.range ? { Range: req.headers.range } : {},
       redirect: "follow",
       compress: false
     });
 
-    // 6) Mirror status
+    // Mirror status
     res.status(upstream.status);
 
-    // 7) Copy all headers except hop‑by‑hop/compression
-    upstream.headers.forEach((value, key) => {
-      const k = key.toLowerCase();
-      if (k === "transfer-encoding" || k === "content-encoding") return;
-      res.setHeader(key, value);
+    // Copy headers (minus hop‑by‑hop / compression)
+    upstream.headers.forEach((v, k) => {
+      const lk = k.toLowerCase();
+      if (lk === "transfer-encoding" || lk === "content-encoding") return;
+      res.setHeader(k, v);
     });
-
-    // 8) Re‑set CORS (in case upstream overwrote)
+    // Re‑set CORS
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Headers", "Range, Content-Type");
     res.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
 
-    // 9) Pipe data
+    // If it's a manifest, rewrite it
+    if (targetUrl.toLowerCase().endsWith(".m3u8") ||
+        (upstream.headers.get("content-type")||"").includes("mpegurl")) {
+      const text = await upstream.text();
+      const base = decodeURIComponent(targetUrl);
+      // Every line not starting with "#" becomes absolute
+      const fixed = text.replace(
+        /^(?!#)(\S+)/gm,
+        (_, uri) => new URL(uri, base).toString()
+      );
+      // Send it back as text
+      return res
+        .setHeader("Content-Type", "application/vnd.apple.mpegurl")
+        .send(fixed);
+    }
+
+    // Otherwise just stream the bytes
     upstream.body.pipe(res);
   } catch (err) {
-    console.error("proxy.js error:", err);
-    res.status(500).send("Error fetching target URL.");
+    console.error("proxy error:", err);
+    res.status(500).send("Proxy fetch error");
   }
 };

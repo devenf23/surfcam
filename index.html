@@ -459,28 +459,22 @@
           // Hls.js attach
           if (Hls.isSupported()) {
             const hls = new Hls({
+              // … your other Hls config …
               loader: class extends Hls.DefaultConfig.loader {
                 load(context, config, callbacks) {
-                  // 1) grab the incoming URL
+                  // Always strip any previous proxy wrapper
                   let url = context.url;
-
-                  // 2) if it's already our proxy URL, decode it back to the real source
-                  if (url.startsWith(PROXY_PREFIX)) {
+                  while (url.startsWith(PROXY_PREFIX)) {
                     url = decodeURIComponent(url.slice(PROXY_PREFIX.length));
                   }
-
-                  // 3) wrap *that* in our proxy prefix
+                  // Now re‑apply it with the real upstream URL
                   context.url = PROXY_PREFIX + encodeURIComponent(url);
-
-                  // 4) hand off to the normal HLS.js loader
                   super.load(context, config, callbacks);
                 }
               }
             });
             hls.attachMedia(sourceVideo);
-            hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-              sourceVideo.play().catch(console.error);
-            });
+            hls.on(Hls.Events.MANIFEST_PARSED, () => sourceVideo.play().catch(console.error));
             hls.loadSource(videoSrc);
             hls.on(Hls.Events.ERROR,(_,data)=>{
               if(data.fatal){
