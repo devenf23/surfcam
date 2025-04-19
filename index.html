@@ -1,288 +1,535 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>Live DVR with Video.js Panzoom</title> <!-- Video.js CSS from CDN --> <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet"> <style> /* GENERAL STYLES */ html, body { margin: 0; padding: 0; height: 100vh; font-family: Arial, sans-serif; background: #222; color: #fff; overflow: hidden; } .container { display: flex; height: 100vh; } /* SIDEBAR */ #sidebar { background: #444; width: 220px; padding: 20px; box-sizing: border-box; overflow-y: auto; transition: transform 0.3s ease; } #sidebar.hidden { transform: translateX(-100%); } #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; } #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; } .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; } #streamList { margin-top: 10px; line-height: 1.2; } #streamList label { color: #fff; } .no-streams { font-style: italic; color: #bbb; margin-top: 10px; } .stream-item { margin-bottom: 5px; display: flex; align-items: center; } .stream-item label { margin-left: 5px; font-size: 16px; cursor: pointer; user-select: none; } /* MAIN CONTENT / PLAYER CONTAINERS */ #main-content { flex: 1; background: #333; padding: 20px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 20px; overflow: auto; } /* Desktop player container – standard size */ .player-container.desktop { width: 960px; height: 600px; background: #222; display: flex; flex-direction: column; position: relative; margin-bottom: 40px; box-sizing: border-box; } /* Mobile player container – roughly 4× smaller */ .player-container.mobile { width: 240px; height: 150px; background: #222; display: flex; flex-direction: column; position: relative; margin-bottom: 20px; box-sizing: border-box; } /* Desktop: We use Video.js – the video element will be hidden offscreen by Video.js styling if not in use */ .player-container .video-js { width: 100%; height: 100%; } /* (As an example, you can further tweak CSS; the panzoom plugin will use the video element's container.) */ /* Sidebar URL modal */ #urlModal { display: none; position: fixed; z-index: 10; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1200px; background: #555; border: 2px solid #fff; padding: 15px; box-sizing: border-box; } #urlModal textarea { width: 100%; height: 600px; padding: 10px; font-size: 14px; box-sizing: border-box; } #urlModal button { width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; cursor: pointer; } #modalBackdrop { display: none; position: fixed; z-index: 5; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); } /* Mobile-specific adjustments */ html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; } html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; } html.mobile #urlModal button { padding: 5px; font-size: 12px; } html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; } html.mobile #main-content { margin-left: 0; } /* Mobile sidebar toggle arrow */ #sidebarToggle { display: none; } html.mobile #sidebarToggle { display: block; position: fixed; top: 50%; left: 0; transform: translate(-50%, -50%); z-index: 1100; background: #444; border: none; padding: 10px 12px; font-size: 24px; color: #fff; cursor: pointer; } </style> </head> <body> <!-- Mobile sidebar toggle --> <button id="sidebarToggle">&#x25B6;</button> <!-- Global Spacebar Listeners (for desktop pan/zoom if needed; you can remove if pan/zoom comes fully from the plugin) --> <script> let spaceHeld = false; window.addEventListener("keydown", function(e) { if (e.code === "Space" && !["input", "textarea", "button"].includes(document.activeElement.tagName.toLowerCase())) { e.preventDefault(); spaceHeld = true; } }); window.addEventListener("keyup", function(e) { if (e.code === "Space") spaceHeld = false; }); </script> <div class="container"> <div id="sidebar"> <button id="btn-add-urls">Add URLs</button> <div id="sideButtons"> <button id="btn-show-all" class="sideBtn">Show All</button> <button id="btn-hide-all" class="sideBtn">Hide All</button> </div> <div id="streamList"></div> </div> <div id="main-content"></div> </div> <div id="modalBackdrop"></div> <div id="urlModal"> <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3> <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea> <button id="saveUrls">Save and Close</button> </div> <!-- Load Video.js library from CDN --> <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script> <!-- Load videojs-panzoom plugin (from unpkg) --> <script src="https://unpkg.com/videojs-panzoom/dist/videojs-panzoom.min.js"></script> <script> /* ---------------------------------------------------------------- Utility functions for persistent settings. ---------------------------------------------------------------- */ function loadPlayerSettings(url) { const ps = localStorage.getItem("panzoomState_" + url); if(ps){ try { return JSON.parse(ps); } catch(e){ return {}; } } return {}; } function savePlayerSettings(url, state) { localStorage.setItem("panzoomState_" + url, JSON.stringify(state)); }
-  /* ----------------------------------------------------------------
-     MAIN UI & STREAM MANAGEMENT (sidebar and player creation)
-  ---------------------------------------------------------------- */
-  (function(){
-    const storageKey = "streamConfigs";
-    const activeLabels = new Set();
-    function extractTitle(url) {
-      const match = url.match(/wc-([^\/]+)\/playlist/);
-      return match ? match[1] : url;
-    }
-    function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
-    function getStreamList() {
-      const stored = localStorage.getItem(storageKey);
-      if(!stored) return [];
-      try { return JSON.parse(stored); }
-      catch(e){ return []; }
-    }
-    function updateStreamSidebar(){
-      const sidebarList = document.getElementById("streamList");
-      sidebarList.innerHTML = "";
-      const streams = getStreamList();
-      if(streams.length === 0){
-        const p = document.createElement("p");
-        p.className = "no-streams";
-        p.textContent = "No streams added. Click 'Add URLs' to add streams.";
-        sidebarList.appendChild(p);
-      } else {
-        streams.forEach(stream => {
-          const videoSrc = stream.url;
-          const title = extractTitle(videoSrc);
-          const item = document.createElement("div");
-          item.className = "stream-item";
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.checked = stream.enabled;
-          checkbox.setAttribute("data-url", videoSrc);
-          checkbox.addEventListener("change", (e)=>{ updateStreamEnabled(videoSrc, e.target.checked); });
-          item.appendChild(checkbox);
-          const label = document.createElement("label");
-          label.textContent = title;
-          label.setAttribute("data-url", videoSrc);
-          label.addEventListener("mousedown", (e)=>{
-            if(e.button===0){
-              checkbox.checked = !checkbox.checked;
-              activeLabels.add(label);
-              e.preventDefault();
-            }
-          });
-          label.addEventListener("mouseenter", (e)=>{
-            if(e.buttons & 1 && !activeLabels.has(label)){
-              checkbox.checked = !checkbox.checked;
-              activeLabels.add(label);
-            }
-          });
-          item.appendChild(label);
-          sidebarList.appendChild(item);
-        });
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live DVR with Video.js Panzoom</title>
+    <!-- Video.js CSS -->
+    <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet">
+    <style>
+      /* GENERAL STYLES */
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+        background: #222;
+        color: #fff;
+        overflow: hidden;
       }
-    }
-    function toggleFullScreen(container) {
-      // Request full screen on container element.
-      if(!document.fullscreenElement){
-        container.requestFullscreen().catch(err => console.error("Fullscreen request failed:", err));
-      } else {
-        document.exitFullscreen().catch(err => console.error("Exit full screen failed:", err));
+      .container {
+        display: flex;
+        height: 100vh;
       }
-    }
-    // Create a Video.js player container using videojs-panzoom.
-    function createPlayerContainer(streamConfig) {
-      if(!streamConfig.enabled) return null;
-      const videoSrc = streamConfig.url;
-      const title = extractTitle(videoSrc);
-      const isMobile = document.documentElement.classList.contains("mobile");
-      const container = document.createElement("div");
-      container.className = "player-container " + (isMobile ? "mobile" : "desktop");
-      container.setAttribute("data-url", videoSrc);
-      // Create a unique video element ID.
-      const vidId = "video_" + Math.random().toString(36).substring(2,10);
-      
-      // Create video element with Video.js class.
-      const videoEl = document.createElement("video");
-      videoEl.id = vidId;
-      videoEl.className = "video-js vjs-default-skin";
-      if(isMobile) {
-        videoEl.style.width = "240px";
-        videoEl.style.height = "135px";
-      } else {
-        videoEl.style.width = "960px";
-        videoEl.style.height = "540px";
+      /* SIDEBAR */
+      #sidebar {
+        background: #444;
+        width: 220px;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        transition: transform 0.3s ease;
       }
-      // Add the HLS source element.
-      const sourceEl = document.createElement("source");
-      sourceEl.src = videoSrc;
-      sourceEl.type = "application/x-mpegURL";
-      videoEl.appendChild(sourceEl);
-      
-      container.appendChild(videoEl);
-      
-      // (Optional) You can add extra overlay controls here if needed.
-      
-      // Initialize Video.js player.
-      var options = {
-          controls: true,
-          autoplay: false,
-          preload: "auto"
-      };
-      var vjsPlayer = videojs(vidId, options, function(){
-         console.log("Video.js player ready for stream:", videoSrc);
-      });
-      
-      // Initialize videojs-panzoom with any saved state.
-      var savedState = loadPlayerSettings(videoSrc);
-      // The panzoom plugin options depend on the version.
-      // Here we pass any saved options as initial configuration.
-      vjsPlayer.panzoom(savedState);
-      
-      // Listen for pan/zoom changes so we can persist state.
-      vjsPlayer.on("panzoomchange", function(){
-          var state = vjsPlayer.panzoom.getState();
-          savePlayerSettings(videoSrc, state);
-      });
-      
-      // Optionally, if the plugin doesn’t fire an event, you could poll:
-      // setInterval(function(){ savePlayerSettings(videoSrc, vjsPlayer.panzoom.getState()); }, 1000);
-      
-      // For mobile, rely on native controls only.
-      if(isMobile){
-         // No extra tap-to-play overlay in this implementation.
-         // The user must tap the native controls.
+      #sidebar.hidden {
+        transform: translateX(-100%);
       }
-      
-      // Save a reference of the player in the container.
-      container.vjsPlayer = vjsPlayer;
-      return container;
-    }
-    
-    function reorderPlayerContainers(){
-      const mainContent = document.getElementById("main-content");
-      const config = getStreamList();
-      const players = Array.from(mainContent.querySelectorAll(".player-container"));
-      players.sort((a,b)=>{
-        let aIndex = config.findIndex(s => s.url === a.getAttribute("data-url"));
-        let bIndex = config.findIndex(s => s.url === b.getAttribute("data-url"));
-        return aIndex - bIndex;
-      });
-      players.forEach(p => mainContent.appendChild(p));
-    }
-    
-    function updateStreamEnabled(url, enabled){
-      let streams = getStreamList();
-      const idx = streams.findIndex(s => s.url === url);
-      if(idx === -1) return;
-      if(streams[idx].enabled !== enabled){
-        streams[idx].enabled = enabled;
-        saveStreamList(streams);
+      #btn-add-urls {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        font-size: 16px;
+        cursor: pointer;
       }
-      let playerContainer = document.querySelector('.player-container[data-url="'+url+'"]');
-      const mainContent = document.getElementById("main-content");
-      if(enabled){
-        if(!playerContainer){
-          playerContainer = createPlayerContainer(streams[idx]);
-          if(playerContainer) mainContent.appendChild(playerContainer);
-        } else {
-          playerContainer.style.display = "flex";
+      #sideButtons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .sideBtn {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #streamList {
+        margin-top: 10px;
+        line-height: 1.2;
+      }
+      #streamList label {
+        color: #fff;
+      }
+      .no-streams {
+        font-style: italic;
+        color: #bbb;
+        margin-top: 10px;
+      }
+      .stream-item {
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+      }
+      .stream-item label {
+        margin-left: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        user-select: none;
+      }
+      /* MAIN CONTENT – PLAYER CONTAINERS */
+      #main-content {
+        flex: 1;
+        background: #333;
+        padding: 20px;
+        box-sizing: border-box;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        overflow: auto;
+      }
+      /* Desktop player container (standard size) */
+      .player-container.desktop {
+        width: 960px;
+        height: 600px;
+        background: #222;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        margin-bottom: 40px;
+        box-sizing: border-box;
+      }
+      /* Mobile player container (approximately 4× smaller) */
+      .player-container.mobile {
+        width: 240px;
+        height: 150px;
+        background: #222;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+      }
+      /* Video.js player styling (applied to both desktop and mobile players) */
+      .player-container .video-js {
+        width: 100%;
+        height: 100%;
+      }
+      /* URL Modal */
+      #urlModal {
+        display: none;
+        position: fixed;
+        z-index: 10;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 1200px;
+        background: #555;
+        border: 2px solid #fff;
+        padding: 15px;
+        box-sizing: border-box;
+      }
+      #urlModal textarea {
+        width: 100%;
+        height: 600px;
+        padding: 10px;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+      #urlModal button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #modalBackdrop {
+        display: none;
+        position: fixed;
+        z-index: 5;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+      }
+      /* Mobile adjustments */
+      html.mobile #urlModal {
+        width: 300px;
+        padding: 4px;
+        font-size: 12px;
+      }
+      html.mobile #urlModal textarea {
+        height: 150px;
+        padding: 5px;
+        font-size: 12px;
+      }
+      html.mobile #urlModal button {
+        padding: 5px;
+        font-size: 12px;
+      }
+      html.mobile #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        z-index: 1000;
+      }
+      html.mobile #main-content {
+        margin-left: 0;
+      }
+      /* Mobile sidebar toggle */
+      #sidebarToggle {
+        display: none;
+      }
+      html.mobile #sidebarToggle {
+        display: block;
+        position: fixed;
+        top: 50%;
+        left: 0;
+        transform: translate(-50%, -50%);
+        z-index: 1100;
+        background: #444;
+        border: none;
+        padding: 10px 12px;
+        font-size: 24px;
+        color: #fff;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Mobile sidebar toggle -->
+    <button id="sidebarToggle">&#x25B6;</button>
+    <!-- Global Spacebar Listeners (if you want additional pan/zoom on desktop outside panzoom plugin) -->
+    <script>
+      let spaceHeld = false;
+      window.addEventListener("keydown", function(e) {
+        if (e.code === "Space" && !["input", "textarea", "button"].includes(document.activeElement.tagName.toLowerCase())) {
+          e.preventDefault();
+          spaceHeld = true;
         }
-      } else {
-        if(playerContainer){
-          if(playerContainer.vjsPlayer) {
-            playerContainer.vjsPlayer.dispose();
-          }
-          if(playerContainer.parentNode) playerContainer.parentNode.removeChild(playerContainer);
-        }
-      }
-      reorderPlayerContainers();
-      const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="'+url+'"]');
-      if(checkbox) checkbox.checked = enabled;
-    }
-    
-    function updateFullUI(refresh = true){
-      if(refresh){
-        const mainContent = document.getElementById("main-content");
-        mainContent.innerHTML = "";
-        const streamList = getStreamList();
-        const enabledStreams = streamList.filter(s => s.enabled);
-        if(enabledStreams.length > 0){
-          enabledStreams.forEach(stream => {
-            const player = createPlayerContainer(stream);
-            if(player) mainContent.appendChild(player);
-          });
-          reorderPlayerContainers();
-        }
-        updateStreamSidebar();
-      }
-    }
-    
-    document.addEventListener("mouseup", function(){
-      activeLabels.forEach(function(label){
-        const url = label.getAttribute("data-url");
-        const checkbox = label.parentElement.querySelector("input[type='checkbox']");
-        updateStreamEnabled(url, checkbox.checked);
       });
-      activeLabels.clear();
-    });
-    
-    function showAllStreams(){
-      const streams = getStreamList();
-      streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
-    }
-    function hideAllStreams(){
-      const streams = getStreamList();
-      streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
-    }
-    document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
-    document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
-    
-    const modal = document.getElementById("urlModal");
-    const backdrop = document.getElementById("modalBackdrop");
-    const btnAddUrls = document.getElementById("btn-add-urls");
-    const btnSaveUrls = document.getElementById("saveUrls");
-    const urlInput = document.getElementById("urlInput");
-    
-    function showModal(){
-      const streams = getStreamList();
-      urlInput.value = streams.map(s => s.url).join("\n");
-      modal.style.display = "block";
-      backdrop.style.display = "block";
-    }
-    function hideModal(saveChanges){
-      modal.style.display = "none";
-      backdrop.style.display = "none";
-      if(saveChanges){
-        const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u);
-        const oldStreams = getStreamList();
-        const newConfig = [];
-        newUrls.forEach(url => {
-          const existing = oldStreams.find(s => s.url === url);
-          if(existing){
-            newConfig.push(existing);
+      window.addEventListener("keyup", function(e) {
+        if (e.code === "Space") spaceHeld = false;
+      });
+    </script>
+    <div class="container">
+      <div id="sidebar">
+        <button id="btn-add-urls">Add URLs</button>
+        <div id="sideButtons">
+          <button id="btn-show-all" class="sideBtn">Show All</button>
+          <button id="btn-hide-all" class="sideBtn">Hide All</button>
+        </div>
+        <div id="streamList"></div>
+      </div>
+      <div id="main-content"></div>
+    </div>
+    <div id="modalBackdrop"></div>
+    <div id="urlModal">
+      <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3>
+      <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea>
+      <button id="saveUrls">Save and Close</button>
+    </div>
+    <!-- Load Video.js from CDN -->
+    <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script>
+    <!-- Load videojs-panzoom plugin from CDN (via unpkg) -->
+    <script src="https://unpkg.com/videojs-panzoom/dist/videojs-panzoom.min.js"></script>
+    <script>
+      /* ----------------------------------------------------------------
+         Utility Functions for Saving Panzoom State (Desktop)
+         We use a separate key per stream. 
+      ---------------------------------------------------------------- */
+      function loadPanzoomState(url) {
+        const key = "panzoomState_" + url;
+        const state = localStorage.getItem(key);
+        if(state) {
+          try { 
+            return JSON.parse(state);
+          } catch(e) { return {}; }
+        }
+        return {};
+      }
+      function savePanzoomState(url, state) {
+        const key = "panzoomState_" + url;
+        localStorage.setItem(key, JSON.stringify(state));
+      }
+      
+      /* ----------------------------------------------------------------
+         MAIN UI & STREAM MANAGEMENT (Sidebar & Video.js Integration)
+      ---------------------------------------------------------------- */
+      (function(){
+        const storageKey = "streamConfigs";
+        const activeLabels = new Set();
+        
+        function extractTitle(url) {
+          const match = url.match(/wc-([^\/]+)\/playlist/);
+          return match ? match[1] : url;
+        }
+        function saveStreamList(list) {
+          localStorage.setItem(storageKey, JSON.stringify(list));
+        }
+        function getStreamList() {
+          const stored = localStorage.getItem(storageKey);
+          if(!stored) return [];
+          try { return JSON.parse(stored); }
+          catch(e) { return []; }
+        }
+        function updateStreamSidebar() {
+          const sidebarList = document.getElementById("streamList");
+          sidebarList.innerHTML = "";
+          const streams = getStreamList();
+          if(streams.length === 0) {
+            const p = document.createElement("p");
+            p.className = "no-streams";
+            p.textContent = "No streams added. Click 'Add URLs' to add streams.";
+            sidebarList.appendChild(p);
           } else {
-            newConfig.push({ url: url, enabled: true });
+            streams.forEach(stream=>{
+              const videoSrc = stream.url;
+              const title = extractTitle(videoSrc);
+              const item = document.createElement("div");
+              item.className = "stream-item";
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.checked = stream.enabled;
+              checkbox.setAttribute("data-url", videoSrc);
+              checkbox.addEventListener("change", (e)=> { updateStreamEnabled(videoSrc, e.target.checked); });
+              item.appendChild(checkbox);
+              
+              const label = document.createElement("label");
+              label.textContent = title;
+              label.setAttribute("data-url", videoSrc);
+              label.addEventListener("mousedown", (e)=>{
+                if(e.button===0){ 
+                  checkbox.checked = !checkbox.checked; 
+                  activeLabels.add(label); 
+                  e.preventDefault();
+                }
+              });
+              label.addEventListener("mouseenter", (e)=>{
+                if(e.buttons & 1 && !activeLabels.has(label)){
+                  checkbox.checked = !checkbox.checked;
+                  activeLabels.add(label);
+                }
+              });
+              item.appendChild(label);
+              sidebarList.appendChild(item);
+            });
           }
+        }
+        
+        function toggleFullScreen(container) {
+          if(!document.fullscreenElement) {
+            container.requestFullscreen().catch(err => console.error("Full screen error:", err));
+          } else {
+            document.exitFullscreen().catch(err => console.error("Exit full screen error:", err));
+          }
+        }
+        
+        // Create a Video.js player container for a given stream.
+        function createPlayerContainer(streamConfig) {
+          if(!streamConfig.enabled) return null;
+          const videoSrc = streamConfig.url;
+          const title = extractTitle(videoSrc);
+          const isMobile = document.documentElement.classList.contains("mobile");
+          const container = document.createElement("div");
+          container.className = "player-container " + (isMobile ? "mobile" : "desktop");
+          container.setAttribute("data-url", videoSrc);
+      
+          // Create a unique video element ID.
+          const videoId = "video_" + Math.random().toString(36).substring(2,10);
+      
+          // Create video element – for both desktop and mobile we use Video.js
+          const videoEl = document.createElement("video");
+          videoEl.id = videoId;
+          videoEl.className = "video-js vjs-default-skin";
+          // Set dimensions based on platform:
+          if(isMobile){
+            videoEl.style.width = "240px";
+            videoEl.style.height = "135px";
+          } else {
+            videoEl.style.width = "960px";
+            videoEl.style.height = "540px";
+          }
+          // Add the source element.
+          const sourceEl = document.createElement("source");
+          sourceEl.src = videoSrc;
+          sourceEl.type = "application/x-mpegURL";
+          videoEl.appendChild(sourceEl);
+      
+          container.appendChild(videoEl);
+      
+          // Initialize Video.js on the video element.
+          const vjsOptions = {
+            controls: true,
+            autoplay: false,
+            preload: "auto"
+          };
+          var vjsPlayer = videojs(videoId, vjsOptions, function(){
+            console.log("Video.js player ready for stream:", videoSrc);
+          });
+          
+          // On desktop, initialize the panzoom plugin
+          if(!isMobile){
+            // Try to load saved panzoom state.
+            var savedState = loadPanzoomState(videoSrc);
+            // Call the panzoom plugin with any saved state as options.
+            vjsPlayer.panzoom(savedState);
+            // Listen for panzoom changes and save state.
+            vjsPlayer.on("panzoomchange", function(){
+              var state = vjsPlayer.panzoom.getState();
+              savePanzoomState(videoSrc, state);
+            });
+          }
+      
+          // (Additional configuration could be added here if needed.)
+      
+          // Save a reference to the player.
+          container.vjsPlayer = vjsPlayer;
+          return container;
+        }
+        
+        function reorderPlayerContainers(){
+          const mainContent = document.getElementById("main-content");
+          const config = getStreamList();
+          const players = Array.from(mainContent.querySelectorAll(".player-container"));
+          players.sort((a, b) => {
+            let indexA = config.findIndex(s => s.url === a.getAttribute("data-url"));
+            let indexB = config.findIndex(s => s.url === b.getAttribute("data-url"));
+            return indexA - indexB;
+          });
+          players.forEach(p => mainContent.appendChild(p));
+        }
+      
+        function updateStreamEnabled(url, enabled){
+          let streams = getStreamList();
+          const idx = streams.findIndex(s => s.url === url);
+          if(idx === -1) return;
+          if(streams[idx].enabled !== enabled){
+            streams[idx].enabled = enabled;
+            saveStreamList(streams);
+          }
+          let playerContainer = document.querySelector('.player-container[data-url="'+url+'"]');
+          const mainContent = document.getElementById("main-content");
+          if(enabled){
+            if(!playerContainer){
+              playerContainer = createPlayerContainer(streams[idx]);
+              if(playerContainer) mainContent.appendChild(playerContainer);
+            } else {
+              playerContainer.style.display = "flex";
+            }
+          } else {
+            if(playerContainer){
+              if(playerContainer.vjsPlayer){
+                playerContainer.vjsPlayer.dispose();
+              }
+              if(playerContainer.parentNode) playerContainer.parentNode.removeChild(playerContainer);
+            }
+          }
+          reorderPlayerContainers();
+          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="'+url+'"]');
+          if(checkbox) checkbox.checked = enabled;
+        }
+      
+        function updateFullUI(refresh = true){
+          if(refresh){
+            const mainContent = document.getElementById("main-content");
+            mainContent.innerHTML = "";
+            const streamList = getStreamList();
+            const enabledStreams = streamList.filter(s => s.enabled);
+            if(enabledStreams.length > 0){
+              enabledStreams.forEach(stream => {
+                const player = createPlayerContainer(stream);
+                if(player) mainContent.appendChild(player);
+              });
+              reorderPlayerContainers();
+            }
+            updateStreamSidebar();
+          }
+        }
+      
+        document.addEventListener("mouseup", function(){
+          activeLabels.forEach(function(label){
+            const url = label.getAttribute("data-url");
+            const checkbox = label.parentElement.querySelector("input[type='checkbox']");
+            updateStreamEnabled(url, checkbox.checked);
+          });
+          activeLabels.clear();
         });
-        saveStreamList(newConfig);
-        updateStreamSidebar();
-        oldStreams.forEach(s => { if(!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); } });
-        newConfig.forEach(s => { if(s.enabled) { updateStreamEnabled(s.url, true); } });
-      }
-      urlInput.value = "";
-    }
-    
-    btnAddUrls.addEventListener("click", showModal);
-    btnSaveUrls.addEventListener("click", function(){ hideModal(true); });
-    window.addEventListener("keydown", function(e){
-      if(e.key==="Escape"){ if(modal.style.display==="block") hideModal(false); }
-    });
-    
-    updateFullUI();
-  })();
-  
-  // Mobile: Sidebar swipe handling.
-  (function(){
-    if(!document.documentElement.classList.contains("mobile")) return;
-    const sidebar = document.getElementById("sidebar");
-    const toggleBtn = document.getElementById("sidebarToggle");
-    let touchStartX = 0, touchEndX = 0;
-    const swipeThreshold = 50;
-    sidebar.addEventListener("touchstart", function(e){ touchStartX = e.changedTouches[0].screenX; });
-    sidebar.addEventListener("touchend", function(e){
-      touchEndX = e.changedTouches[0].screenX;
-      if(touchStartX - touchEndX > swipeThreshold){
-        sidebar.classList.add("hidden");
-        toggleBtn.style.display = "block";
-      }
-    });
-    toggleBtn.addEventListener("click", function(){
-      sidebar.classList.remove("hidden");
-      toggleBtn.style.display = "none";
-    });
-  })();
-  
-  // Desktop: Listen for fullscreen change events.
-  document.addEventListener("fullscreenchange", function(){
-    console.log("Fullscreen changed. Now", document.fullscreenElement ? "Full screen" : "Normal window");
-  });
-  
-</script>
-</body> </html>
+      
+        function showAllStreams(){
+          const streams = getStreamList();
+          streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
+        }
+        function hideAllStreams(){
+          const streams = getStreamList();
+          streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
+        }
+        document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
+        document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
+      
+        // URL Modal logic.
+        const modal = document.getElementById("urlModal");
+        const backdrop = document.getElementById("modalBackdrop");
+        const btnAddUrls = document.getElementById("btn-add-urls");
+        const btnSaveUrls = document.getElementById("saveUrls");
+        const urlInput = document.getElementById("urlInput");
+      
+        function showModal(){
+          const streams = getStreamList();
+          urlInput.value = streams.map(s => s.url).join("\n");
+          modal.style.display = "block";
+          backdrop.style.display = "block";
+        }
+        function hideModal(saveChanges){
+          modal.style.display = "none";
+          backdrop.style.display = "none";
+          if(saveChanges){
+            const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u);
+            const oldStreams = getStreamList();
+            const newConfig = [];
+            newUrls.forEach(url => {
+              const existing = oldStreams.find(s => s.url === url);
+              if(existing){ newConfig.push(existing); }
+              else { newConfig.push({ url: url, enabled: true }); }
+            });
+            saveStreamList(newConfig);
+            updateStreamSidebar();
+            oldStreams.forEach(s => { if(!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); } });
+            newConfig.forEach(s => { if(s.enabled) { updateStreamEnabled(s.url, true); } });
+          }
+          urlInput.value = "";
+        }
+      
+        btnAddUrls.addEventListener("click", showModal);
+        btnSaveUrls.addEventListener("click", function(){ hideModal(true); });
+        window.addEventListener("keydown", function(e){
+          if(e.key==="Escape"){ if(modal.style.display==="block") hideModal(false); }
+        });
+      
+        updateFullUI();
+      })();
+      
+      // Mobile: Sidebar swipe handling.
+      (function(){
+        if(!document.documentElement.classList.contains("mobile")) return;
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("sidebarToggle");
+        let touchStartX = 0, touchEndX = 0;
+        const swipeThreshold = 50;
+        sidebar.addEventListener("touchstart", function(e){ touchStartX = e.changedTouches[0].screenX; });
+        sidebar.addEventListener("touchend", function(e){
+          touchEndX = e.changedTouches[0].screenX;
+          if(touchStartX - touchEndX > swipeThreshold){ sidebar.classList.add("hidden"); toggleBtn.style.display = "block"; }
+        });
+        toggleBtn.addEventListener("click", function(){
+          sidebar.classList.remove("hidden");
+          toggleBtn.style.display = "none";
+        });
+      })();
+      
+      // Desktop: Listen for fullscreen changes.
+      document.addEventListener("fullscreenchange", function(){
+        console.log("Fullscreen changed. Now", document.fullscreenElement ? "Full screen" : "Windowed");
+      });
+    </script>
+  </body>
+</html>
