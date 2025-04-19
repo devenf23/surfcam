@@ -110,6 +110,12 @@
         background: #444; border: none; padding: 10px 12px;
         font-size: 24px; color: #fff; cursor: pointer;
       }
+      /* make the canvas fill the container when it's in full‑screen */
+      .player-container:fullscreen .display-canvas,
+      .player-container:-webkit-full-screen .display-canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
     </style>
     <script>
       // Mark mobile UA
@@ -414,8 +420,8 @@
 
             const fsBtn=document.createElement("button");
             fsBtn.textContent="⛶";
-            fsBtn.addEventListener("click",()=>{
-              if(!document.fullscreenElement) enterFullScreen(sourceVideo);
+            fsBtn.addEventListener("click", ()=>{
+              if (!document.fullscreenElement) enterFullScreen(container);
               else exitFullScreen();
             });
             bar.appendChild(fsBtn);
@@ -493,7 +499,7 @@
 
           // dblclick to fullscreen on mobile or desktop
           container.addEventListener("dblclick",()=>{
-            if(!document.fullscreenElement) enterFullScreen(sourceVideo);
+            if(!document.fullscreenElement) enterFullScreen(container);
             else exitFullScreen();
           });
 
