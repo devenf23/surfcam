@@ -9,7 +9,7 @@
       html, body {
         margin: 0;
         padding: 0;
-        height: 100%;
+        height: 100vh;
         font-family: Arial, sans-serif;
         background: #222;
         color: #fff;
@@ -28,7 +28,7 @@
         overflow-y: auto;
         transition: transform 0.3s ease;
       }
-      /* When hidden, sidebar slides off-screen */
+      /* When hidden, the sidebar slides off-screen */
       #sidebar.hidden {
         transform: translateX(-100%);
       }
@@ -183,7 +183,7 @@
         height: 100%;
         background-color: rgba(0,0,0,0.5);
       }
-      /* Mobile-specific styles using the "mobile" class on html */
+      /* MOBILE SPECIFIC STYLES (using the "mobile" class on html) */
       html.mobile #sidebar {
         /* Make sidebar overlay the video area */
         position: fixed;
@@ -193,17 +193,16 @@
         z-index: 1000;
       }
       html.mobile #main-content {
-        /* Keep main content visible but obscured by sidebar when it slides in */
         margin-left: 0;
       }
       html.mobile .player-container {
         /* Scale video players 4x smaller */
         width: 240px;   /* 960/4 */
-        height: 150px;  /* 600/4 (approximately, note canvas will be maintained accordingly) */
+        height: 150px;  /* approx 600/4 */
       }
       html.mobile .display-canvas {
         width: 240px;
-        height: 135px;  /* 540/4 ~ 135 */
+        height: 135px;  /* 540/4 ~135 */
       }
       html.mobile #urlModal {
         width: 300px; /* 1200/4 */
@@ -219,7 +218,7 @@
         padding: 5px;
         font-size: 12px;
       }
-      /* Sidebar toggle arrow styling (visible only on mobile when sidebar is hidden) */
+      /* Sidebar toggle arrow – appears when sidebar is hidden on mobile */
       #sidebarToggle {
         display: none;
       }
@@ -239,14 +238,14 @@
       }
     </style>
     <script>
-      // Detect mobile device via userAgent and add "mobile" class to <html>
+      // Use user agent detection to add the "mobile" class to <html> if a mobile device is detected.
       if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         document.documentElement.classList.add("mobile");
       }
     </script>
   </head>
   <body>
-    <!-- Mobile sidebar toggle button (hidden on desktop) -->
+    <!-- Mobile sidebar toggle button (appears only on mobile when sidebar is hidden) -->
     <button id="sidebarToggle">&#x25B6;</button>
     <!-- Global Spacebar Listeners -->
     <script>
@@ -441,15 +440,17 @@
           
           container.addEventListener("dblclick", function(e) { toggleFullScreen(container); });
           
+          // Create the video element without the autoplay attribute.
           const sourceVideo = document.createElement("video");
           sourceVideo.className = "source-video";
-          // Extra attributes to encourage inline playback on Brave mobile
+          // For mobile browsers (including Brave Mobile) require user interaction to start playback.
           sourceVideo.muted = true;
-          sourceVideo.autoplay = true;
+          // Remove autoplay so that browsers do not block playback until a tap.
+          // sourceVideo.autoplay = true; // REMOVED
           sourceVideo.playsInline = true;
           sourceVideo.setAttribute("playsinline", "true");
           sourceVideo.setAttribute("webkit-playsinline", "true");
-          // Adding controls may help on some platforms
+          // Adding controls allows users to start playback manually.
           sourceVideo.setAttribute("controls", "true");
           sourceVideo.preload = "auto";
           sourceVideo.crossOrigin = "anonymous";
@@ -492,16 +493,11 @@
             }
           });
           displayCanvas.addEventListener("click", function(e) {
-            if (!isDragging) {
-              if (sourceVideo.paused) {
-                sourceVideo.play().catch(err => console.error("Play error:", err));
-                playPauseBtn.textContent = "Pause";
-                container.userPaused = false;
-              } else {
-                sourceVideo.pause();
-                playPauseBtn.textContent = "Play";
-                container.userPaused = true;
-              }
+            // When the user taps the canvas, check if the video is playing.
+            // If not, trigger a play. This ensures a user gesture is registered.
+            if (sourceVideo.paused) {
+              sourceVideo.play().then(() => { console.log("Playback started via user interaction"); })
+                .catch(err => { console.error("Play error:", err); });
             }
           });
           
@@ -514,7 +510,7 @@
           controlBar.className = "control-bar";
           
           const playPauseBtn = document.createElement("button");
-          playPauseBtn.textContent = "Pause";
+          playPauseBtn.textContent = "Play";
           playPauseBtn.addEventListener("click", function(e) {
             if (sourceVideo.paused) {
               sourceVideo.play().catch(err => console.error("Play error:", err));
@@ -617,13 +613,7 @@
               hls.attachMedia(sourceVideo);
               hls.on(Hls.Events.MANIFEST_PARSED, function() {
                 console.log("Manifest parsed for", videoSrc);
-                sourceVideo.addEventListener("loadedmetadata", function() {
-                  console.log("loadedmetadata event fired");
-                  setTimeout(function() {
-                    sourceVideo.play().then(() => { console.log("Playback started successfully"); })
-                      .catch(err => { console.error("Play error:", err); });
-                  }, 300);
-                }, { once: true });
+                // Do not immediately call play()—waiting for user gesture.
               });
               hls.on(Hls.Events.ERROR, function(event, data) {
                 console.error("Hls.js error:", data);
@@ -648,7 +638,8 @@
             } else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
               sourceVideo.src = videoSrc;
               sourceVideo.addEventListener("loadedmetadata", function() {
-                sourceVideo.play().catch(err => console.error("Play error:", err));
+                // Wait for user gesture
+                console.log("Native HLS loaded, waiting for user tap to play.");
               });
             }
           }
@@ -816,7 +807,6 @@
         let touchEndX = 0;
         const swipeThreshold = 50; // minimum swipe distance in px
         
-        // When swiping left on the sidebar, hide it.
         sidebar.addEventListener("touchstart", function(e) {
           touchStartX = e.changedTouches[0].screenX;
         });
@@ -827,7 +817,6 @@
             toggleBtn.style.display = "block";
           }
         });
-        // Toggle button click shows the sidebar again.
         toggleBtn.addEventListener("click", function() {
           sidebar.classList.remove("hidden");
           toggleBtn.style.display = "none";
