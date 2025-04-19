@@ -1,22 +1,24 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>Live DVR – Video.js with Panzoom & Persistent State</title> <!-- Video.js CSS from CDN --> <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet" /> <style> html, body { margin: 0; padding: 0; height: 100vh; font-family: Arial, sans-serif; background: #222; color: #fff; overflow: hidden; } .container { display: flex; height: 100vh; } /* Sidebar styling */ #sidebar { background-color: #444; width: 220px; padding: 20px; box-sizing: border-box; overflow-y: auto; transition: transform 0.3s ease; } #sidebar.hidden { transform: translateX(-100%); } #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; } #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; } .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; } #streamList { margin-top: 10px; line-height: 1.2; } #streamList label { color: #fff; } .no-streams { font-style: italic; color: #bbb; margin-top: 10px; } .stream-item { margin-bottom: 5px; display: flex; align-items: center; } .stream-item label { margin-left: 5px; font-size: 16px; cursor: pointer; user-select: none; } /* Main content area for players */ #main-content { flex: 1; background-color: #333; padding: 20px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 20px; overflow: auto; } /* Desktop player container */ .player-container.desktop { width: 960px; height: 600px; background-color: #222; position: relative; margin-bottom: 40px; box-sizing: border-box; } /* Mobile player container (approx. 4× smaller) */ .player-container.mobile { width: 240px; height: 150px; background-color: #222; position: relative; margin-bottom: 20px; box-sizing: border-box; } /* In desktop, we use Video.js which renders the video via the HTML5 video element. The panzoom plugin will attach to the Video.js player wrapper. Thus we rely on Video.js styling. */ .player-container .video-js { width: 100%; height: 100%; } /* Mobile: (optionally) hide any custom overlay – we are using native controls) */ .mobile-play-overlay { display: none; } /* URL Modal styling */ #urlModal { display: none; position: fixed; z-index: 10; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1200px; background-color: #555; border: 2px solid #fff; padding: 15px; box-sizing: border-box; } #urlModal textarea { width: 100%; height: 600px; padding: 10px; font-size: 14px; box-sizing: border-box; } #urlModal button { width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; cursor: pointer; } #modalBackdrop { display: none; position: fixed; z-index: 5; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); } /* Mobile adjustments */ html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; } html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; } html.mobile #urlModal button { padding: 5px; font-size: 12px; } html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; } html.mobile #main-content { margin-left: 0; } /* Mobile sidebar toggle arrow */ #sidebarToggle { display: none; } html.mobile #sidebarToggle { display: block; position: fixed; top: 50%; left: 0; transform: translate(-50%, -50%); z-index: 1100; background: #444; border: none; padding: 10px 12px; font-size: 24px; color: #fff; cursor: pointer; } </style> </head> <body> <!-- Mobile sidebar toggle --> <button id="sidebarToggle">&#x25B6;</button> <!-- Global Spacebar Listeners (for desktop pan/zoom, if needed by future customizations) --> <script> let spaceHeld = false; window.addEventListener("keydown", (e) => { if (e.code === "Space" && !["input", "textarea", "button"].includes(document.activeElement.tagName.toLowerCase())) { e.preventDefault(); spaceHeld = true; } }); window.addEventListener("keyup", (e) => { if (e.code === "Space") spaceHeld = false; }); </script> <div class="container"> <div id="sidebar"> <button id="btn-add-urls">Add URLs</button> <div id="sideButtons"> <button id="btn-show-all" class="sideBtn">Show All</button> <button id="btn-hide-all" class="sideBtn">Hide All</button> </div> <div id="streamList"></div> </div> <div id="main-content"></div> </div> <div id="modalBackdrop"></div> <div id="urlModal"> <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3> <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea> <button id="saveUrls">Save and Close</button> </div> <!-- Load Video.js from CDN --> <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script> <!-- Load videojs-panzoom plugin from CDN --> <script src="https://unpkg.com/videojs-panzoom/dist/videojs-panzoom.min.js"></script> <script> /*********************************************** * Video.js with Panzoom and Persisted State ***********************************************/
-  // Utility: Save a pan/zoom state in localStorage under a key using the stream URL.
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>Live DVR – Video.js with Panzoom, Sidebar & Mobile Adjustments</title> <!-- Video.js CSS from CDN --> <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet" /> <style> /* GENERAL STYLES */ html, body { margin: 0; padding: 0; height: 100vh; font-family: Arial, sans-serif; background: #222; color: #fff; overflow: hidden; } .container { display: flex; height: 100vh; } /* SIDEBAR */ #sidebar { background: #444; width: 220px; padding: 20px; box-sizing: border-box; overflow-y: auto; transition: transform 0.3s ease; } #sidebar.hidden { transform: translateX(-100%); } #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; } #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; } .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; } #streamList { margin-top: 10px; line-height: 1.2; } #streamList label { color: #fff; } .no-streams { font-style: italic; color: #bbb; margin-top: 10px; } .stream-item { margin-bottom: 5px; display: flex; align-items: center; } /* The following label events support clicking and dragging to toggle streams: */ .stream-item label { margin-left: 5px; font-size: 16px; cursor: pointer; user-select: none; } /* MAIN CONTENT / PLAYER CONTAINERS */ #main-content { flex: 1; background: #333; padding: 20px; display: flex; flex-wrap: wrap; gap: 20px; box-sizing: border-box; overflow: auto; } /* Desktop player container – full‑size Video.js player */ .player-container.desktop { width: 960px; height: 600px; background: #222; position: relative; margin-bottom: 40px; box-sizing: border-box; } /* Mobile player container – about 4× smaller */ .player-container.mobile { width: 240px; height: 150px; background: #222; position: relative; margin-bottom: 20px; box-sizing: border-box; } /* Video.js player styling: In desktop we use the default Video.js skin. */ .player-container .video-js { width: 100%; height: 100%; } /* (On desktop pan/zoom will be applied via the videojs-panzoom plugin.) */ /* URL Modal (for desktop) – on mobile we scale down 4× */ #urlModal { display: none; position: fixed; z-index: 10; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1200px; background: #555; border: 2px solid #fff; padding: 15px; box-sizing: border-box; } /* On mobile, make the modal 4× smaller */ html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; } #urlModal textarea { width: 100%; height: 600px; padding: 10px; font-size: 14px; box-sizing: border-box; } html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; } #urlModal button { width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; cursor: pointer; } html.mobile #urlModal button { padding: 5px; font-size: 12px; } #modalBackdrop { display: none; position: fixed; z-index: 5; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); } /* Mobile sidebar styling */ html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; } html.mobile #main-content { margin-left: 0; } /* Mobile sidebar toggle arrow */ #sidebarToggle { display: none; } html.mobile #sidebarToggle { display: block; position: fixed; top: 50%; left: 0; transform: translate(-50%, -50%); z-index: 1100; background: #444; border: none; padding: 10px 12px; font-size: 24px; color: #fff; cursor: pointer; } /* Desktop control overlay (if needed to show title, etc.) */ .title-bar { position: absolute; top: 0; left: 0; width: 100%; padding: 5px 10px; background: rgba(0, 0, 0, 0.75); font-size: 16px; box-sizing: border-box; } </style> </head> <body> <!-- Mobile sidebar toggle --> <button id="sidebarToggle">&#x25B6;</button> <!-- Global spacebar (if needed for pan/zoom, not used by plugin though) --> <script> let spaceHeld = false; window.addEventListener("keydown", (e) => { if (e.code === "Space" && !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) { e.preventDefault(); spaceHeld = true; } }); window.addEventListener("keyup", (e) => { if (e.code === "Space") spaceHeld = false; }); </script> <div class="container"> <div id="sidebar"> <button id="btn-add-urls">Add URLs</button> <div id="sideButtons"> <button id="btn-show-all" class="sideBtn">Show All</button> <button id="btn-hide-all" class="sideBtn">Hide All</button> </div> <div id="streamList"></div> </div> <div id="main-content"></div> </div> <div id="modalBackdrop"></div> <div id="urlModal"> <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3> <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea> <button id="saveUrls">Save and Close</button> </div> <!-- Load Video.js and videojs-panzoom from CDN --> <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script> <script src="https://unpkg.com/videojs-panzoom/dist/videojs-panzoom.min.js"></script> <script> /****************************************** * Desktop & Mobile Stream Player Page ******************************************/
+  // ----------------------------
+  // Video.js – Panzoom Persistence
+  // ----------------------------
   function savePanZoomState(url, state) {
     localStorage.setItem("panzoomState_" + url, JSON.stringify(state));
   }
-  
-  // Utility: Load the pan/zoom state from localStorage.
   function loadPanZoomState(url) {
     const saved = localStorage.getItem("panzoomState_" + url);
     return saved ? JSON.parse(saved) : {};
   }
   
-  // Functions to manage the stream list (saved in localStorage)
-  const STREAMS_KEY = "streamConfigs";
+  // ----------------------------
+  // Stream List Utilities
+  // ----------------------------
+  const STORAGE_KEY = "streamConfigs";
   function saveStreamList(list) {
-    localStorage.setItem(STREAMS_KEY, JSON.stringify(list));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   }
   function getStreamList() {
-    const stored = localStorage.getItem(STREAMS_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
     try {
       return JSON.parse(stored);
@@ -25,7 +27,9 @@
     }
   }
   
-  // Update the sidebar with the list of streams.
+  // ----------------------------
+  // Sidebar Update & Mouse/Drag for Selection
+  // ----------------------------
   function updateStreamSidebar() {
     const sidebar = document.getElementById("streamList");
     sidebar.innerHTML = "";
@@ -46,20 +50,36 @@
         checkbox.type = "checkbox";
         checkbox.checked = stream.enabled;
         checkbox.setAttribute("data-url", videoSrc);
-        checkbox.addEventListener("change", e => {
-          updateStreamEnabled(videoSrc, e.target.checked);
-        });
         item.appendChild(checkbox);
         const label = document.createElement("label");
         label.textContent = title;
         label.setAttribute("data-url", videoSrc);
+        // Enable clicking and dragging on labels.
+        label.addEventListener("mousedown", function (e) {
+          if (e.button === 0) {
+            checkbox.checked = !checkbox.checked;
+            label.classList.add("active");
+            e.preventDefault();
+          }
+        });
+        label.addEventListener("mouseenter", function (e) {
+          if (e.buttons & 1 && !label.classList.contains("active")) {
+            checkbox.checked = !checkbox.checked;
+            label.classList.add("active");
+          }
+        });
+        label.addEventListener("mouseup", function(){
+          label.classList.remove("active");
+        });
         item.appendChild(label);
         sidebar.appendChild(item);
       });
     }
   }
   
-  // Create a Video.js player container for a stream.
+  // ----------------------------
+  // Player Creation (Desktop/Mobile)
+  // ----------------------------
   function createPlayerContainer(streamConfig) {
     if (!streamConfig.enabled) return null;
     const videoSrc = streamConfig.url;
@@ -67,14 +87,13 @@
     const title = match ? match[1] : videoSrc;
     const isMobile = document.documentElement.classList.contains("mobile");
     
-    // Create container.
+    // Create container (using Video.js, our players will be created within this container).
     const container = document.createElement("div");
     container.className = "player-container " + (isMobile ? "mobile" : "desktop");
     container.setAttribute("data-url", videoSrc);
     
-    // Create the video element.
+    // Create a video element for Video.js.
     const videoEl = document.createElement("video");
-    // Create a unique ID for the video.
     videoEl.id = "video-" + Math.random().toString(36).substr(2, 9);
     videoEl.className = "video-js vjs-default-skin";
     videoEl.setAttribute("controls", "true");
@@ -90,18 +109,17 @@
     
     container.appendChild(videoEl);
     
-    // Initialize Video.js.
+    // Initialize Video.js player.
     var player = videojs(videoEl.id, {
       autoplay: isMobile ? false : true,
       fluid: false
     });
     
-    // If desktop, initialize the panzoom plugin.
+    // On desktop, initialize videojs-panzoom.
     if (!isMobile) {
       var panzoomOptions = loadPanZoomState(videoSrc);
-      // Pass any saved panzoom state to the plugin.
       player.panzoom(panzoomOptions);
-      // Listen for panzoom changes (the plugin should fire a "panzoom:change" event).
+      // Listen for state changes (the plugin should trigger a "panzoom:change" event)
       player.on("panzoom:change", function () {
         if (player.panzoom && typeof player.panzoom.getState === "function") {
           var state = player.panzoom.getState();
@@ -110,7 +128,7 @@
       });
     }
     
-    // For desktop, add a title overlay.
+    // Add a title overlay for desktop.
     if (!isMobile) {
       var titleEl = document.createElement("div");
       titleEl.className = "title-bar";
@@ -121,7 +139,23 @@
     return container;
   }
   
-  // Update a stream’s enabled state.
+  // ----------------------------
+  // Update and Reorder Players
+  // ----------------------------
+  function reorderPlayerContainers() {
+    const mainContent = document.getElementById("main-content");
+    const streams = getStreamList();
+    const players = Array.from(mainContent.querySelectorAll(".player-container"));
+    players.sort((a, b) => {
+      const urlA = a.getAttribute("data-url"),
+            urlB = b.getAttribute("data-url");
+      const indexA = streams.findIndex(s => s.url === urlA);
+      const indexB = streams.findIndex(s => s.url === urlB);
+      return indexA - indexB;
+    });
+    players.forEach(p => mainContent.appendChild(p));
+  }
+  
   function updateStreamEnabled(url, enabled) {
     let streams = getStreamList();
     const idx = streams.findIndex(s => s.url === url);
@@ -150,22 +184,6 @@
     if (checkbox) checkbox.checked = enabled;
   }
   
-  // Reorder player containers to match the stream list.
-  function reorderPlayerContainers() {
-    const mainContent = document.getElementById("main-content");
-    const streams = getStreamList();
-    const containers = Array.from(mainContent.querySelectorAll(".player-container"));
-    containers.sort((a, b) => {
-      const urlA = a.getAttribute("data-url");
-      const urlB = b.getAttribute("data-url");
-      const indexA = streams.findIndex(s => s.url === urlA);
-      const indexB = streams.findIndex(s => s.url === urlB);
-      return indexA - indexB;
-    });
-    containers.forEach(c => mainContent.appendChild(c));
-  }
-  
-  // Update full UI.
   function updateFullUI(refresh = true) {
     if (refresh) {
       const mainContent = document.getElementById("main-content");
@@ -181,11 +199,13 @@
     }
   }
   
-  // Sidebar interaction.
-  (function() {
+  // ----------------------------
+  // Sidebar Interaction: Enable click and drag selection.
+  // ----------------------------
+  (function () {
     const activeLabels = new Set();
     document.addEventListener("mouseup", function () {
-      activeLabels.forEach(label => {
+      activeLabels.forEach(function (label) {
         const url = label.getAttribute("data-url");
         const checkbox = label.parentElement.querySelector("input[type='checkbox']");
         updateStreamEnabled(url, checkbox.checked);
@@ -194,7 +214,9 @@
     });
   })();
   
-  // Show/hide streams buttons.
+  // ----------------------------
+  // Buttons to Show/Hide All Streams.
+  // ----------------------------
   function showAllStreams() {
     const streams = getStreamList();
     streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
@@ -206,7 +228,9 @@
   document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
   document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
   
+  // ----------------------------
   // URL Modal functions.
+  // ----------------------------
   const modal = document.getElementById("urlModal");
   const backdrop = document.getElementById("modalBackdrop");
   const btnAddUrls = document.getElementById("btn-add-urls");
@@ -219,6 +243,7 @@
     modal.style.display = "block";
     backdrop.style.display = "block";
   }
+  
   function hideModal(saveChanges) {
     modal.style.display = "none";
     backdrop.style.display = "none";
@@ -238,13 +263,16 @@
     }
     urlInput.value = "";
   }
+  
   btnAddUrls.addEventListener("click", showModal);
   btnSaveUrls.addEventListener("click", () => { hideModal(true); });
   window.addEventListener("keydown", function (e) {
     if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); }
   });
   
-  // Mobile: Sidebar swipe handling.
+  // ----------------------------
+  // Mobile Sidebar Swipe Handling.
+  // ----------------------------
   (function () {
     if (!document.documentElement.classList.contains("mobile")) return;
     const sidebar = document.getElementById("sidebar");
@@ -265,7 +293,9 @@
     });
   })();
   
-  // Initialize UI.
+  // ----------------------------
+  // Initialize the full UI.
+  // ----------------------------
   updateFullUI();
 </script>
-</body> </html
+</body> </html>
