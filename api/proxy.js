@@ -1,40 +1,59 @@
 const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
-// Always set CORS headers first
-res.setHeader("Access-Control-Allow-Origin", "*");
-res.setHeader("Vary", "Origin");
+  // 1) Always set CORS & Range headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Range, Content-Type");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 
-// Handle OPTIONS requests
-if (req.method === "OPTIONS") {
-res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-return res.status(200).end();
-}
+  // 2) Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
-// Get the target URL from query parameters.
-const targetUrl = req.query.url;
-if (!targetUrl) {
-// Include the header even in error responses
-return res.status(400).send("Missing 'url' query parameter.");
-}
+  // 3) Validate
+  const targetUrl = req.query.url;
+  if (!targetUrl) {
+    return res.status(400).send("Missing 'url' query parameter.");
+  }
 
-try {
-const fetchOptions = {
-headers: {
-"User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N)"
-}
+  try {
+    // 4) Forward Range headers if present
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N)"
+    };
+    if (req.headers.range) {
+      headers.Range = req.headers.range;
+    }
+
+    // 5) Fetch upstream
+    const upstream = await fetch(targetUrl, {
+      method: "GET",
+      headers,
+      redirect: "follow",
+      compress: false
+    });
+
+    // 6) Mirror status
+    res.status(upstream.status);
+
+    // 7) Copy all headers except hop‑by‑hop/compression
+    upstream.headers.forEach((value, key) => {
+      const k = key.toLowerCase();
+      if (k === "transfer-encoding" || k === "content-encoding") return;
+      res.setHeader(key, value);
+    });
+
+    // 8) Re‑set CORS (in case upstream overwrote)
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "Range, Content-Type");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
+
+    // 9) Pipe data
+    upstream.body.pipe(res);
+  } catch (err) {
+    console.error("proxy.js error:", err);
+    res.status(500).send("Error fetching target URL.");
+  }
 };
-
-const response = await fetch(targetUrl, fetchOptions);
-
-// Forward the remote response's status code
-res.status(response.status);
-
-// Set the content-type from the remote response
-const contentType = response.headers.get("content-type") || "application/octet-stream";
-res.setHeader("Content-Type", contentType);
-
-// Pipe the response stream to the client.
-response.body.pipe(res);
-} catch (error) { console.error("proxy.js error:", error); return res.status(500).send("Error fetching target URL."); } };
