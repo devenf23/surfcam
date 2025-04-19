@@ -85,34 +85,32 @@
         gap: 20px;
         overflow: auto;
       }
-      /* Desktop player container (standard size) */
+      /* Desktop player container */
       .player-container.desktop {
         width: 960px;
         height: 600px;
         background: #222;
         display: flex;
         flex-direction: column;
-        position: relative;
         margin-bottom: 40px;
         box-sizing: border-box;
       }
-      /* Mobile player container (approximately 4× smaller) */
+      /* Mobile player container (approx 4× smaller) */
       .player-container.mobile {
         width: 240px;
         height: 150px;
         background: #222;
         display: flex;
         flex-direction: column;
-        position: relative;
         margin-bottom: 20px;
         box-sizing: border-box;
       }
-      /* Video.js player styling – same for desktop and mobile */
+      /* Video.js styling: full width & height */
       .player-container .video-js {
         width: 100%;
         height: 100%;
       }
-      /* Title bar below each video */
+      /* Title bar under video */
       .title-bar {
         background: #333;
         text-align: center;
@@ -205,7 +203,7 @@
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners (if additional keyboard pan/zoom is desired) -->
+    <!-- Global key listeners (for optional extra pan/zoom keyboard controls) -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -231,7 +229,9 @@
     </div>
     <div id="modalBackdrop"></div>
     <div id="urlModal">
-      <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3>
+      <h3 style="margin-top: 0; text-align: center;">
+        Paste Playlist URLs (one per line)
+      </h3>
       <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea>
       <button id="saveUrls">Save and Close</button>
     </div>
@@ -240,20 +240,17 @@
     <!-- Load videojs-panzoom plugin (version 2.0.0) -->
     <script src="https://unpkg.com/videojs-panzoom@2.0.0/dist/videojs-panzoom.min.js"></script>
     <script>
-      // Register panzoom plugin if not already available.
+      // Attempt to register the panzoom plugin if available.
       if (typeof videojs.getPlugin('panzoom') !== 'function' && typeof panzoom === 'function') {
-          videojs.registerPlugin('panzoom', panzoom);
+        videojs.registerPlugin('panzoom', panzoom);
       }
       
-      /* ----------------------------------------------------------------
-         Utility functions for panzoom state persistence.
-      ---------------------------------------------------------------- */
+      /* Utility functions: persist pan/zoom state */
       function loadPanzoomState(url) {
         const key = "panzoomState_" + url;
         const state = localStorage.getItem(key);
-        if(state){
-          try { return JSON.parse(state); }
-          catch(e){ return {}; }
+        if (state) {
+          try { return JSON.parse(state); } catch (e) { return {}; }
         }
         return {};
       }
@@ -262,10 +259,7 @@
         localStorage.setItem(key, JSON.stringify(state));
       }
       
-      /* ----------------------------------------------------------------
-         MAIN UI & STREAM MANAGEMENT
-         (Sidebar, URL modal, multi-stream selection, and Video.js integration)
-      ---------------------------------------------------------------- */
+      /* MAIN UI & STREAM MANAGEMENT */
       (function(){
         const storageKey = "streamConfigs";
         const activeLabels = new Set();
@@ -278,19 +272,17 @@
         function saveStreamList(list) {
           localStorage.setItem(storageKey, JSON.stringify(list));
         }
-      
         function getStreamList() {
           const stored = localStorage.getItem(storageKey);
-          if(!stored) return [];
-          try { return JSON.parse(stored); }
-          catch(e){ return []; }
+          if (!stored) return [];
+          try { return JSON.parse(stored); } catch(e){ return []; }
         }
       
         function updateStreamSidebar() {
           const sidebarList = document.getElementById("streamList");
           sidebarList.innerHTML = "";
           const streams = getStreamList();
-          if(streams.length === 0) {
+          if (streams.length === 0) {
             const p = document.createElement("p");
             p.className = "no-streams";
             p.textContent = "No streams added. Click 'Add URLs' to add streams.";
@@ -305,22 +297,24 @@
               checkbox.type = "checkbox";
               checkbox.checked = stream.enabled;
               checkbox.setAttribute("data-url", videoSrc);
-              checkbox.addEventListener("change", (e)=> { updateStreamEnabled(videoSrc, e.target.checked); });
+              checkbox.addEventListener("change", (e)=> {
+                updateStreamEnabled(videoSrc, e.target.checked);
+              });
               item.appendChild(checkbox);
               const label = document.createElement("label");
               label.textContent = title;
               label.setAttribute("data-url", videoSrc);
               label.addEventListener("mousedown", (e)=>{
-                if(e.button===0){ 
-                  checkbox.checked = !checkbox.checked; 
-                  activeLabels.add(label); 
-                  e.preventDefault(); 
+                if (e.button === 0) {
+                  checkbox.checked = !checkbox.checked;
+                  activeLabels.add(label);
+                  e.preventDefault();
                 }
               });
               label.addEventListener("mouseenter", (e)=>{
-                if(e.buttons & 1 && !activeLabels.has(label)){ 
-                  checkbox.checked = !checkbox.checked; 
-                  activeLabels.add(label); 
+                if (e.buttons & 1 && !activeLabels.has(label)) {
+                  checkbox.checked = !checkbox.checked;
+                  activeLabels.add(label);
                 }
               });
               item.appendChild(label);
@@ -330,88 +324,87 @@
         }
       
         function toggleFullScreen(container) {
-          if(!document.fullscreenElement) {
+          if (!document.fullscreenElement) {
             container.requestFullscreen().catch(err => console.error("Full screen error:", err));
           } else {
             document.exitFullscreen().catch(err => console.error("Exit full screen error:", err));
           }
         }
       
-        // Create a Video.js player container using videojs-panzoom.
+        // Create Video.js player container.
         function createPlayerContainer(streamConfig) {
-          if(!streamConfig.enabled) return null;
+          if (!streamConfig.enabled) return null;
           const videoSrcOrig = streamConfig.url;
-          // Wrap the original manifest URL with the proxy.
+          // Wrap the original manifest URL with your proxy.
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
           const proxiedUrl = proxyPrefix + encodeURIComponent(videoSrcOrig);
           const title = extractTitle(videoSrcOrig);
           const isMobile = document.documentElement.classList.contains("mobile");
           const container = document.createElement("div");
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
-          // Save the original URL in the container.
           container.setAttribute("data-url", videoSrcOrig);
       
-          // Save the base URL (for resolving relative fragment URLs)
+          // Compute the manifest base for resolving relative fragment URLs.
           var manifestBase = videoSrcOrig.substring(0, videoSrcOrig.lastIndexOf("/") + 1);
       
-          // Create a unique video element.
+          // Build a unique video element.
           const videoId = "vid_" + Math.random().toString(36).substring(2,10);
           const videoEl = document.createElement("video");
           videoEl.id = videoId;
           videoEl.className = "video-js vjs-default-skin";
-          if(isMobile) {
+          videoEl.playsInline = true; // for iOS
+          if (isMobile) {
             videoEl.style.width = "240px";
             videoEl.style.height = "135px";
           } else {
             videoEl.style.width = "960px";
             videoEl.style.height = "540px";
           }
-          // Create source element with the proxied URL.
+          // Create the source element using the proxied URL.
           const sourceEl = document.createElement("source");
           sourceEl.src = proxiedUrl;
           sourceEl.type = "application/x-mpegURL";
           videoEl.appendChild(sourceEl);
           container.appendChild(videoEl);
       
-          // Video.js options: autoplay=true and muted=true for autoplay in modern browsers.
+          // Video.js options with autoplay enabled (muted is required).
           const vjsOptions = {
             controls: true,
             autoplay: true,
             muted: true,
             preload: "auto"
           };
-      
-          // Initialize Video.js by passing the video element.
+          // Initialize Video.js.
           var vjsPlayer = videojs(videoEl, vjsOptions, function(){
             console.log("Video.js player ready for stream:", videoSrcOrig);
           });
       
-          // Set up a VHS beforeRequest hook to rewrite ALL HTTP requests (manifest and fragments):
+          // Set up VHS beforeRequest hook to rewrite all requests.
           vjsPlayer.ready(function() {
             if (vjsPlayer.tech(true) && vjsPlayer.tech(true).vhs) {
+              // Get current VHS options, and add/override beforeRequest.
               var vhsOptions = vjsPlayer.tech(true).vhs.options_ || {};
-              // Set (or extend) beforeRequest:
               vhsOptions.beforeRequest = function(options) {
-                // If the URL is relative, resolve it against the manifest base.
+                // If the URI is relative, resolve against manifestBase.
                 if (!/^https?:\/\//.test(options.uri)) {
                   options.uri = new URL(options.uri, manifestBase).toString();
                 }
-                // Wrap only if not already proxied.
+                // If not already proxied, wrap it.
                 if (!options.uri.startsWith(proxyPrefix)) {
                   options.uri = proxyPrefix + encodeURIComponent(options.uri);
                 }
-                // For debugging:
-                // console.log("Rewritten request URI:", options.uri);
+                // Uncomment below for debugging:
+                // console.log("Rewritten URI:", options.uri);
                 return options;
               };
               vjsPlayer.tech(true).vhs.options_ = vhsOptions;
             }
           });
       
-          // On desktop, initialize the panzoom plugin once the player is ready.
-          if(!isMobile) {
-            var savedState = loadPanzoomState(videoSrcOrig);
+          // On desktop, initialize panzoom when player is ready.
+          if (!isMobile) {
             vjsPlayer.ready(function() {
+              var savedState = loadPanzoomState(videoSrcOrig);
               if (typeof vjsPlayer.panzoom === 'function') {
                 vjsPlayer.panzoom(savedState);
                 vjsPlayer.on("panzoomchange", function(){
@@ -535,7 +528,8 @@
             const newConfig = [];
             newUrls.forEach(url => {
               const existing = oldStreams.find(s => s.url === url);
-              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
+              if (existing) { newConfig.push(existing); }
+              else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
@@ -569,7 +563,7 @@
         toggleBtn.addEventListener("click", function() { sidebar.classList.remove("hidden"); toggleBtn.style.display = "none"; });
       })();
       
-      // Desktop: Listen for fullscreen change events.
+      // Desktop: Listen for fullscreen changes.
       document.addEventListener("fullscreenchange", function() {
         console.log("Fullscreen changed. Now", document.fullscreenElement ? "Full screen" : "Windowed");
       });
