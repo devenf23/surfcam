@@ -84,7 +84,7 @@
         gap: 20px;
         overflow: auto;
       }
-      /* Desktop player container dimensions */
+      /* Desktop player containers – full size */
       .player-container.desktop {
         width: 960px;
         height: 600px;
@@ -95,7 +95,7 @@
         box-sizing: border-box;
         margin-bottom: 40px;
       }
-      /* Mobile player container dimensions (approx. 4× smaller) */
+      /* Mobile player containers – ~4× smaller */
       .player-container.mobile {
         width: 240px;
         height: 150px;
@@ -106,23 +106,23 @@
         box-sizing: border-box;
         margin-bottom: 20px;
       }
-      /* Desktop: hide source video element; canvas is used for display */
+      /* Desktop: hide the video element; display canvas instead */
       .player-container.desktop .source-video {
         visibility: hidden;
         width: 1px;
         height: 1px;
       }
-      /* Desktop: canvas dimensions */
+      /* Desktop: canvas dimensions – 960×540 */
       .player-container.desktop .display-canvas {
         background: black;
         width: 960px;
         height: 540px;
       }
-      /* Mobile: show native video element with controls */
+      /* Mobile: show the native video element with controls */
       .player-container.mobile .source-video {
         visibility: visible;
         width: 240px;
-        height: 135px; /* roughly 540/4 */
+        height: 135px; /* about 540/4 */
       }
       /* Mobile: hide the desktop canvas */
       .player-container.mobile .display-canvas {
@@ -136,7 +136,7 @@
         height: 60px;
         display: flex;
         align-items: center;
-        background: rgba(0, 0, 0, 0.75);
+        background: rgba(0,0,0,0.75);
         padding: 5px 10px;
         gap: 10px;
       }
@@ -156,7 +156,7 @@
       .title-bar {
         text-align: center;
         padding: 2px 10px;
-        background: rgba(0, 0, 0, 0.75);
+        background: rgba(0,0,0,0.75);
         font-size: 16px;
       }
       /* Fullscreen overlay controls (desktop only) */
@@ -202,7 +202,7 @@
         top: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(0,0,0,0.5);
       }
       /* Mobile-specific adjustments */
       html.mobile #urlModal {
@@ -229,7 +229,7 @@
       html.mobile #main-content {
         margin-left: 0;
       }
-      /* Sidebar toggle arrow for mobile */
+      /* Mobile: Sidebar toggle arrow */
       #sidebarToggle {
         display: none;
       }
@@ -256,9 +256,9 @@
     </script>
   </head>
   <body>
-    <!-- Mobile sidebar toggle button -->
+    <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners (prevents spacebar from scrolling) -->
+    <!-- Global Spacebar Listeners (prevent spacebar from scrolling) -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -349,7 +349,7 @@
       }
       /* ---------------------------------------------------------------- */
       
-      // Utility functions for persistent player settings.
+      // Utility functions for persistent settings.
       function loadPlayerSettings(url) {
         const ps = localStorage.getItem("playerSettings");
         if (ps) {
@@ -377,7 +377,7 @@
         localStorage.setItem("playerSettings", JSON.stringify(settings));
       }
       
-      /* Main UI & Stream Management */
+      /* Main UI & stream management */
       (function() {
         const storageKey = "streamConfigs";
         const activeLabels = new Set();
@@ -456,9 +456,12 @@
           container.panX = Math.min(halfW * Z - halfW, Math.max(halfW - halfW * Z, container.panX));
           container.panY = Math.min(halfH * Z - halfH, Math.max(halfH - halfH * Z, container.panY));
         }
-        
-        // Create the player container
+        // Create player container for a stream.
+        // Desktop uses Hls.js with canvas rendering and custom controls.
+        // Mobile uses the native video element.
         function createPlayerContainer(streamConfig) {
+          // If the stream is disabled, do not create a player.
+          if (!streamConfig.enabled) return null;
           const videoSrc = streamConfig.url;
           const title = extractTitle(videoSrc);
           const isMobile = document.documentElement.classList.contains("mobile");
@@ -475,7 +478,7 @@
           
           container.addEventListener("dblclick", function(e) { toggleFullScreen(container); });
           
-          // Create the video element.
+          // Create video element.
           const sourceVideo = document.createElement("video");
           sourceVideo.className = "source-video";
           sourceVideo.muted = true;
@@ -484,9 +487,15 @@
           sourceVideo.setAttribute("webkit-playsinline", "true");
           sourceVideo.preload = "auto";
           sourceVideo.crossOrigin = "anonymous";
+          // For mobile, attempt native playback (using canPlayType fallback).
           if (isMobile) {
             sourceVideo.setAttribute("controls", "true");
-            sourceVideo.autoplay = true;
+            // Remove forced Hls.js under mobile if native HLS appears supported.
+            if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
+              // Use native playback.
+              sourceVideo.src = videoSrc;
+            }
+            // Else, we'll fall back to Hls.js.
           } else {
             sourceVideo.autoplay = true;
           }
@@ -505,7 +514,7 @@
             console.log("timeupdate:", sourceVideo.currentTime);
           });
           
-          // Desktop: create canvas for custom rendering.
+          // Desktop: add canvas for custom rendering.
           let displayCanvas = null, ctx = null;
           if (!isMobile) {
             displayCanvas = document.createElement("canvas");
@@ -515,20 +524,16 @@
             container.appendChild(displayCanvas);
             ctx = displayCanvas.getContext("2d");
             
-            // Flag to throttle toggle to avoid rapid play/pause calls.
+            // Toggle play/pause when clicking on canvas.
             let toggleInProgress = false;
             displayCanvas.addEventListener("click", function(e) {
               if (toggleInProgress) return;
               toggleInProgress = true;
-              // Toggle play/pause on canvas click.
               if (sourceVideo.paused) {
                 sourceVideo.play().then(() => {
                   if (playPauseBtn) playPauseBtn.textContent = "Pause";
-                }).catch(err => {
-                  console.error("Play error (canvas click):", err);
-                }).finally(() => {
-                  setTimeout(() => { toggleInProgress = false; }, 100);
-                });
+                }).catch(err => console.error("Play error (canvas click):", err))
+                .finally(() => { setTimeout(() => { toggleInProgress = false; }, 100); });
               } else {
                 sourceVideo.pause();
                 if (playPauseBtn) playPauseBtn.textContent = "Play";
@@ -536,7 +541,7 @@
               }
             });
             
-            // Enable zoom/panning if spacebar is held or in full screen.
+            // Enable zoom/pan if space is held (or in full screen)
             let startX = 0, startY = 0, isDragging = false;
             const dragThreshold = 5;
             displayCanvas.addEventListener("mousedown", function(e) {
@@ -551,9 +556,7 @@
                 if (!document.fullscreenElement && !spaceHeld) return;
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
-                if (!isDragging && Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
-                  isDragging = true;
-                }
+                if (!isDragging && Math.sqrt(dx * dx + dy * dy) > dragThreshold) isDragging = true;
                 if (isDragging) {
                   container.panX += dx;
                   container.panY += dy;
@@ -576,7 +579,7 @@
               const oldZoom = container.zoomScale;
               let newZoom = oldZoom;
               const sensitivity = 0.1;
-              if (e.deltaY < 0) newZoom += sensitivity; else newZoom -= sensitivity;
+              newZoom += (e.deltaY < 0) ? sensitivity : -sensitivity;
               newZoom = Math.max(1, Math.min(newZoom, 3));
               container.panX += (oldZoom - newZoom) * (logicalX - centerX);
               container.panY += (oldZoom - newZoom) * (logicalY - centerY);
@@ -585,7 +588,7 @@
               savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
             }, { passive: false });
           } else {
-            // Mobile: add a touchend listener to attempt playback.
+            // Mobile: add touchend to trigger play and click to toggle play/pause.
             sourceVideo.addEventListener("touchend", function(e) {
               if (sourceVideo.paused) {
                 sourceVideo.play().then(() => {
@@ -595,7 +598,6 @@
                 });
               }
             });
-            // Also on mobile, click toggles play/pause.
             sourceVideo.addEventListener("click", function(e) {
               if (sourceVideo.paused) {
                 sourceVideo.play().then(() => {
@@ -677,7 +679,7 @@
             titleBar.textContent = title;
             controlsContainer.appendChild(titleBar);
             
-            // In fullscreen mode, fade controls away after 3 seconds; reappear when mouse is near the bottom.
+            // Fullscreen controls fade out after 3 sec if mouse near bottom.
             let hideControlsTimeout = null;
             function scheduleControlsHide() {
               if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
@@ -689,7 +691,7 @@
             }
             document.addEventListener("mousemove", function(e) {
               if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
-                if (e.clientY > window.innerHeight - 100) { // near bottom of screen
+                if (e.clientY > window.innerHeight - 100) {
                   controlsContainer.style.opacity = 1;
                   scheduleControlsHide();
                 }
@@ -697,59 +699,101 @@
             });
           }
           
-          // Initialize Hls.js for both desktop and mobile.
+          // Initialize Hls.js (for both desktop and mobile if native HLS is not available).
           if (Hls.isSupported()) {
-            const hlsConfig = {
-              maxBufferLength: 120,
-              maxBufferSize: 60 * 1000 * 1024,
-              liveSyncDurationCount: 3,
-              manifestLoadingTimeOut: 30000,
-              levelLoadingTimeOut: 30000
-            };
+            // For desktop, use Hls.js with ProxyLoader; for mobile, if native HLS is not supported, try Hls.js.
             if (!isMobile) {
-              const customPlaylistBase = videoSrc.substring(0, videoSrc.lastIndexOf("/") + 1);
-              console.log("StartStream (desktop): customPlaylistBase =", customPlaylistBase);
-              hlsConfig.loader = ProxyLoader;
-              hlsConfig.customPlaylistBase = customPlaylistBase;
-            }
-            const hls = new Hls(hlsConfig);
-            console.log("Loading playlist URL =", videoSrc);
-            hls.loadSource(videoSrc);
-            hls.attachMedia(sourceVideo);
-            hls.on(Hls.Events.MANIFEST_PARSED, function() {
-              console.log("Manifest parsed for", videoSrc);
-              // Attempt autoplay.
-              sourceVideo.play().then(() => {
-                console.log("Autoplay initiated");
-                if (!isMobile && playPauseBtn) {
-                  playPauseBtn.textContent = "Pause";
-                }
-              }).catch(err => {
-                console.error("Autoplay error:", err);
+              const hlsConfig = {
+                maxBufferLength: 120,
+                maxBufferSize: 60 * 1000 * 1024,
+                liveSyncDurationCount: 3,
+                manifestLoadingTimeOut: 30000,
+                levelLoadingTimeOut: 30000,
+                loader: ProxyLoader,
+                customPlaylistBase: videoSrc.substring(0, videoSrc.lastIndexOf("/") + 1)
+              };
+              const hls = new Hls(hlsConfig);
+              console.log("Loading playlist URL (desktop) =", videoSrc);
+              hls.loadSource(videoSrc);
+              hls.attachMedia(sourceVideo);
+              hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                console.log("Manifest parsed for", videoSrc);
+                // Attempt autoplay
+                sourceVideo.play().then(() => {
+                  console.log("Autoplay initiated");
+                  if (!isMobile && playPauseBtn) {
+                    playPauseBtn.textContent = "Pause";
+                  }
+                }).catch(err => {
+                  console.error("Autoplay error:", err);
+                });
               });
-            });
-            hls.on(Hls.Events.ERROR, function(event, data) {
-              console.error("Hls.js error:", data);
-              if (data.fatal) {
-                switch (data.type) {
-                  case Hls.ErrorTypes.NETWORK_ERROR:
-                    console.error("Fatal network error, attempting recovery...");
-                    hls.startLoad();
-                    break;
-                  case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.error("Fatal media error, attempting recovery...");
-                    hls.recoverMediaError();
-                    break;
-                  default:
-                    console.error("Unrecoverable error, destroying HLS instance.");
-                    hls.destroy();
-                    break;
+              hls.on(Hls.Events.ERROR, function(event, data) {
+                console.error("Hls.js error:", data);
+                if (data.fatal) {
+                  switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                      console.error("Fatal network error, attempting recovery...");
+                      hls.startLoad();
+                      break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                      console.error("Fatal media error, attempting recovery...");
+                      hls.recoverMediaError();
+                      break;
+                    default:
+                      console.error("Unrecoverable error, destroying HLS instance.");
+                      hls.destroy();
+                      break;
+                  }
                 }
+              });
+              container.hlsInstance = hls;
+            } else {
+              // Mobile: Prefer native HLS if possible.
+              if (!sourceVideo.src && sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
+                console.log("Mobile native HLS: setting sourceVideo.src");
+                sourceVideo.src = videoSrc;
+                // Let the native controls handle play; do not force autoplay.
+              } else if (!sourceVideo.src) {
+                // Fallback to Hls.js if needed.
+                const hlsConfig = {
+                  maxBufferLength: 120,
+                  maxBufferSize: 60 * 1000 * 1024,
+                  liveSyncDurationCount: 3,
+                  manifestLoadingTimeOut: 30000,
+                  levelLoadingTimeOut: 30000
+                };
+                const hls = new Hls(hlsConfig);
+                console.log("Loading playlist URL (mobile fallback) =", videoSrc);
+                hls.loadSource(videoSrc);
+                hls.attachMedia(sourceVideo);
+                sourceVideo.addEventListener("loadedmetadata", function() {
+                  console.log("Mobile fallback: manifest loaded. Waiting for user tap.");
+                });
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                  console.error("Hls.js mobile error:", data);
+                  if (data.fatal) {
+                    switch (data.type) {
+                      case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.error("Fatal network error, attempting recovery...");
+                        hls.startLoad();
+                        break;
+                      case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.error("Fatal media error, attempting recovery...");
+                        hls.recoverMediaError();
+                        break;
+                      default:
+                        console.error("Unrecoverable error, destroying HLS instance.");
+                        hls.destroy();
+                        break;
+                    }
+                  }
+                });
+                container.hlsInstance = hls;
               }
-            });
-            container.hlsInstance = hls;
+            }
           } else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
-            // Fallback for browsers with native HLS support.
+            // Fallback for native HLS support.
             sourceVideo.src = videoSrc;
             sourceVideo.addEventListener("loadedmetadata", function() {
               console.log("Native HLS loaded, attempting playback");
@@ -759,7 +803,7 @@
           
           return container;
         }
-      
+        
         function reorderPlayerContainers() {
           const mainContent = document.getElementById("main-content");
           const config = getStreamList();
@@ -773,7 +817,7 @@
           });
           players.forEach(p => mainContent.appendChild(p));
         }
-      
+        
         function updateStreamEnabled(url, enabled) {
           let streams = getStreamList();
           const idx = streams.findIndex(s => s.url === url);
@@ -787,7 +831,9 @@
           if (enabled) {
             if (!player) {
               player = createPlayerContainer(streams[idx]);
-              mainContent.appendChild(player);
+              if (player) {
+                mainContent.appendChild(player);
+              }
             } else {
               player.style.display = "flex";
               if (typeof player.startStream === "function")
@@ -795,6 +841,10 @@
             }
           } else {
             if (player) {
+              if (player.hlsInstance) {
+                player.hlsInstance.destroy();
+                player.hlsInstance = null;
+              }
               if (typeof player.stopStream === "function")
                 player.stopStream();
               if (player.parentNode)
@@ -805,7 +855,7 @@
           const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
           if (checkbox) checkbox.checked = enabled;
         }
-      
+        
         function updateFullUI(refresh = true) {
           if (refresh) {
             const mainContent = document.getElementById("main-content");
@@ -823,7 +873,7 @@
             updateStreamSidebar();
           }
         }
-      
+        
         document.addEventListener("mouseup", function(e) {
           activeLabels.forEach(function(label) {
             const url = label.getAttribute("data-url");
@@ -832,7 +882,7 @@
           });
           activeLabels.clear();
         });
-      
+        
         function showAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
@@ -841,16 +891,16 @@
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
         }
-      
+        
         document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
         document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
-      
+        
         const modal = document.getElementById("urlModal");
         const backdrop = document.getElementById("modalBackdrop");
         const btnAddUrls = document.getElementById("btn-add-urls");
         const btnSaveUrls = document.getElementById("saveUrls");
         const urlInput = document.getElementById("urlInput");
-      
+        
         function showModal() {
           const streams = getStreamList();
           urlInput.value = streams.map(s => s.url).join("\n");
@@ -875,13 +925,13 @@
           }
           urlInput.value = "";
         }
-      
+        
         btnAddUrls.addEventListener("click", showModal);
         btnSaveUrls.addEventListener("click", function() { hideModal(true); });
         window.addEventListener("keydown", function(e) {
           if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); }
         });
-      
+        
         updateFullUI();
       })();
       
