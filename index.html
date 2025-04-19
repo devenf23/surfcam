@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live DVR with Video.js Panzoom</title>
+    <title>Live DVR with Video.js Panzoom (Integrated)</title>
     <!-- Load Video.js CSS from CDN -->
     <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet" />
     <style>
@@ -17,10 +17,7 @@
         color: #fff;
         overflow: hidden;
       }
-      .container {
-        display: flex;
-        height: 100vh;
-      }
+      .container { display: flex; height: 100vh; }
       /* SIDEBAR */
       #sidebar {
         background: #444;
@@ -30,50 +27,15 @@
         overflow-y: auto;
         transition: transform 0.3s ease;
       }
-      #sidebar.hidden {
-        transform: translateX(-100%);
-      }
-      #btn-add-urls {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 10px;
-        font-size: 16px;
-        cursor: pointer;
-      }
-      #sideButtons {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 10px;
-      }
-      .sideBtn {
-        flex: 1;
-        padding: 10px;
-        font-size: 16px;
-        cursor: pointer;
-      }
-      #streamList {
-        margin-top: 10px;
-        line-height: 1.2;
-      }
-      #streamList label {
-        color: #fff;
-      }
-      .no-streams {
-        font-style: italic;
-        color: #bbb;
-        margin-top: 10px;
-      }
-      .stream-item {
-        margin-bottom: 5px;
-        display: flex;
-        align-items: center;
-      }
-      .stream-item label {
-        margin-left: 5px;
-        font-size: 16px;
-        cursor: pointer;
-        user-select: none;
-      }
+      #sidebar.hidden { transform: translateX(-100%); }
+      #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; }
+      #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; }
+      .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; }
+      #streamList { margin-top: 10px; line-height: 1.2; }
+      #streamList label { color: #fff; }
+      .no-streams { font-style: italic; color: #bbb; margin-top: 10px; }
+      .stream-item { margin-bottom: 5px; display: flex; align-items: center; }
+      .stream-item label { margin-left: 5px; font-size: 16px; cursor: pointer; user-select: none; }
       /* MAIN CONTENT – PLAYER CONTAINERS */
       #main-content {
         flex: 1;
@@ -103,10 +65,7 @@
         margin-bottom: 20px;
         box-sizing: border-box;
       }
-      .player-container .video-js {
-        width: 100%;
-        height: 100%;
-      }
+      .player-container .video-js { width: 100%; height: 100%; }
       .title-bar {
         background: #333;
         text-align: center;
@@ -127,20 +86,8 @@
         padding: 15px;
         box-sizing: border-box;
       }
-      #urlModal textarea {
-        width: 100%;
-        height: 600px;
-        padding: 10px;
-        font-size: 14px;
-        box-sizing: border-box;
-      }
-      #urlModal button {
-        width: 100%;
-        padding: 10px;
-        margin-top: 10px;
-        font-size: 16px;
-        cursor: pointer;
-      }
+      #urlModal textarea { width: 100%; height: 600px; padding: 10px; font-size: 14px; box-sizing: border-box; }
+      #urlModal button { width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; cursor: pointer; }
       #modalBackdrop {
         display: none;
         position: fixed;
@@ -152,33 +99,12 @@
         background: rgba(0, 0, 0, 0.5);
       }
       /* Mobile adjustments */
-      html.mobile #urlModal {
-        width: 300px;
-        padding: 4px;
-        font-size: 12px;
-      }
-      html.mobile #urlModal textarea {
-        height: 150px;
-        padding: 5px;
-        font-size: 12px;
-      }
-      html.mobile #urlModal button {
-        padding: 5px;
-        font-size: 12px;
-      }
-      html.mobile #sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100%;
-        z-index: 1000;
-      }
-      html.mobile #main-content {
-        margin-left: 0;
-      }
-      #sidebarToggle {
-        display: none;
-      }
+      html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; }
+      html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; }
+      html.mobile #urlModal button { padding: 5px; font-size: 12px; }
+      html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; }
+      html.mobile #main-content { margin-left: 0; }
+      #sidebarToggle { display: none; }
       html.mobile #sidebarToggle {
         display: block;
         position: fixed;
@@ -194,21 +120,27 @@
         cursor: pointer;
       }
     </style>
+    <script>
+      // Detect mobile devices.
+      if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        document.documentElement.classList.add("mobile");
+      }
+    </script>
   </head>
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global key listeners -->
+    <!-- Global key listeners for optional keyboard controls -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
-        if(e.code === "Space" && !["input", "textarea", "button"].includes(document.activeElement.tagName.toLowerCase())){
+        if (e.code === "Space" && !["input", "textarea", "button"].includes(document.activeElement.tagName.toLowerCase())) {
           e.preventDefault();
           spaceHeld = true;
         }
       });
       window.addEventListener("keyup", function(e) {
-        if(e.code === "Space") spaceHeld = false;
+        if (e.code === "Space") spaceHeld = false;
       });
     </script>
     <div class="container">
@@ -230,22 +162,21 @@
     </div>
     <!-- Load Video.js from CDN -->
     <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script>
-    <!-- Load videojs-panzoom (version 2.0.2) from jsDelivr -->
+    <!-- Load videojs-panzoom (we use version 2.0.2) from jsDelivr -->
     <script src="https://cdn.jsdelivr.net/npm/videojs-panzoom@2.0.2/dist/videojs-panzoom.min.js"></script>
     <script>
-      // Log that the panzoom script loaded
-      console.log("videojs-panzoom:", typeof panzoom);
+      console.log("videojs-panzoom loaded, type of panzoom:", typeof panzoom);
+      // Register panzoom if needed.
       if (typeof videojs.getPlugin('panzoom') !== 'function' && typeof panzoom === 'function') {
         videojs.registerPlugin('panzoom', panzoom);
-        console.log("Registered videojs-panzoom plugin.");
+        console.log("videojs-panzoom plugin registered.");
       }
       
-      /* Utility functions for panzoom state persistence */
+      /* Utility functions for persisting panzoom state */
       function loadPanzoomState(url) {
         const key = "panzoomState_" + url;
-        try {
-          return JSON.parse(localStorage.getItem(key) || "{}");
-        } catch(e) { return {}; }
+        try { return JSON.parse(localStorage.getItem(key) || "{}"); }
+        catch(e) { return {}; }
       }
       function savePanzoomState(url, state) {
         const key = "panzoomState_" + url;
@@ -256,17 +187,18 @@
       (function(){
         const storageKey = "streamConfigs";
         const activeLabels = new Set();
-      
+        
         function extractTitle(url) {
           const match = url.match(/wc-([^\/]+)\/playlist/);
           return match ? match[1] : url;
         }
+        
         function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
         function getStreamList() {
           try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); }
           catch(e){ return []; }
         }
-      
+        
         function updateStreamSidebar() {
           const sidebarList = document.getElementById("streamList");
           sidebarList.innerHTML = "";
@@ -293,15 +225,15 @@
               label.setAttribute("data-url", videoSrc);
               label.addEventListener("mousedown", (e)=>{
                 if(e.button===0){ 
-                  checkbox.checked = !checkbox.checked;
-                  activeLabels.add(label);
-                  e.preventDefault();
+                  checkbox.checked = !checkbox.checked; 
+                  activeLabels.add(label); 
+                  e.preventDefault(); 
                 }
               });
               label.addEventListener("mouseenter", (e)=>{
                 if(e.buttons & 1 && !activeLabels.has(label)){ 
-                  checkbox.checked = !checkbox.checked;
-                  activeLabels.add(label);
+                  checkbox.checked = !checkbox.checked; 
+                  activeLabels.add(label); 
                 }
               });
               item.appendChild(label);
@@ -322,17 +254,16 @@
         function createPlayerContainer(streamConfig) {
           if (!streamConfig.enabled) return null;
           const videoSrcOrig = streamConfig.url;
-          // Wrap the original manifest URL with the proxy.
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
-          // Use encodeURI so that "/" characters are preserved.
-          const proxiedUrl = proxyPrefix + encodeURI(videoSrcOrig);
+          // In our previous version, encodeURIComponent produced correct fragment URLs.
+          const proxiedUrl = proxyPrefix + encodeURIComponent(videoSrcOrig);
           const title = extractTitle(videoSrcOrig);
           const isMobile = document.documentElement.classList.contains("mobile");
           const container = document.createElement("div");
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
           container.setAttribute("data-url", videoSrcOrig);
       
-          // Calculate manifestBase for resolving relative URIs.
+          // Base URL for resolving relative fragment URLs.
           var manifestBase = videoSrcOrig.substring(0, videoSrcOrig.lastIndexOf("/") + 1);
       
           // Create a unique video element.
@@ -355,7 +286,7 @@
           videoEl.appendChild(sourceEl);
           container.appendChild(videoEl);
       
-          // Video.js options.
+          // Video.js options: autoplay & muted.
           const vjsOptions = {
             controls: true,
             autoplay: true,
@@ -366,18 +297,18 @@
             console.log("Video.js player ready for stream:", videoSrcOrig);
           });
       
-          // Set up VHS beforeRequest hook.
+          // Set VHS beforeRequest hook so that every request gets wrapped by the proxy.
           vjsPlayer.ready(function() {
             if (vjsPlayer.tech(true) && vjsPlayer.tech(true).vhs) {
               var vhsOptions = vjsPlayer.tech(true).vhs.options_ || {};
               vhsOptions.beforeRequest = function(options) {
-                // If URL is relative, resolve it.
+                // Resolve relative URLs against manifestBase.
                 if (!/^https?:\/\//.test(options.uri)) {
                   options.uri = new URL(options.uri, manifestBase).toString();
                 }
-                // Use encodeURI to preserve "/".
+                // Use encodeURIComponent to preserve the proper fragment filename.
                 if (!options.uri.startsWith(proxyPrefix)) {
-                  options.uri = proxyPrefix + encodeURI(options.uri);
+                  options.uri = proxyPrefix + encodeURIComponent(options.uri);
                 }
                 console.log("Rewritten request URI:", options.uri);
                 return options;
@@ -386,23 +317,27 @@
             }
           });
       
-          // On desktop, initialize panzoom.
+          // On desktop, initialize panzoom after a slight delay.
           if (!isMobile) {
             vjsPlayer.ready(function() {
               var savedState = loadPanzoomState(videoSrcOrig);
-              if (typeof vjsPlayer.panzoom === 'function') {
-                vjsPlayer.panzoom(savedState);
-                vjsPlayer.on("panzoomchange", function(){
-                  var state = vjsPlayer.panzoom.getState();
-                  savePanzoomState(videoSrcOrig, state);
-                });
-              } else {
-                console.error("videojs-panzoom plugin is not available on this player.");
-              }
+              // Delay initialization to ensure VHS is fully set up.
+              setTimeout(function() {
+                if (typeof vjsPlayer.panzoom === 'function') {
+                  vjsPlayer.panzoom(savedState);
+                  vjsPlayer.on("panzoomchange", function(){
+                    var state = vjsPlayer.panzoom.getState();
+                    savePanzoomState(videoSrcOrig, state);
+                  });
+                  console.log("videojs-panzoom initialized.");
+                } else {
+                  console.error("videojs-panzoom plugin is not available on this player.");
+                }
+              }, 500);
             });
           }
       
-          // Append title bar.
+          // Append a title bar.
           var titleBar = document.createElement("div");
           titleBar.className = "title-bar";
           titleBar.textContent = title;
@@ -438,9 +373,7 @@
             if (!playerContainer) {
               playerContainer = createPlayerContainer(streams[idx]);
               if (playerContainer) mainContent.appendChild(playerContainer);
-            } else {
-              playerContainer.style.display = "flex";
-            }
+            } else { playerContainer.style.display = "flex"; }
           } else {
             if (playerContainer) {
               if (playerContainer.vjsPlayer) {
@@ -491,7 +424,7 @@
         document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
         document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
       
-        // URL Modal logic.
+        // URL Modal Logic.
         const modal = document.getElementById("urlModal");
         const backdrop = document.getElementById("modalBackdrop");
         const btnAddUrls = document.getElementById("btn-add-urls");
@@ -513,7 +446,8 @@
             const newConfig = [];
             newUrls.forEach(url => {
               const existing = oldStreams.find(s => s.url === url);
-              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
+              if (existing) { newConfig.push(existing); }
+              else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
