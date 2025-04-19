@@ -85,7 +85,6 @@
         gap: 20px;
         overflow: auto;
       }
-      /* Desktop player container */
       .player-container.desktop {
         width: 960px;
         height: 600px;
@@ -95,7 +94,6 @@
         margin-bottom: 40px;
         box-sizing: border-box;
       }
-      /* Mobile player container (approx. 4× smaller) */
       .player-container.mobile {
         width: 240px;
         height: 150px;
@@ -105,12 +103,10 @@
         margin-bottom: 20px;
         box-sizing: border-box;
       }
-      /* Video.js styling */
       .player-container .video-js {
         width: 100%;
         height: 100%;
       }
-      /* Title bar under each video */
       .title-bar {
         background: #333;
         text-align: center;
@@ -180,7 +176,6 @@
       html.mobile #main-content {
         margin-left: 0;
       }
-      /* Mobile sidebar toggle */
       #sidebarToggle {
         display: none;
       }
@@ -207,7 +202,7 @@
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
-        if(e.code === "Space" && !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) {
+        if(e.code === "Space" && !["input", "textarea", "button"].includes(document.activeElement.tagName.toLowerCase())){
           e.preventDefault();
           spaceHeld = true;
         }
@@ -235,12 +230,14 @@
     </div>
     <!-- Load Video.js from CDN -->
     <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script>
-    <!-- Load videojs-panzoom plugin from jsDelivr (version 2.0.1) -->
-    <script src="https://cdn.jsdelivr.net/npm/videojs-panzoom@2.0.1/dist/videojs-panzoom.min.js"></script>
+    <!-- Load videojs-panzoom (version 2.0.2) from jsDelivr -->
+    <script src="https://cdn.jsdelivr.net/npm/videojs-panzoom@2.0.2/dist/videojs-panzoom.min.js"></script>
     <script>
-      // Register the panzoom plugin if available.
+      // Log that the panzoom script loaded
+      console.log("videojs-panzoom:", typeof panzoom);
       if (typeof videojs.getPlugin('panzoom') !== 'function' && typeof panzoom === 'function') {
         videojs.registerPlugin('panzoom', panzoom);
+        console.log("Registered videojs-panzoom plugin.");
       }
       
       /* Utility functions for panzoom state persistence */
@@ -302,7 +299,7 @@
                 }
               });
               label.addEventListener("mouseenter", (e)=>{
-                if(e.buttons & 1 && !activeLabels.has(label)){
+                if(e.buttons & 1 && !activeLabels.has(label)){ 
                   checkbox.checked = !checkbox.checked;
                   activeLabels.add(label);
                 }
@@ -325,8 +322,9 @@
         function createPlayerContainer(streamConfig) {
           if (!streamConfig.enabled) return null;
           const videoSrcOrig = streamConfig.url;
-          // Wrap the original manifest URL with your proxy.
+          // Wrap the original manifest URL with the proxy.
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+          // Use encodeURI so that "/" characters are preserved.
           const proxiedUrl = proxyPrefix + encodeURI(videoSrcOrig);
           const title = extractTitle(videoSrcOrig);
           const isMobile = document.documentElement.classList.contains("mobile");
@@ -334,7 +332,7 @@
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
           container.setAttribute("data-url", videoSrcOrig);
       
-          // Determine the base URL for resolving relative fragment URLs.
+          // Calculate manifestBase for resolving relative URIs.
           var manifestBase = videoSrcOrig.substring(0, videoSrcOrig.lastIndexOf("/") + 1);
       
           // Create a unique video element.
@@ -342,7 +340,7 @@
           const videoEl = document.createElement("video");
           videoEl.id = videoId;
           videoEl.className = "video-js vjs-default-skin";
-          videoEl.playsInline = true; // for iOS
+          videoEl.playsInline = true;
           if (isMobile) {
             videoEl.style.width = "240px";
             videoEl.style.height = "135px";
@@ -350,14 +348,14 @@
             videoEl.style.width = "960px";
             videoEl.style.height = "540px";
           }
-          // Create the source element with the proxied manifest URL.
+          // Create source element with the proxied manifest URL.
           const sourceEl = document.createElement("source");
           sourceEl.src = proxiedUrl;
           sourceEl.type = "application/x-mpegURL";
           videoEl.appendChild(sourceEl);
           container.appendChild(videoEl);
       
-          // Video.js options: autoplay enabled (muted required).
+          // Video.js options.
           const vjsOptions = {
             controls: true,
             autoplay: true,
@@ -368,26 +366,27 @@
             console.log("Video.js player ready for stream:", videoSrcOrig);
           });
       
-          // Set up VHS beforeRequest hook to rewrite all requests.
+          // Set up VHS beforeRequest hook.
           vjsPlayer.ready(function() {
             if (vjsPlayer.tech(true) && vjsPlayer.tech(true).vhs) {
               var vhsOptions = vjsPlayer.tech(true).vhs.options_ || {};
               vhsOptions.beforeRequest = function(options) {
-                // Resolve relative URLs against the manifestBase.
+                // If URL is relative, resolve it.
                 if (!/^https?:\/\//.test(options.uri)) {
                   options.uri = new URL(options.uri, manifestBase).toString();
                 }
-                // Use encodeURI to preserve slashes.
+                // Use encodeURI to preserve "/".
                 if (!options.uri.startsWith(proxyPrefix)) {
                   options.uri = proxyPrefix + encodeURI(options.uri);
                 }
+                console.log("Rewritten request URI:", options.uri);
                 return options;
               };
               vjsPlayer.tech(true).vhs.options_ = vhsOptions;
             }
           });
       
-          // On desktop, initialize the panzoom plugin.
+          // On desktop, initialize panzoom.
           if (!isMobile) {
             vjsPlayer.ready(function() {
               var savedState = loadPanzoomState(videoSrcOrig);
@@ -403,7 +402,7 @@
             });
           }
       
-          // Append a title bar below the player.
+          // Append title bar.
           var titleBar = document.createElement("div");
           titleBar.className = "title-bar";
           titleBar.textContent = title;
@@ -514,8 +513,7 @@
             const newConfig = [];
             newUrls.forEach(url => {
               const existing = oldStreams.find(s => s.url === url);
-              if (existing) { newConfig.push(existing); }
-              else { newConfig.push({ url: url, enabled: true }); }
+              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
@@ -549,7 +547,7 @@
         toggleBtn.addEventListener("click", function() { sidebar.classList.remove("hidden"); toggleBtn.style.display = "none"; });
       })();
       
-      // Desktop: Listen for fullscreen change events.
+      // Desktop: Listen for fullscreen changes.
       document.addEventListener("fullscreenchange", function() {
         console.log("Fullscreen changed. Now", document.fullscreenElement ? "Full screen" : "Windowed");
       });
