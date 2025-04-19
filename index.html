@@ -28,7 +28,6 @@
         overflow-y: auto;
         transition: transform 0.3s ease;
       }
-      /* When hidden, sidebar slides off-screen */
       #sidebar.hidden {
         transform: translateX(-100%);
       }
@@ -84,7 +83,7 @@
         gap: 20px;
         overflow: auto;
       }
-      /* Desktop player containers – full size */
+      /* Desktop player container */
       .player-container.desktop {
         width: 960px;
         height: 600px;
@@ -95,7 +94,7 @@
         box-sizing: border-box;
         margin-bottom: 40px;
       }
-      /* Mobile player containers – scaled down roughly 4× */
+      /* Mobile player container (scaled ≈4× smaller) */
       .player-container.mobile {
         width: 240px;
         height: 150px;
@@ -106,7 +105,7 @@
         box-sizing: border-box;
         margin-bottom: 20px;
       }
-      /* Desktop: Instead of using visibility:hidden (which sometimes prevents video frames from updating), set opacity:0 */
+      /* Desktop: Instead of visibility:hidden, set opacity:0 on the video so it keeps playing */
       .player-container.desktop .source-video {
         opacity: 0;
         position: absolute;
@@ -122,11 +121,11 @@
         width: 960px;
         height: 540px;
       }
-      /* Mobile: Show native video element with controls (scaled down) */
+      /* Mobile: Show native video element with controls */
       .player-container.mobile .source-video {
         opacity: 1;
         width: 240px;
-        height: 135px; /* about 540/4 */
+        height: 135px; /* roughly 540/4 */
       }
       /* Mobile: Hide the desktop canvas */
       .player-container.mobile .display-canvas {
@@ -170,7 +169,23 @@
         left: 0;
         right: 0;
       }
-      /* URL input modal */
+      /* Mobile “Tap to Play” overlay */
+      .mobile-play-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.5);
+        color: #fff;
+        font-size: 24px;
+        z-index: 10;
+        cursor: pointer;
+      }
+      /* URL Input Modal */
       #urlModal {
         display: none;
         position: fixed;
@@ -262,7 +277,7 @@
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners (prevent spacebar scrolling) -->
+    <!-- Global Spacebar Listeners -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -456,15 +471,14 @@
           }
         }
         function clampPan(container) {
-          const Z = container.zoomScale, halfW = 960 / 2, halfH = 540 / 2;
-          container.panX = Math.min(halfW * Z - halfW, Math.max(halfW - halfW * Z, container.panX));
-          container.panY = Math.min(halfH * Z - halfH, Math.max(halfH - halfH * Z, container.panY));
+          const Z = container.zoomScale, halfW = 960/2, halfH = 540/2;
+          container.panX = Math.min(halfW*Z - halfW, Math.max(halfW - halfW*Z, container.panX));
+          container.panY = Math.min(halfH*Z - halfH, Math.max(halfH - halfH*Z, container.panY));
         }
         // Create a player container for a given stream.
-        // Desktop uses Hls.js with a canvas-based renderer (with visible panning/zooming controls)
-        // Mobile uses the native video element.
+        // Desktop uses Hls.js with a canvas renderer; mobile uses the native video element.
         function createPlayerContainer(streamConfig) {
-          if (!streamConfig.enabled) return null; // Disabled streams: no player.
+          if (!streamConfig.enabled) return null;
           const videoSrc = streamConfig.url;
           const title = extractTitle(videoSrc);
           const isMobile = document.documentElement.classList.contains("mobile");
@@ -479,11 +493,9 @@
           container.panX = saved.panX;
           container.panY = saved.panY;
           
-          container.addEventListener("dblclick", function(e) {
-            toggleFullScreen(container);
-          });
+          container.addEventListener("dblclick", function(e) { toggleFullScreen(container); });
           
-          // Create the video element.
+          // Create video element.
           const sourceVideo = document.createElement("video");
           sourceVideo.className = "source-video";
           sourceVideo.muted = true;
@@ -492,10 +504,8 @@
           sourceVideo.setAttribute("webkit-playsinline", "true");
           sourceVideo.preload = "auto";
           sourceVideo.crossOrigin = "anonymous";
-          // For mobile, use native controls.
           if (isMobile) {
             sourceVideo.setAttribute("controls", "true");
-            // Use native HLS if supported.
             if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
               sourceVideo.src = videoSrc;
             }
@@ -518,7 +528,7 @@
             console.log("timeupdate:", sourceVideo.currentTime);
           });
           
-          // Desktop: Create canvas for rendering.
+          // Desktop: Create canvas for rendering video frames.
           let displayCanvas = null, ctx = null;
           if (!isMobile) {
             displayCanvas = document.createElement("canvas");
@@ -528,24 +538,8 @@
             container.appendChild(displayCanvas);
             ctx = displayCanvas.getContext("2d");
             
-            // When clicking on the canvas, toggle play/pause.
-            let toggleInProgress = false;
-            displayCanvas.addEventListener("click", function(e) {
-              if (toggleInProgress) return;
-              toggleInProgress = true;
-              if (sourceVideo.paused) {
-                sourceVideo.play().then(() => {
-                  if (playPauseBtn) playPauseBtn.textContent = "Pause";
-                }).catch(err => console.error("Play error (canvas click):", err))
-                .finally(() => { setTimeout(() => { toggleInProgress = false; }, 100); });
-              } else {
-                sourceVideo.pause();
-                if (playPauseBtn) playPauseBtn.textContent = "Play";
-                setTimeout(() => { toggleInProgress = false; }, 100);
-              }
-            });
-            
-            // Enable zoom/pan only if spacebar is held (unless in full screen)
+            // (Removed canvas-click toggling to avoid potential conflicts; desktop play/pause is controlled via button.)
+            // Enable zoom/pan if space is held.
             let startX = 0, startY = 0, isDragging = false;
             const dragThreshold = 5;
             displayCanvas.addEventListener("mousedown", function(e) {
@@ -560,7 +554,7 @@
                 if (!document.fullscreenElement && !spaceHeld) return;
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
-                if (!isDragging && Math.sqrt(dx*dx+dy*dy) > dragThreshold) {
+                if (!isDragging && Math.sqrt(dx*dx + dy*dy) > dragThreshold) {
                   isDragging = true;
                 }
                 if (isDragging) {
@@ -594,7 +588,7 @@
               savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
             }, { passive: false });
           } else {
-            // Mobile: add touchend listener to trigger play.
+            // Mobile: Add touchend to trigger playback.
             sourceVideo.addEventListener("touchend", function(e) {
               if (sourceVideo.paused) {
                 sourceVideo.play().then(() => {
@@ -604,7 +598,7 @@
                 });
               }
             });
-            // Also, a click toggles play/pause on mobile.
+            // Also, clicking the video toggles play/pause.
             sourceVideo.addEventListener("click", function(e) {
               if (sourceVideo.paused) {
                 sourceVideo.play().then(() => {
@@ -616,9 +610,28 @@
                 sourceVideo.pause();
               }
             });
+            // Add a "Tap to Play" overlay.
+            let mobileOverlay = document.createElement("div");
+            mobileOverlay.className = "mobile-play-overlay";
+            mobileOverlay.innerText = "Tap to Play";
+            container.appendChild(mobileOverlay);
+            // Hide overlay when playing.
+            sourceVideo.addEventListener("play", function() {
+              mobileOverlay.style.display = "none";
+            });
+            sourceVideo.addEventListener("pause", function() {
+              mobileOverlay.style.display = "flex";
+            });
+            mobileOverlay.addEventListener("click", function() {
+              sourceVideo.play().then(() => {
+                mobileOverlay.style.display = "none";
+              }).catch(err => {
+                console.error("Mobile overlay play error:", err);
+              });
+            });
           }
           
-          // Desktop: add custom controls overlay.
+          // Desktop: Add custom controls overlay.
           let playPauseBtn = null;
           if (!isMobile) {
             const controlsContainer = document.createElement("div");
@@ -686,7 +699,7 @@
             titleBar.textContent = title;
             controlsContainer.appendChild(titleBar);
             
-            // In full screen, hide overlay controls after 3 seconds if mouse near bottom.
+            // Fullscreen: Fade controls out after 3 sec when mouse near bottom.
             let hideControlsTimeout = null;
             function scheduleControlsHide() {
               if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
@@ -753,14 +766,12 @@
                 }
               });
               container.hlsInstance = hls;
-            }
-            else {
+            } else {
               // Mobile: Prefer native HLS if supported.
               if (!sourceVideo.src && sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
                 console.log("Mobile native HLS: setting sourceVideo.src");
                 sourceVideo.src = videoSrc;
               } else if (!sourceVideo.src) {
-                // Fallback to Hls.js.
                 const hlsConfig = {
                   maxBufferLength: 120,
                   maxBufferSize: 60 * 1000 * 1024,
@@ -773,7 +784,7 @@
                 hls.loadSource(videoSrc);
                 hls.attachMedia(sourceVideo);
                 sourceVideo.addEventListener("loadedmetadata", function() {
-                  console.log("Mobile fallback: manifest loaded. Waiting for user tap.");
+                  console.log("Mobile fallback: manifest loaded; waiting for user tap");
                 });
                 hls.on(Hls.Events.ERROR, function(event, data) {
                   console.error("Hls.js mobile error:", data);
@@ -798,7 +809,6 @@
               }
             }
           } else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
-            // Fallback for native HLS support.
             sourceVideo.src = videoSrc;
             sourceVideo.addEventListener("loadedmetadata", function() {
               console.log("Native HLS loaded, attempting playback");
@@ -938,7 +948,7 @@
         updateFullUI();
       })();
       
-      // Mobile: Sidebar swipe handling and toggle button.
+      // Mobile: Sidebar swipe handling and toggle.
       (function() {
         if (!document.documentElement.classList.contains("mobile")) return;
         const sidebar = document.getElementById("sidebar");
