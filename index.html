@@ -1,724 +1,271 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live DVR – Desktop & Mobile (Final Approach)</title>
-    <style>
-      /* GENERAL STYLES */
-      html, body {
-        margin: 0;
-        padding: 0;
-        height: 100vh;
-        font-family: Arial, sans-serif;
-        background: #222;
-        color: #fff;
-        overflow: hidden;
-      }
-      .container { display: flex; height: 100vh; }
-      /* SIDEBAR */
-      #sidebar {
-        background: #444;
-        width: 220px;
-        padding: 20px;
-        box-sizing: border-box;
-        overflow-y: auto;
-        transition: transform 0.3s ease;
-      }
-      #sidebar.hidden { transform: translateX(-100%); }
-      #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; }
-      #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; }
-      .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; }
-      #streamList { margin-top: 10px; line-height: 1.2; }
-      #streamList label { color: #fff; }
-      .no-streams { font-style: italic; color: #bbb; margin-top: 10px; }
-      .stream-item { margin-bottom: 5px; display: flex; align-items: center; }
-      .stream-item label { margin-left: 5px; font-size: 16px; cursor: pointer; user-select: none; }
-      /* MAIN CONTENT / PLAYER CONTAINERS */
-      #main-content {
-        flex: 1;
-        background: #333;
-        padding: 20px;
-        box-sizing: border-box;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        overflow: auto;
-      }
-      /* Desktop player container (standard size) */
-      .player-container.desktop {
-        width: 960px;
-        height: 600px;
-        background: #222;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        margin-bottom: 40px;
-        box-sizing: border-box;
-      }
-      /* Mobile player container (approximately 4× smaller) */
-      .player-container.mobile {
-        width: 240px;
-        height: 150px;
-        background: #222;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        margin-bottom: 20px;
-        box-sizing: border-box;
-      }
-      /* Desktop: The video element is kept in the DOM with opacity:0 so it keeps playing */
-      .player-container.desktop .source-video {
-        opacity: 0;
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 960px;
-        height: 540px;
-        pointer-events: none;
-      }
-      /* Desktop: The canvas shows the output */
-      .player-container.desktop .display-canvas { background: black; width: 960px; height: 540px; }
-      /* Mobile: The video element is visible with native controls; we hide our canvas */
-      .player-container.mobile .source-video { width: 240px; height: 135px; }
-      .player-container.mobile .display-canvas { display: none; }
-      /* Desktop control overlay */
-      .controls-container {
-        transition: opacity 0.5s;
-        position: relative;
-        z-index: 2;
-      }
-      .control-bar {
-        height: 60px;
-        display: flex;
-        align-items: center;
-        background: rgba(0,0,0,0.75);
-        padding: 5px 10px;
-        gap: 10px;
-      }
-      .control-bar button { padding: 4px 8px; font-size: 14px; cursor: pointer; }
-      .disable-btn { background: red; color: #fff; border: none; }
-      .control-bar input[type="range"] { flex: 1; }
-      .title-bar { text-align: center; padding: 2px 10px; background: rgba(0,0,0,0.75); font-size: 16px; }
-      /* Fullscreen overlay (desktop) */
-      .overlay-controls { position: absolute; bottom: 0; left: 0; right: 0; }
-      /* Mobile “Tap to Start” overlay */
-      .mobile-play-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%; height: 100%;
-        background: rgba(0,0,0,0.6);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 24px;
-        z-index: 10;
-      }
-      /* URL Modal */
-      #urlModal {
-        display: none;
-        position: fixed;
-        z-index: 10;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        width: 1200px;
-        background: #555;
-        border: 2px solid #fff;
-        padding: 15px;
-        box-sizing: border-box;
-      }
-      #urlModal textarea { width: 100%; height: 600px; padding: 10px; font-size: 14px; box-sizing: border-box; }
-      #urlModal button { width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; cursor: pointer; }
-      #modalBackdrop {
-        display: none;
-        position: fixed;
-        z-index: 5;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-      }
-      /* Mobile adjustments */
-      html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; }
-      html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; }
-      html.mobile #urlModal button { padding: 5px; font-size: 12px; }
-      html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; }
-      html.mobile #main-content { margin-left: 0; }
-      /* Mobile sidebar toggle */
-      #sidebarToggle { display: none; }
-      html.mobile #sidebarToggle {
-        display: block;
-        position: fixed;
-        top: 50%;
-        left: 0;
-        transform: translate(-50%, -50%);
-        z-index: 1100;
-        background: #444;
-        border: none;
-        padding: 10px 12px;
-        font-size: 24px;
-        color: #fff;
-        cursor: pointer;
-      }
-    </style>
-    <script>
-      // Add "mobile" class if a mobile device is detected.
-      if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-        document.documentElement.classList.add("mobile");
-      }
-    </script>
-  </head>
-  <body>
-    <!-- Mobile sidebar toggle -->
-    <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners (for desktop pan/zoom) -->
-    <script>
-      let spaceHeld = false;
-      window.addEventListener("keydown", (e) => {
-        if (e.code === "Space" && !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) {
-          e.preventDefault();
-          spaceHeld = true;
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>Live DVR – Video.js with Panzoom & Persistent State</title> <!-- Video.js CSS from CDN --> <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet" /> <style> html, body { margin: 0; padding: 0; height: 100vh; font-family: Arial, sans-serif; background: #222; color: #fff; overflow: hidden; } .container { display: flex; height: 100vh; } /* Sidebar styling */ #sidebar { background-color: #444; width: 220px; padding: 20px; box-sizing: border-box; overflow-y: auto; transition: transform 0.3s ease; } #sidebar.hidden { transform: translateX(-100%); } #btn-add-urls { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; } #sideButtons { display: flex; gap: 10px; margin-bottom: 10px; } .sideBtn { flex: 1; padding: 10px; font-size: 16px; cursor: pointer; } #streamList { margin-top: 10px; line-height: 1.2; } #streamList label { color: #fff; } .no-streams { font-style: italic; color: #bbb; margin-top: 10px; } .stream-item { margin-bottom: 5px; display: flex; align-items: center; } .stream-item label { margin-left: 5px; font-size: 16px; cursor: pointer; user-select: none; } /* Main content area for players */ #main-content { flex: 1; background-color: #333; padding: 20px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 20px; overflow: auto; } /* Desktop player container */ .player-container.desktop { width: 960px; height: 600px; background-color: #222; position: relative; margin-bottom: 40px; box-sizing: border-box; } /* Mobile player container (approx. 4× smaller) */ .player-container.mobile { width: 240px; height: 150px; background-color: #222; position: relative; margin-bottom: 20px; box-sizing: border-box; } /* In desktop, we use Video.js which renders the video via the HTML5 video element. The panzoom plugin will attach to the Video.js player wrapper. Thus we rely on Video.js styling. */ .player-container .video-js { width: 100%; height: 100%; } /* Mobile: (optionally) hide any custom overlay – we are using native controls) */ .mobile-play-overlay { display: none; } /* URL Modal styling */ #urlModal { display: none; position: fixed; z-index: 10; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1200px; background-color: #555; border: 2px solid #fff; padding: 15px; box-sizing: border-box; } #urlModal textarea { width: 100%; height: 600px; padding: 10px; font-size: 14px; box-sizing: border-box; } #urlModal button { width: 100%; padding: 10px; margin-top: 10px; font-size: 16px; cursor: pointer; } #modalBackdrop { display: none; position: fixed; z-index: 5; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); } /* Mobile adjustments */ html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; } html.mobile #urlModal textarea { height: 150px; padding: 5px; font-size: 12px; } html.mobile #urlModal button { padding: 5px; font-size: 12px; } html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 1000; } html.mobile #main-content { margin-left: 0; } /* Mobile sidebar toggle arrow */ #sidebarToggle { display: none; } html.mobile #sidebarToggle { display: block; position: fixed; top: 50%; left: 0; transform: translate(-50%, -50%); z-index: 1100; background: #444; border: none; padding: 10px 12px; font-size: 24px; color: #fff; cursor: pointer; } </style> </head> <body> <!-- Mobile sidebar toggle --> <button id="sidebarToggle">&#x25B6;</button> <!-- Global Spacebar Listeners (for desktop pan/zoom, if needed by future customizations) --> <script> let spaceHeld = false; window.addEventListener("keydown", (e) => { if (e.code === "Space" && !["input", "textarea", "button"].includes(document.activeElement.tagName.toLowerCase())) { e.preventDefault(); spaceHeld = true; } }); window.addEventListener("keyup", (e) => { if (e.code === "Space") spaceHeld = false; }); </script> <div class="container"> <div id="sidebar"> <button id="btn-add-urls">Add URLs</button> <div id="sideButtons"> <button id="btn-show-all" class="sideBtn">Show All</button> <button id="btn-hide-all" class="sideBtn">Hide All</button> </div> <div id="streamList"></div> </div> <div id="main-content"></div> </div> <div id="modalBackdrop"></div> <div id="urlModal"> <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3> <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea> <button id="saveUrls">Save and Close</button> </div> <!-- Load Video.js from CDN --> <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script> <!-- Load videojs-panzoom plugin from CDN --> <script src="https://unpkg.com/videojs-panzoom/dist/videojs-panzoom.min.js"></script> <script> /*********************************************** * Video.js with Panzoom and Persisted State ***********************************************/
+  // Utility: Save a pan/zoom state in localStorage under a key using the stream URL.
+  function savePanZoomState(url, state) {
+    localStorage.setItem("panzoomState_" + url, JSON.stringify(state));
+  }
+  
+  // Utility: Load the pan/zoom state from localStorage.
+  function loadPanZoomState(url) {
+    const saved = localStorage.getItem("panzoomState_" + url);
+    return saved ? JSON.parse(saved) : {};
+  }
+  
+  // Functions to manage the stream list (saved in localStorage)
+  const STREAMS_KEY = "streamConfigs";
+  function saveStreamList(list) {
+    localStorage.setItem(STREAMS_KEY, JSON.stringify(list));
+  }
+  function getStreamList() {
+    const stored = localStorage.getItem(STREAMS_KEY);
+    if (!stored) return [];
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  // Update the sidebar with the list of streams.
+  function updateStreamSidebar() {
+    const sidebar = document.getElementById("streamList");
+    sidebar.innerHTML = "";
+    const streams = getStreamList();
+    if (streams.length === 0) {
+      const p = document.createElement("p");
+      p.className = "no-streams";
+      p.textContent = "No streams added. Click 'Add URLs' to add streams.";
+      sidebar.appendChild(p);
+    } else {
+      streams.forEach(stream => {
+        const videoSrc = stream.url;
+        const match = videoSrc.match(/wc-([^\/]+)\/playlist/);
+        const title = match ? match[1] : videoSrc;
+        const item = document.createElement("div");
+        item.className = "stream-item";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = stream.enabled;
+        checkbox.setAttribute("data-url", videoSrc);
+        checkbox.addEventListener("change", e => {
+          updateStreamEnabled(videoSrc, e.target.checked);
+        });
+        item.appendChild(checkbox);
+        const label = document.createElement("label");
+        label.textContent = title;
+        label.setAttribute("data-url", videoSrc);
+        item.appendChild(label);
+        sidebar.appendChild(item);
+      });
+    }
+  }
+  
+  // Create a Video.js player container for a stream.
+  function createPlayerContainer(streamConfig) {
+    if (!streamConfig.enabled) return null;
+    const videoSrc = streamConfig.url;
+    const match = videoSrc.match(/wc-([^\/]+)\/playlist/);
+    const title = match ? match[1] : videoSrc;
+    const isMobile = document.documentElement.classList.contains("mobile");
+    
+    // Create container.
+    const container = document.createElement("div");
+    container.className = "player-container " + (isMobile ? "mobile" : "desktop");
+    container.setAttribute("data-url", videoSrc);
+    
+    // Create the video element.
+    const videoEl = document.createElement("video");
+    // Create a unique ID for the video.
+    videoEl.id = "video-" + Math.random().toString(36).substr(2, 9);
+    videoEl.className = "video-js vjs-default-skin";
+    videoEl.setAttribute("controls", "true");
+    videoEl.setAttribute("preload", "auto");
+    videoEl.setAttribute("data-setup", "{}");
+    videoEl.setAttribute("crossorigin", "anonymous");
+    
+    // Add a source element.
+    const sourceEl = document.createElement("source");
+    sourceEl.src = videoSrc;
+    sourceEl.type = "application/x-mpegURL";
+    videoEl.appendChild(sourceEl);
+    
+    container.appendChild(videoEl);
+    
+    // Initialize Video.js.
+    var player = videojs(videoEl.id, {
+      autoplay: isMobile ? false : true,
+      fluid: false
+    });
+    
+    // If desktop, initialize the panzoom plugin.
+    if (!isMobile) {
+      var panzoomOptions = loadPanZoomState(videoSrc);
+      // Pass any saved panzoom state to the plugin.
+      player.panzoom(panzoomOptions);
+      // Listen for panzoom changes (the plugin should fire a "panzoom:change" event).
+      player.on("panzoom:change", function () {
+        if (player.panzoom && typeof player.panzoom.getState === "function") {
+          var state = player.panzoom.getState();
+          savePanZoomState(videoSrc, state);
         }
       });
-      window.addEventListener("keyup", (e) => {
-        if (e.code === "Space") spaceHeld = false;
+    }
+    
+    // For desktop, add a title overlay.
+    if (!isMobile) {
+      var titleEl = document.createElement("div");
+      titleEl.className = "title-bar";
+      titleEl.innerText = title;
+      container.appendChild(titleEl);
+    }
+    
+    return container;
+  }
+  
+  // Update a stream’s enabled state.
+  function updateStreamEnabled(url, enabled) {
+    let streams = getStreamList();
+    const idx = streams.findIndex(s => s.url === url);
+    if (idx === -1) return;
+    if (streams[idx].enabled !== enabled) {
+      streams[idx].enabled = enabled;
+      saveStreamList(streams);
+    }
+    let container = document.querySelector('.player-container[data-url="' + url + '"]');
+    const mainContent = document.getElementById("main-content");
+    if (enabled) {
+      if (!container) {
+        container = createPlayerContainer(streams[idx]);
+        if (container) mainContent.appendChild(container);
+      } else {
+        container.style.display = "block";
+      }
+    } else {
+      if (container && container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
+    }
+    reorderPlayerContainers();
+    // Update sidebar checkbox.
+    const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
+    if (checkbox) checkbox.checked = enabled;
+  }
+  
+  // Reorder player containers to match the stream list.
+  function reorderPlayerContainers() {
+    const mainContent = document.getElementById("main-content");
+    const streams = getStreamList();
+    const containers = Array.from(mainContent.querySelectorAll(".player-container"));
+    containers.sort((a, b) => {
+      const urlA = a.getAttribute("data-url");
+      const urlB = b.getAttribute("data-url");
+      const indexA = streams.findIndex(s => s.url === urlA);
+      const indexB = streams.findIndex(s => s.url === urlB);
+      return indexA - indexB;
+    });
+    containers.forEach(c => mainContent.appendChild(c));
+  }
+  
+  // Update full UI.
+  function updateFullUI(refresh = true) {
+    if (refresh) {
+      const mainContent = document.getElementById("main-content");
+      mainContent.innerHTML = "";
+      const streams = getStreamList();
+      const enabledStreams = streams.filter(s => s.enabled);
+      enabledStreams.forEach(stream => {
+        var container = createPlayerContainer(stream);
+        if (container) mainContent.appendChild(container);
       });
-    </script>
-    <div class="container">
-      <div id="sidebar">
-        <button id="btn-add-urls">Add URLs</button>
-        <div id="sideButtons">
-          <button id="btn-show-all" class="sideBtn">Show All</button>
-          <button id="btn-hide-all" class="sideBtn">Hide All</button>
-        </div>
-        <div id="streamList"></div>
-      </div>
-      <div id="main-content"></div>
-    </div>
-    <div id="modalBackdrop"></div>
-    <div id="urlModal">
-      <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3>
-      <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea>
-      <button id="saveUrls">Save and Close</button>
-    </div>
-    <!-- Load Hls.js from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
-    <script>
-      /* ----------------------------------------------------------------
-         Desktop: Custom Loader using our proxy.
-         (ProxyLoader is similar to previous examples.)
-      ---------------------------------------------------------------- */
-      class ProxyLoader {
-        constructor(config) {
-          this.customPlaylistBase = config.customPlaylistBase || "";
-          this.config = config;
-          this.loader = new Hls.DefaultConfig.loader(config);
-        }
-        load(context, config, callbacks) {
-          const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
-          let rawUrl = context.url;
-          try {
-            if(rawUrl.startsWith(proxyPrefix)) {
-              const wrapped = new URL(rawUrl);
-              rawUrl = wrapped.searchParams.get("url") || rawUrl;
-            }
-          } catch(e){}
-          if(rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
-            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
-            rawUrl = this.customPlaylistBase + segFilename;
-          } else if(this.customPlaylistBase && !rawUrl.startsWith(this.customPlaylistBase)) {
-            const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
-            rawUrl = this.customPlaylistBase + segFilename;
-          }
-          context.url = proxyPrefix + encodeURIComponent(rawUrl);
-          this.loader.load(context, config, callbacks);
-        }
-        abort() { if (this.loader.abort) this.loader.abort(); }
-        destroy() { if (this.loader.destroy) this.loader.destroy(); }
-      }
-      /* ---------------------------------------------------------------- */
-      
-      // Utility functions for persistent settings.
-      function loadPlayerSettings(url) {
-        const ps = localStorage.getItem("playerSettings");
-        if(ps) {
-          try { const settings = JSON.parse(ps); return settings[url] || { zoomScale: 1, panX: 0, panY: 0 }; }
-          catch(e){ return { zoomScale:1, panX:0, panY:0 }; }
-        }
-        return { zoomScale:1, panX:0, panY:0 };
-      }
-      function savePlayerSettings(url, data) {
-        const ps = localStorage.getItem("playerSettings");
-        let settings = {};
-        if(ps) { try { settings = JSON.parse(ps); } catch(e){} }
-        settings[url] = data;
-        localStorage.setItem("playerSettings", JSON.stringify(settings));
-      }
-      
-      /* Main UI & Stream Management */
-      (function() {
-        const storageKey = "streamConfigs";
-        const activeLabels = new Set();
-        function extractTitle(url) {
-          const match = url.match(/wc-([^\/]+)\/playlist/);
-          return match ? match[1] : url;
-        }
-        function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
-        function getStreamList() {
-          const stored = localStorage.getItem(storageKey);
-          if(!stored) return [];
-          try { return JSON.parse(stored); }
-          catch(e){ return []; }
-        }
-        function updateStreamSidebar() {
-          const sidebarList = document.getElementById("streamList");
-          sidebarList.innerHTML = "";
-          const streams = getStreamList();
-          if(streams.length === 0) {
-            const p = document.createElement("p");
-            p.className = "no-streams";
-            p.textContent = "No streams added. Click 'Add URLs' to add streams.";
-            sidebarList.appendChild(p);
-          } else {
-            streams.forEach(stream => {
-              const videoSrc = stream.url;
-              const title = extractTitle(videoSrc);
-              const item = document.createElement("div");
-              item.className = "stream-item";
-              const checkbox = document.createElement("input");
-              checkbox.type = "checkbox";
-              checkbox.checked = stream.enabled;
-              checkbox.setAttribute("data-url", videoSrc);
-              checkbox.addEventListener("change", (e)=> { updateStreamEnabled(videoSrc, e.target.checked); });
-              item.appendChild(checkbox);
-              const label = document.createElement("label");
-              label.textContent = title;
-              label.setAttribute("data-url", videoSrc);
-              label.addEventListener("mousedown", (e)=>{
-                if(e.button===0){ checkbox.checked = !checkbox.checked; activeLabels.add(label); e.preventDefault(); }
-              });
-              label.addEventListener("mouseenter", (e)=>{
-                if(e.buttons&1 && !activeLabels.has(label)){ checkbox.checked = !checkbox.checked; activeLabels.add(label); }
-              });
-              item.appendChild(label);
-              sidebarList.appendChild(item);
-            });
-          }
-        }
-        function toggleFullScreen(container) {
-          // Try requesting full screen on the container.
-          if(!document.fullscreenElement) {
-            container.requestFullscreen().catch(err => console.error("Full screen error:", err));
-          } else {
-            document.exitFullscreen().catch(err => console.error("Exit fullscreen error:", err));
-          }
-        }
-        function clampPan(container) {
-          const Z = container.zoomScale, halfW = 960/2, halfH = 540/2;
-          container.panX = Math.min(halfW*Z - halfW, Math.max(halfW - halfW*Z, container.panX));
-          container.panY = Math.min(halfH*Z - halfH, Math.max(halfH - halfH*Z, container.panY));
-        }
-        // Create a player container.
-        function createPlayerContainer(streamConfig) {
-          if(!streamConfig.enabled) return null;
-          const videoSrc = streamConfig.url;
-          const title = extractTitle(videoSrc);
-          const isMobile = document.documentElement.classList.contains("mobile");
-          const container = document.createElement("div");
-          container.className = "player-container " + (isMobile ? "mobile" : "desktop");
-          container.setAttribute("data-url", videoSrc);
-          container.userPaused = false;
-          // Desktop: load zoom/pan settings.
-          const saved = loadPlayerSettings(videoSrc);
-          container.zoomScale = saved.zoomScale;
-          container.panX = saved.panX;
-          container.panY = saved.panY;
-          container.addEventListener("dblclick", ()=> toggleFullScreen(container));
-          
-          // Create video element.
-          const sourceVideo = document.createElement("video");
-          sourceVideo.className = "source-video";
-          sourceVideo.muted = true;
-          sourceVideo.playsInline = true;
-          sourceVideo.setAttribute("playsinline", "true");
-          sourceVideo.setAttribute("webkit-playsinline", "true");
-          sourceVideo.preload = "auto";
-          sourceVideo.crossOrigin = "anonymous";
-          if(isMobile) {
-            // Mobile: use native controls; no auto-play.
-            sourceVideo.setAttribute("controls", "true");
-            sourceVideo.src = videoSrc;
-          } else {
-            sourceVideo.autoplay = true;
-          }
-          container.appendChild(sourceVideo);
-          
-          sourceVideo.addEventListener("loadedmetadata", function(){
-            console.log("loadedmetadata:", sourceVideo.videoWidth, sourceVideo.videoHeight);
-            if(!isMobile && timeline) timeline.max = sourceVideo.duration || 0;
-          });
-          sourceVideo.addEventListener("timeupdate", function(){
-            if(!isMobile && timeline) timeline.value = sourceVideo.currentTime;
-          });
-          
-          let timeline = null;
-          // Desktop: Create canvas and render loop.
-          let displayCanvas = null, ctx = null;
-          if(!isMobile) {
-            displayCanvas = document.createElement("canvas");
-            displayCanvas.className = "display-canvas";
-            // Default canvas size...
-            displayCanvas.width = 960;
-            displayCanvas.height = 540;
-            container.appendChild(displayCanvas);
-            ctx = displayCanvas.getContext("2d");
-            function renderFrame(){
-              if(sourceVideo.readyState >= 2){
-                // On full-screen, set canvas to container dimensions.
-                if(document.fullscreenElement && container.contains(document.fullscreenElement)){
-                  displayCanvas.width = container.clientWidth;
-                  displayCanvas.height = container.clientHeight;
-                } else {
-                  displayCanvas.width = 960;
-                  displayCanvas.height = 540;
-                }
-                ctx.clearRect(0,0,displayCanvas.width,displayCanvas.height);
-                ctx.save();
-                let cx = displayCanvas.width/2, cy = displayCanvas.height/2;
-                ctx.translate(cx,cy);
-                ctx.scale(container.zoomScale, container.zoomScale);
-                ctx.translate(container.panX, container.panY);
-                ctx.translate(-cx,-cy);
-                try { ctx.drawImage(sourceVideo, 0, 0, displayCanvas.width, displayCanvas.height); }
-                catch(err){ console.error("drawImage error:", err); }
-                ctx.restore();
-              }
-              requestAnimationFrame(renderFrame);
-            }
-            requestAnimationFrame(renderFrame);
-            // Pan/zoom events.
-            let startX = 0, startY = 0, dragging = false;
-            const dragThreshold = 5;
-            displayCanvas.addEventListener("mousedown", function(e){
-              if(e.button !== 0) return;
-              if(!document.fullscreenElement && !spaceHeld) return;
-              startX = e.clientX; startY = e.clientY; dragging = false;
-            });
-            displayCanvas.addEventListener("mousemove", function(e){
-              if(e.buttons & 1){
-                if(!document.fullscreenElement && !spaceHeld) return;
-                let dx = e.clientX - startX, dy = e.clientY - startY;
-                if(!dragging && Math.sqrt(dx*dx+dy*dy)>dragThreshold) dragging = true;
-                if(dragging){
-                  container.panX += dx / container.zoomScale;
-                  container.panY += dy / container.zoomScale;
-                  clampPan(container);
-                  savePlayerSettings(videoSrc, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
-                  startX = e.clientX; startY = e.clientY;
-                }
-              }
-            });
-            displayCanvas.addEventListener("wheel", function(e){
-              if(!document.fullscreenElement && !spaceHeld) return;
-              e.preventDefault();
-              const rect = displayCanvas.getBoundingClientRect();
-              const cssX = e.clientX - rect.left, cssY = e.clientY - rect.top;
-              const logicalX = (cssX/rect.width)*displayCanvas.width;
-              const logicalY = (cssY/rect.height)*displayCanvas.height;
-              const cx = displayCanvas.width/2, cy = displayCanvas.height/2;
-              let oldZoom = container.zoomScale;
-              let sensitivity = 0.1;
-              let newZoom = container.zoomScale + (e.deltaY < 0 ? sensitivity : -sensitivity);
-              newZoom = Math.max(1, Math.min(newZoom,3));
-              container.panX += (oldZoom - newZoom) * ((logicalX - cx)/newZoom);
-              container.panY += (oldZoom - newZoom) * ((logicalY - cy)/newZoom);
-              container.zoomScale = newZoom;
-              clampPan(container);
-              savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
-            }, {passive:false});
-            // Also, single clicking the canvas toggles play/pause.
-            displayCanvas.addEventListener("click", function(){
-              if(sourceVideo.paused) { sourceVideo.play().catch(err=>console.error("Play error:", err)); }
-              else { sourceVideo.pause(); }
-            });
-          } else {
-            // Mobile: For native video, add a simple overlay—if the video is paused, show it.
-            let mobileOverlay = document.createElement("div");
-            mobileOverlay.className = "mobile-play-overlay";
-            mobileOverlay.innerText = "Tap to Play";
-            container.appendChild(mobileOverlay);
-            sourceVideo.addEventListener("play", function(){ mobileOverlay.style.display = "none"; });
-            sourceVideo.addEventListener("pause", function(){ mobileOverlay.style.display = "flex"; });
-            mobileOverlay.addEventListener("click", function(){
-              sourceVideo.play().then(()=>{ mobileOverlay.style.display = "none"; })
-              .catch(err=>console.error("Overlay play error:", err));
-            });
-          }
-          // Desktop: Create control overlay.
-          let playPauseBtn = null;
-          if(!isMobile){
-            const controlsContainer = document.createElement("div");
-            controlsContainer.className = "controls-container overlay-controls";
-            controlsContainer.style.opacity = 1;
-            container.appendChild(controlsContainer);
-            const controlBar = document.createElement("div");
-            controlBar.className = "control-bar";
-            playPauseBtn = document.createElement("button");
-            // Set up event listeners to update button text.
-            sourceVideo.addEventListener("play", ()=> { playPauseBtn.textContent = "Pause"; });
-            sourceVideo.addEventListener("pause", ()=> { playPauseBtn.textContent = "Play"; });
-            playPauseBtn.textContent = "Play";
-            playPauseBtn.addEventListener("click", function(){
-              if(sourceVideo.paused) { sourceVideo.play().catch(err=>console.error("Play (button) error:", err)); }
-              else { sourceVideo.pause(); }
-            });
-            controlBar.appendChild(playPauseBtn);
-            timeline = document.createElement("input");
-            timeline.type = "range";
-            timeline.min = 0;
-            timeline.value = 0;
-            timeline.step = 0.1;
-            timeline.style.cursor = "pointer";
-            timeline.addEventListener("input", ()=> { sourceVideo.currentTime = timeline.value; });
-            controlBar.appendChild(timeline);
-            const fsBtn = document.createElement("button");
-            fsBtn.textContent = "Full‑screen";
-            fsBtn.addEventListener("click", ()=> { toggleFullScreen(container); });
-            controlBar.appendChild(fsBtn);
-            const resetBtn = document.createElement("button");
-            resetBtn.textContent = "Reset";
-            resetBtn.addEventListener("click", ()=> {
-              container.zoomScale = 1;
-              container.panX = 0;
-              container.panY = 0;
-              savePlayerSettings(videoSrc,{ zoomScale:1, panX:0, panY:0 });
-            });
-            controlBar.appendChild(resetBtn);
-            const disableBtn = document.createElement("button");
-            disableBtn.className = "disable-btn";
-            disableBtn.textContent = "X";
-            disableBtn.addEventListener("click", (e)=> { e.stopPropagation(); updateStreamEnabled(videoSrc, false); });
-            controlBar.appendChild(disableBtn);
-            controlsContainer.appendChild(controlBar);
-            const titleBar = document.createElement("div");
-            titleBar.className = "title-bar";
-            titleBar.textContent = title;
-            controlsContainer.appendChild(titleBar);
-            // In full screen, fade controls out if mouse near bottom.
-            let hideTimeout = null;
-            function scheduleHide(){
-              if(document.fullscreenElement && container.contains(document.fullscreenElement)){
-                clearTimeout(hideTimeout);
-                hideTimeout = setTimeout(()=> { controlsContainer.style.opacity = 0; },3000);
-              }
-            }
-            document.addEventListener("mousemove", function(e){
-              if(document.fullscreenElement && container.contains(document.fullscreenElement)){
-                if(e.clientY > window.innerHeight - 100){
-                  controlsContainer.style.opacity = 1;
-                  scheduleHide();
-                }
-              }
-            });
-          }
-          // Initialize Hls.js on desktop.
-          if(Hls.isSupported()){
-            if(!isMobile){
-              const hlsConfig = {
-                maxBufferLength: 120,
-                maxBufferSize: 60*1000*1024,
-                liveSyncDurationCount: 3,
-                manifestLoadingTimeOut: 30000,
-                levelLoadingTimeOut: 30000,
-                loader: ProxyLoader,
-                customPlaylistBase: videoSrc.substring(0, videoSrc.lastIndexOf("/") + 1)
-              };
-              const hls = new Hls(hlsConfig);
-              console.log("Loading playlist (desktop):", videoSrc);
-              hls.loadSource(videoSrc);
-              hls.attachMedia(sourceVideo);
-              hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
-                console.log("Manifest parsed:", videoSrc);
-                sourceVideo.play().then(()=>{
-                  console.log("Autoplay initiated");
-                  if(!isMobile && playPauseBtn) playPauseBtn.textContent = "Pause";
-                }).catch(err=>console.error("Autoplay error:", err));
-              });
-              hls.on(Hls.Events.ERROR, (event, data)=>{
-                console.error("Hls.js error:", data);
-                if(data.fatal){
-                  switch(data.type){
-                    case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
-                    case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-                    default: hls.destroy(); break;
-                  }
-                }
-              });
-              container.hlsInstance = hls;
-            } else {
-              // Mobile fallback (should rarely be needed since we use native)
-              if(!sourceVideo.src){
-                const hlsConfig = {
-                  maxBufferLength: 120,
-                  maxBufferSize: 60*1000*1024,
-                  liveSyncDurationCount: 3,
-                  manifestLoadingTimeOut: 30000,
-                  levelLoadingTimeOut: 30000
-                };
-                const hls = new Hls(hlsConfig);
-                console.log("Loading playlist (mobile fallback):", videoSrc);
-                hls.loadSource(videoSrc);
-                hls.attachMedia(sourceVideo);
-                sourceVideo.addEventListener("loadedmetadata", ()=>{
-                  console.log("Mobile fallback: manifest loaded; waiting for user tap.");
-                });
-                hls.on(Hls.Events.ERROR, (event,data)=>{
-                  console.error("Hls.js mobile error:", data);
-                  if(data.fatal){
-                    switch(data.type){
-                      case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
-                      case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
-                      default: hls.destroy(); break;
-                    }
-                  }
-                });
-                container.hlsInstance = hls;
-              }
-            }
-          }
-          else if(sourceVideo.canPlayType("application/vnd.apple.mpegurl")){
-            sourceVideo.src = videoSrc;
-            sourceVideo.addEventListener("loadedmetadata", ()=>{
-              sourceVideo.play().catch(err=>console.error("Native play error:", err));
-            });
-          }
-          return container;
-        }
-        function reorderPlayerContainers(){
-          const mainContent = document.getElementById("main-content");
-          const config = getStreamList();
-          const players = Array.from(mainContent.querySelectorAll(".player-container"));
-          players.sort((a,b)=>{
-            let indexA = config.findIndex(s=> s.url === a.getAttribute("data-url"));
-            let indexB = config.findIndex(s=> s.url === b.getAttribute("data-url"));
-            return indexA - indexB;
-          });
-          players.forEach(p=> mainContent.appendChild(p));
-        }
-        function updateStreamEnabled(url, enabled){
-          let streams = getStreamList();
-          const idx = streams.findIndex(s=> s.url===url);
-          if(idx===-1)return;
-          if(streams[idx].enabled !== enabled){
-            streams[idx].enabled = enabled;
-            saveStreamList(streams);
-          }
-          let player = document.querySelector('.player-container[data-url="'+url+'"]');
-          const mainContent = document.getElementById("main-content");
-          if(enabled){
-            if(!player){
-              player = createPlayerContainer(streams[idx]);
-              if(player) mainContent.appendChild(player);
-            } else { player.style.display = "flex"; }
-          } else {
-            if(player){
-              if(player.hlsInstance){ player.hlsInstance.destroy(); player.hlsInstance = null; }
-              if(player.parentNode) player.parentNode.removeChild(player);
-            }
-          }
-          reorderPlayerContainers();
-          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="'+url+'"]');
-          if(checkbox) checkbox.checked = enabled;
-        }
-        function updateFullUI(refresh=true){
-          if(refresh){
-            const mainContent = document.getElementById("main-content");
-            mainContent.innerHTML = "";
-            const streamList = getStreamList();
-            const enabledStreams = streamList.filter(s=> s.enabled);
-            if(enabledStreams.length>0){
-              enabledStreams.forEach(stream=>{
-                const player = createPlayerContainer(stream);
-                if(player) mainContent.appendChild(player);
-              });
-              reorderPlayerContainers();
-            }
-            updateStreamSidebar();
-          }
-        }
-        document.addEventListener("mouseup", ()=>{
-          activeLabels.forEach(label=>{
-            const url = label.getAttribute("data-url");
-            const checkbox = label.parentElement.querySelector("input[type='checkbox']");
-            updateStreamEnabled(url, checkbox.checked);
-          });
-          activeLabels.clear();
-        });
-        function showAllStreams(){ const streams = getStreamList(); streams.forEach(stream=>{ updateStreamEnabled(stream.url, true); }); }
-        function hideAllStreams(){ const streams = getStreamList(); streams.forEach(stream=>{ updateStreamEnabled(stream.url, false); }); }
-        document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
-        document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
-        const modal = document.getElementById("urlModal");
-        const backdrop = document.getElementById("modalBackdrop");
-        const btnAddUrls = document.getElementById("btn-add-urls");
-        const btnSaveUrls = document.getElementById("saveUrls");
-        const urlInput = document.getElementById("urlInput");
-        function showModal(){
-          const streams = getStreamList();
-          urlInput.value = streams.map(s=> s.url).join("\n");
-          modal.style.display = "block";
-          backdrop.style.display = "block";
-        }
-        function hideModal(saveChanges){
-          modal.style.display = "none";
-          backdrop.style.display = "none";
-          if(saveChanges){
-            const newUrls = urlInput.value.split("\n").map(u=> u.trim()).filter(u=>u);
-            const oldStreams = getStreamList();
-            const newConfig = [];
-            newUrls.forEach(url=>{
-              const existing = oldStreams.find(s=> s.url===url);
-              if(existing){ newConfig.push(existing); }
-              else { newConfig.push({ url:url, enabled:true }); }
-            });
-            saveStreamList(newConfig);
-            updateStreamSidebar();
-            oldStreams.forEach(s=>{ if(!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); } });
-            newConfig.forEach(s=>{ if(s.enabled){ updateStreamEnabled(s.url, true); } });
-          }
-          urlInput.value = "";
-        }
-        btnAddUrls.addEventListener("click", showModal);
-        btnSaveUrls.addEventListener("click", ()=> { hideModal(true); });
-        window.addEventListener("keydown", function(e){
-          if(e.key==="Escape"){ if(modal.style.display==="block") hideModal(false); }
-        });
-        updateFullUI();
-      })();
-      
-      // Mobile: Sidebar swipe handling.
-      (function(){
-        if(!document.documentElement.classList.contains("mobile")) return;
-        const sidebar = document.getElementById("sidebar");
-        const toggleBtn = document.getElementById("sidebarToggle");
-        let touchStartX=0, touchEndX=0;
-        const swipeThreshold = 50;
-        sidebar.addEventListener("touchstart", function(e){ touchStartX = e.changedTouches[0].screenX; });
-        sidebar.addEventListener("touchend", function(e){ touchEndX = e.changedTouches[0].screenX;
-          if(touchStartX - touchEndX > swipeThreshold){ sidebar.classList.add("hidden"); toggleBtn.style.display="block"; }
-        });
-        toggleBtn.addEventListener("click", function(){ sidebar.classList.remove("hidden"); toggleBtn.style.display="none"; });
-      })();
-      
-      // Desktop: Listen for full screen changes.
-      document.addEventListener("fullscreenchange", function(){
-        console.log("Fullscreen change. Now", document.fullscreenElement ? "Full screen" : "Windowed");
+      reorderPlayerContainers();
+      updateStreamSidebar();
+    }
+  }
+  
+  // Sidebar interaction.
+  (function() {
+    const activeLabels = new Set();
+    document.addEventListener("mouseup", function () {
+      activeLabels.forEach(label => {
+        const url = label.getAttribute("data-url");
+        const checkbox = label.parentElement.querySelector("input[type='checkbox']");
+        updateStreamEnabled(url, checkbox.checked);
       });
-      
-    </script>
-  </body>
-</html>
+      activeLabels.clear();
+    });
+  })();
+  
+  // Show/hide streams buttons.
+  function showAllStreams() {
+    const streams = getStreamList();
+    streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
+  }
+  function hideAllStreams() {
+    const streams = getStreamList();
+    streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
+  }
+  document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
+  document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
+  
+  // URL Modal functions.
+  const modal = document.getElementById("urlModal");
+  const backdrop = document.getElementById("modalBackdrop");
+  const btnAddUrls = document.getElementById("btn-add-urls");
+  const btnSaveUrls = document.getElementById("saveUrls");
+  const urlInput = document.getElementById("urlInput");
+  
+  function showModal() {
+    const streams = getStreamList();
+    urlInput.value = streams.map(s => s.url).join("\n");
+    modal.style.display = "block";
+    backdrop.style.display = "block";
+  }
+  function hideModal(saveChanges) {
+    modal.style.display = "none";
+    backdrop.style.display = "none";
+    if (saveChanges) {
+      const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u);
+      const oldStreams = getStreamList();
+      const newConfig = [];
+      newUrls.forEach(url => {
+        const existing = oldStreams.find(s => s.url === url);
+        if (existing) { newConfig.push(existing); }
+        else { newConfig.push({ url: url, enabled: true }); }
+      });
+      saveStreamList(newConfig);
+      updateStreamSidebar();
+      oldStreams.forEach(s => { if (!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); } });
+      newConfig.forEach(s => { if (s.enabled) { updateStreamEnabled(s.url, true); } });
+    }
+    urlInput.value = "";
+  }
+  btnAddUrls.addEventListener("click", showModal);
+  btnSaveUrls.addEventListener("click", () => { hideModal(true); });
+  window.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); }
+  });
+  
+  // Mobile: Sidebar swipe handling.
+  (function () {
+    if (!document.documentElement.classList.contains("mobile")) return;
+    const sidebar = document.getElementById("sidebar");
+    const toggleBtn = document.getElementById("sidebarToggle");
+    let touchStartX = 0, touchEndX = 0;
+    const threshold = 50;
+    sidebar.addEventListener("touchstart", function (e) { touchStartX = e.changedTouches[0].screenX; });
+    sidebar.addEventListener("touchend", function (e) {
+      touchEndX = e.changedTouches[0].screenX;
+      if (touchStartX - touchEndX > threshold) {
+        sidebar.classList.add("hidden");
+        toggleBtn.style.display = "block";
+      }
+    });
+    toggleBtn.addEventListener("click", function () {
+      sidebar.classList.remove("hidden");
+      toggleBtn.style.display = "none";
+    });
+  })();
+  
+  // Initialize UI.
+  updateFullUI();
+</script>
+</body> </html
