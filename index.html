@@ -13,7 +13,7 @@
         font-family: Arial, sans-serif;
         background: #222;
         color: #fff;
-        overflow: auto;
+        overflow: hidden; /* prevent unwanted scrolling */
       }
       .container {
         display: flex;
@@ -28,7 +28,7 @@
         overflow-y: auto;
         transition: transform 0.3s ease;
       }
-      /* When sidebar is hidden, move it off-screen */
+      /* When hidden, sidebar slides off-screen */
       #sidebar.hidden {
         transform: translateX(-100%);
       }
@@ -83,7 +83,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 20px;
-        overflow-y: auto;
+        overflow: auto;
       }
       .player-container {
         width: 960px;
@@ -183,14 +183,35 @@
         height: 100%;
         background-color: rgba(0,0,0,0.5);
       }
-      /* Mobile adjustments via the "mobile" class on html */
+      /* Mobile-specific styles using the "mobile" class on html */
+      html.mobile #sidebar {
+        /* Make sidebar overlay the video area */
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        z-index: 1000;
+      }
+      html.mobile #main-content {
+        /* Keep main content visible but obscured by sidebar when it slides in */
+        margin-left: 0;
+      }
+      html.mobile .player-container {
+        /* Scale video players 4x smaller */
+        width: 240px;   /* 960/4 */
+        height: 150px;  /* 600/4 (approximately, note canvas will be maintained accordingly) */
+      }
+      html.mobile .display-canvas {
+        width: 240px;
+        height: 135px;  /* 540/4 ~ 135 */
+      }
       html.mobile #urlModal {
-        width: 300px; /* Roughly 1200/4 */
+        width: 300px; /* 1200/4 */
         padding: 4px;
         font-size: 12px;
       }
       html.mobile #urlModal textarea {
-        height: 150px; /* Roughly 600/4 */
+        height: 150px; /* 600/4 */
         padding: 5px;
         font-size: 12px;
       }
@@ -198,7 +219,7 @@
         padding: 5px;
         font-size: 12px;
       }
-      /* New styles for the sidebar toggle button on mobile */
+      /* Sidebar toggle arrow styling (visible only on mobile when sidebar is hidden) */
       #sidebarToggle {
         display: none;
       }
@@ -207,18 +228,18 @@
         position: fixed;
         top: 50%;
         left: 0;
-        transform: translate(-100%, -50%);
-        z-index: 11;
+        transform: translate(-50%, -50%);
+        z-index: 1100;
         background: #444;
         border: none;
-        padding: 10px;
-        font-size: 18px;
+        padding: 10px 12px;
+        font-size: 24px;
         color: #fff;
         cursor: pointer;
       }
     </style>
     <script>
-      // Detect mobile device by user agent and add "mobile" class to <html>
+      // Detect mobile device via userAgent and add "mobile" class to <html>
       if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         document.documentElement.classList.add("mobile");
       }
@@ -422,12 +443,14 @@
           
           const sourceVideo = document.createElement("video");
           sourceVideo.className = "source-video";
-          // Keep the video muted and set additional attributes for mobile browsers like Brave.
+          // Extra attributes to encourage inline playback on Brave mobile
           sourceVideo.muted = true;
           sourceVideo.autoplay = true;
           sourceVideo.playsInline = true;
           sourceVideo.setAttribute("playsinline", "true");
           sourceVideo.setAttribute("webkit-playsinline", "true");
+          // Adding controls may help on some platforms
+          sourceVideo.setAttribute("controls", "true");
           sourceVideo.preload = "auto";
           sourceVideo.crossOrigin = "anonymous";
           container.appendChild(sourceVideo);
@@ -786,29 +809,25 @@
       
       // Mobile sidebar swipe handling and toggle button initialization.
       (function() {
-        // Only run if the page is mobile
         if (!document.documentElement.classList.contains("mobile")) return;
-        
         const sidebar = document.getElementById("sidebar");
         const toggleBtn = document.getElementById("sidebarToggle");
         let touchStartX = 0;
         let touchEndX = 0;
-        const swipeThreshold = 50; // required horizontal distance in pixels
+        const swipeThreshold = 50; // minimum swipe distance in px
         
-        // Hide sidebar on swipe left
+        // When swiping left on the sidebar, hide it.
         sidebar.addEventListener("touchstart", function(e) {
           touchStartX = e.changedTouches[0].screenX;
         });
         sidebar.addEventListener("touchend", function(e) {
           touchEndX = e.changedTouches[0].screenX;
           if (touchStartX - touchEndX > swipeThreshold) {
-            // Swiped left: hide sidebar
             sidebar.classList.add("hidden");
             toggleBtn.style.display = "block";
           }
         });
-        
-        // Clicking the toggle button shows the sidebar again
+        // Toggle button click shows the sidebar again.
         toggleBtn.addEventListener("click", function() {
           sidebar.classList.remove("hidden");
           toggleBtn.style.display = "none";
