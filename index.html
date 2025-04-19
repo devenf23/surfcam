@@ -4,11 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Live DVR with Video.js Panzoom</title>
-    <!-- Video.js CSS -->
-    <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet">
+    <!-- Video.js CSS from CDN -->
+    <link href="//vjs.zencdn.net/7.17.0/video-js.css" rel="stylesheet" />
     <style>
       /* GENERAL STYLES */
-      html, body {
+      html,
+      body {
         margin: 0;
         padding: 0;
         height: 100vh;
@@ -198,7 +199,7 @@
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners (left here in case you wish to extend pan/zoom via keyboard) -->
+    <!-- Global Spacebar Listeners (if further custom pan/zoom keyboard control needed) -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -225,17 +226,21 @@
     <div id="modalBackdrop"></div>
     <div id="urlModal">
       <h3 style="margin-top: 0; text-align: center;">Paste Playlist URLs (one per line)</h3>
-      <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-capitolapeak/playlist.m3u8"></textarea>
+      <textarea id="urlInput" placeholder="https://hls.cdn-surfline.com/oregon/wc-cowells/playlist.m3u8"></textarea>
       <button id="saveUrls">Save and Close</button>
     </div>
-    <!-- Load Video.js -->
+    <!-- Load Video.js from CDN -->
     <script src="//vjs.zencdn.net/7.17.0/video.min.js"></script>
-    <!-- Load videojs-panzoom plugin -->
+    <!-- Load videojs-panzoom plugin from unpkg -->
     <script src="https://unpkg.com/videojs-panzoom/dist/videojs-panzoom.min.js"></script>
     <script>
+      // Ensure the panzoom plugin is registered (if not automatically)
+      if (typeof videojs.getPlugin('panzoom') !== 'function' && typeof panzoom !== 'undefined'){
+        videojs.registerPlugin('panzoom', panzoom);
+      }
+      
       /* ----------------------------------------------------------------
-         Utility functions for saving and restoring panzoom state.
-         Each stream gets its own key in localStorage.
+         Utility functions to load and save panzoom state
       ---------------------------------------------------------------- */
       function loadPanzoomState(url) {
         const key = "panzoomState_" + url;
@@ -243,12 +248,11 @@
         if (state) {
           try {
             return JSON.parse(state);
-          } catch (e) {
-            return {};
-          }
+          } catch (e) { return {}; }
         }
         return {};
       }
+      
       function savePanzoomState(url, state) {
         const key = "panzoomState_" + url;
         localStorage.setItem(key, JSON.stringify(state));
@@ -256,7 +260,7 @@
       
       /* ----------------------------------------------------------------
          MAIN UI & STREAM MANAGEMENT
-         (Includes sidebar, URL modal, and enabling multiple streams with Video.js)
+         (Uses sidebar and multi‑stream enabling as before)
       ---------------------------------------------------------------- */
       (function(){
         const storageKey = "streamConfigs";
@@ -267,13 +271,10 @@
           return match ? match[1] : url;
         }
         
-        function saveStreamList(list) {
-          localStorage.setItem(storageKey, JSON.stringify(list));
-        }
-        
+        function saveStreamList(list) { localStorage.setItem(storageKey, JSON.stringify(list)); }
         function getStreamList() {
           const stored = localStorage.getItem(storageKey);
-          if(!stored) return [];
+          if (!stored) return [];
           try { return JSON.parse(stored); }
           catch(e){ return []; }
         }
@@ -282,13 +283,13 @@
           const sidebarList = document.getElementById("streamList");
           sidebarList.innerHTML = "";
           const streams = getStreamList();
-          if(streams.length === 0) {
+          if (streams.length === 0) {
             const p = document.createElement("p");
             p.className = "no-streams";
             p.textContent = "No streams added. Click 'Add URLs' to add streams.";
             sidebarList.appendChild(p);
           } else {
-            streams.forEach(stream=>{
+            streams.forEach(stream => {
               const videoSrc = stream.url;
               const title = extractTitle(videoSrc);
               const item = document.createElement("div");
@@ -297,17 +298,23 @@
               checkbox.type = "checkbox";
               checkbox.checked = stream.enabled;
               checkbox.setAttribute("data-url", videoSrc);
-              checkbox.addEventListener("change", (e)=> { updateStreamEnabled(videoSrc, e.target.checked); });
+              checkbox.addEventListener("change", (e) => { updateStreamEnabled(videoSrc, e.target.checked); });
               item.appendChild(checkbox);
-              
               const label = document.createElement("label");
               label.textContent = title;
               label.setAttribute("data-url", videoSrc);
-              label.addEventListener("mousedown", (e)=>{
-                if(e.button===0){ checkbox.checked = !checkbox.checked; activeLabels.add(label); e.preventDefault(); }
+              label.addEventListener("mousedown", (e) => {
+                if (e.button === 0) { 
+                  checkbox.checked = !checkbox.checked; 
+                  activeLabels.add(label); 
+                  e.preventDefault();
+                }
               });
-              label.addEventListener("mouseenter", (e)=>{
-                if(e.buttons & 1 && !activeLabels.has(label)){ checkbox.checked = !checkbox.checked; activeLabels.add(label); }
+              label.addEventListener("mouseenter", (e) => {
+                if (e.buttons & 1 && !activeLabels.has(label)) { 
+                  checkbox.checked = !checkbox.checked; 
+                  activeLabels.add(label); 
+                }
               });
               item.appendChild(label);
               sidebarList.appendChild(item);
@@ -316,130 +323,127 @@
         }
         
         function toggleFullScreen(container) {
-          if(!document.fullscreenElement) {
-            container.requestFullscreen().catch(err => console.error("Full screen request failed:", err));
+          if (!document.fullscreenElement) {
+            container.requestFullscreen().catch(err => console.error("Full screen error:", err));
           } else {
-            document.exitFullscreen().catch(err => console.error("Exit full screen failed:", err));
+            document.exitFullscreen().catch(err => console.error("Exit full screen error:", err));
           }
         }
         
-        // Create a Video.js player container using videojs-panzoom.
+        // Create a Video.js player container for a given stream.
         function createPlayerContainer(streamConfig) {
-          if(!streamConfig.enabled) return null;
-          const videoSrc = streamConfig.url;
-          const title = extractTitle(videoSrc);
+          if (!streamConfig.enabled) return null;
+          const videoSrcOrig = streamConfig.url;
+          // Modify URL to route through proxy:
+          const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+          const proxiedUrl = proxyPrefix + encodeURIComponent(videoSrcOrig);
+          
+          const title = extractTitle(videoSrcOrig);
           const isMobile = document.documentElement.classList.contains("mobile");
           const container = document.createElement("div");
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
-          container.setAttribute("data-url", videoSrc);
-          // Generate a unique video element ID.
+          container.setAttribute("data-url", videoSrcOrig);
+          
+          // Create a unique video element.
           const videoId = "vid_" + Math.random().toString(36).substring(2,10);
-      
-          // Create the video element.
           const videoEl = document.createElement("video");
           videoEl.id = videoId;
           videoEl.className = "video-js vjs-default-skin";
-          if(isMobile) {
+          if (isMobile) {
             videoEl.style.width = "240px";
             videoEl.style.height = "135px";
           } else {
             videoEl.style.width = "960px";
             videoEl.style.height = "540px";
           }
-          // Add the source element with our HLS URL.
           const sourceEl = document.createElement("source");
-          sourceEl.src = videoSrc;
+          sourceEl.src = proxiedUrl;
           sourceEl.type = "application/x-mpegURL";
           videoEl.appendChild(sourceEl);
           container.appendChild(videoEl);
-      
-          // Initialize Video.js on the video element by passing the video element instead of its ID.
-          const options = {
+          
+          const vjsOptions = {
             controls: true,
             autoplay: false,
             preload: "auto"
           };
-      
-          // This avoids the "element or ID supplied is not valid" error.
-          var vjsPlayer = videojs(videoEl, options, function() {
-            console.log("Video.js player ready for stream:", videoSrc);
+          var vjsPlayer = videojs(videoEl, vjsOptions, function(){
+            console.log("Video.js player ready for stream:", videoSrcOrig);
           });
-      
-          // On desktop, initialize videojs-panzoom and load any saved pan/zoom state.
-          if(!isMobile){
-            var savedState = loadPanzoomState(videoSrc);
+          
+          // On desktop, initialize videojs-panzoom and persist its state.
+          if (!isMobile) {
+            var savedState = loadPanzoomState(videoSrcOrig);
             vjsPlayer.panzoom(savedState);
-            // Listen for panzoom changes and persist them.
             vjsPlayer.on("panzoomchange", function(){
               var state = vjsPlayer.panzoom.getState();
-              savePanzoomState(videoSrc, state);
+              savePanzoomState(videoSrcOrig, state);
             });
           }
-      
-          // Save reference to the Video.js player in the container.
+          
           container.vjsPlayer = vjsPlayer;
           return container;
         }
-      
-        function reorderPlayerContainers(){
+        
+        function reorderPlayerContainers() {
           const mainContent = document.getElementById("main-content");
           const config = getStreamList();
           const players = Array.from(mainContent.querySelectorAll(".player-container"));
-          players.sort((a,b) => {
+          players.sort((a, b) => {
             let indexA = config.findIndex(s => s.url === a.getAttribute("data-url"));
             let indexB = config.findIndex(s => s.url === b.getAttribute("data-url"));
             return indexA - indexB;
           });
           players.forEach(p => mainContent.appendChild(p));
         }
-      
-        function updateStreamEnabled(url, enabled){
+        
+        function updateStreamEnabled(url, enabled) {
           let streams = getStreamList();
           const idx = streams.findIndex(s => s.url === url);
-          if(idx === -1) return;
-          if(streams[idx].enabled !== enabled){
+          if (idx === -1) return;
+          if (streams[idx].enabled !== enabled) {
             streams[idx].enabled = enabled;
             saveStreamList(streams);
           }
           let playerContainer = document.querySelector('.player-container[data-url="'+url+'"]');
           const mainContent = document.getElementById("main-content");
-          if(enabled){
-            if(!playerContainer){
+          if (enabled) {
+            if (!playerContainer) {
               playerContainer = createPlayerContainer(streams[idx]);
-              if(playerContainer) mainContent.appendChild(playerContainer);
+              if (playerContainer) mainContent.appendChild(playerContainer);
             } else {
               playerContainer.style.display = "flex";
             }
           } else {
-            if(playerContainer){
-              if(playerContainer.vjsPlayer){
+            if (playerContainer) {
+              if (playerContainer.vjsPlayer) {
                 playerContainer.vjsPlayer.dispose();
               }
-              if(playerContainer.parentNode) playerContainer.parentNode.removeChild(playerContainer);
+              if (playerContainer.parentNode) playerContainer.parentNode.removeChild(playerContainer);
             }
           }
           reorderPlayerContainers();
           const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="'+url+'"]');
-          if(checkbox) checkbox.checked = enabled;
+          if (checkbox) checkbox.checked = enabled;
         }
-      
-        function updateFullUI(refresh = true){
-          if(refresh){
+        
+        function updateFullUI(refresh = true) {
+          if (refresh) {
             const mainContent = document.getElementById("main-content");
             mainContent.innerHTML = "";
             const streamList = getStreamList();
             const enabledStreams = streamList.filter(s => s.enabled);
-            if(enabledStreams.length > 0){
+            if (enabledStreams.length > 0) {
               enabledStreams.forEach(stream => {
                 const player = createPlayerContainer(stream);
-                if(player) mainContent.appendChild(player);
+                if (player) mainContent.appendChild(player);
               });
               reorderPlayerContainers();
             }
             updateStreamSidebar();
           }
         }
-      
+        
         document.addEventListener("mouseup", function(){
           activeLabels.forEach(function(label){
             const url = label.getAttribute("data-url");
@@ -448,55 +452,57 @@
           });
           activeLabels.clear();
         });
-      
-        function showAllStreams(){
+        
+        function showAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
         }
-        function hideAllStreams(){
+        function hideAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
         }
         document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
         document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
-      
-        // Modal to add URLs.
+        
+        // URL Modal logic.
         const modal = document.getElementById("urlModal");
         const backdrop = document.getElementById("modalBackdrop");
         const btnAddUrls = document.getElementById("btn-add-urls");
         const btnSaveUrls = document.getElementById("saveUrls");
         const urlInput = document.getElementById("urlInput");
-      
-        function showModal(){
+        
+        function showModal() {
           const streams = getStreamList();
           urlInput.value = streams.map(s => s.url).join("\n");
           modal.style.display = "block";
           backdrop.style.display = "block";
         }
-        function hideModal(saveChanges){
+        
+        function hideModal(saveChanges) {
           modal.style.display = "none";
           backdrop.style.display = "none";
-          if(saveChanges){
+          if (saveChanges) {
             const newUrls = urlInput.value.split("\n").map(u => u.trim()).filter(u => u);
             const oldStreams = getStreamList();
             const newConfig = [];
             newUrls.forEach(url => {
               const existing = oldStreams.find(s => s.url === url);
-              if(existing){ newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
+              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
-            oldStreams.forEach(s => { if(!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); } });
-            newConfig.forEach(s => { if(s.enabled) { updateStreamEnabled(s.url, true); } });
+            oldStreams.forEach(s => { if (!newUrls.includes(s.url)) { updateStreamEnabled(s.url, false); }});
+            newConfig.forEach(s => { if (s.enabled) { updateStreamEnabled(s.url, true); }});
           }
           urlInput.value = "";
         }
-      
+        
         btnAddUrls.addEventListener("click", showModal);
-        btnSaveUrls.addEventListener("click", function(){ hideModal(true); });
-        window.addEventListener("keydown", function(e){
-          if(e.key==="Escape"){ if(modal.style.display==="block") hideModal(false); }
+        btnSaveUrls.addEventListener("click", function() { hideModal(true); });
+        window.addEventListener("keydown", function(e) {
+          if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); }
         });
+        
         updateFullUI();
       })();
       
@@ -510,12 +516,14 @@
         sidebar.addEventListener("touchstart", function(e){ touchStartX = e.changedTouches[0].screenX; });
         sidebar.addEventListener("touchend", function(e){
           touchEndX = e.changedTouches[0].screenX;
-          if(touchStartX - touchEndX > swipeThreshold){ sidebar.classList.add("hidden"); toggleBtn.style.display = "block"; }
+          if(touchStartX - touchEndX > swipeThreshold) { sidebar.classList.add("hidden"); toggleBtn.style.display = "block"; }
         });
-        toggleBtn.addEventListener("click", function(){ sidebar.classList.remove("hidden"); toggleBtn.style.display = "none"; });
+        toggleBtn.addEventListener("click", function(){
+          sidebar.classList.remove("hidden"); toggleBtn.style.display = "none";
+        });
       })();
       
-      // Desktop: Listen for fullscreen change events.
+      // Listen for fullscreen changes (desktop)
       document.addEventListener("fullscreenchange", function(){
         console.log("Fullscreen changed. Now", document.fullscreenElement ? "Full screen" : "Windowed");
       });
