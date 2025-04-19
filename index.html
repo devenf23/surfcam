@@ -26,6 +26,11 @@
         padding: 20px;
         box-sizing: border-box;
         overflow-y: auto;
+        transition: transform 0.3s ease;
+      }
+      /* When sidebar is hidden, move it off-screen */
+      #sidebar.hidden {
+        transform: translateX(-100%);
       }
       #btn-add-urls {
         width: 100%;
@@ -193,15 +198,35 @@
         padding: 5px;
         font-size: 12px;
       }
+      /* New styles for the sidebar toggle button on mobile */
+      #sidebarToggle {
+        display: none;
+      }
+      html.mobile #sidebarToggle {
+        display: block;
+        position: fixed;
+        top: 50%;
+        left: 0;
+        transform: translate(-100%, -50%);
+        z-index: 11;
+        background: #444;
+        border: none;
+        padding: 10px;
+        font-size: 18px;
+        color: #fff;
+        cursor: pointer;
+      }
     </style>
     <script>
-      // Detect mobile device by user agent and add a "mobile" class to the html element
+      // Detect mobile device by user agent and add "mobile" class to <html>
       if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         document.documentElement.classList.add("mobile");
       }
     </script>
   </head>
   <body>
+    <!-- Mobile sidebar toggle button (hidden on desktop) -->
+    <button id="sidebarToggle">&#x25B6;</button>
     <!-- Global Spacebar Listeners -->
     <script>
       let spaceHeld = false;
@@ -239,13 +264,11 @@
       // Custom Loader – Uses per-stream customPlaylistBase stored in its instance.
       class ProxyLoader {
         constructor(config) {
-          // Save the customPlaylistBase from the config (if provided)
           this.customPlaylistBase = config.customPlaylistBase || "";
           this.config = config;
           this.loader = new Hls.DefaultConfig.loader(config);
         }
         load(context, config, callbacks) {
-          // Use your production Vercel URL here
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
           const customBase = this.customPlaylistBase;
           console.log("ProxyLoader: customPlaylistBase =", customBase);
@@ -289,8 +312,8 @@
           }
           this.loader.load(context, config, callbacks);
         }
-        abort() { if (this.loader.abort) { this.loader.abort(); } }
-        destroy() { if (this.loader.destroy) { this.loader.destroy(); } }
+        abort() { if (this.loader.abort) this.loader.abort(); }
+        destroy() { if (this.loader.destroy) this.loader.destroy(); }
       }
       // ----------------------------------------------------------------
       
@@ -399,9 +422,12 @@
           
           const sourceVideo = document.createElement("video");
           sourceVideo.className = "source-video";
+          // Keep the video muted and set additional attributes for mobile browsers like Brave.
           sourceVideo.muted = true;
           sourceVideo.autoplay = true;
           sourceVideo.playsInline = true;
+          sourceVideo.setAttribute("playsinline", "true");
+          sourceVideo.setAttribute("webkit-playsinline", "true");
           sourceVideo.preload = "auto";
           sourceVideo.crossOrigin = "anonymous";
           container.appendChild(sourceVideo);
@@ -551,7 +577,6 @@
           function startStream() {
             if (container.hlsInstance) return;
             if (Hls.isSupported()) {
-              // Derive customPlaylistBase from the playlist URL.
               const customPlaylistBase = videoSrc.substring(0, videoSrc.lastIndexOf("/") + 1);
               console.log("StartStream: customPlaylistBase =", customPlaylistBase);
               
@@ -757,6 +782,37 @@
         window.addEventListener("keydown", function(e) { if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); } });
         
         updateFullUI();
+      })();
+      
+      // Mobile sidebar swipe handling and toggle button initialization.
+      (function() {
+        // Only run if the page is mobile
+        if (!document.documentElement.classList.contains("mobile")) return;
+        
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("sidebarToggle");
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const swipeThreshold = 50; // required horizontal distance in pixels
+        
+        // Hide sidebar on swipe left
+        sidebar.addEventListener("touchstart", function(e) {
+          touchStartX = e.changedTouches[0].screenX;
+        });
+        sidebar.addEventListener("touchend", function(e) {
+          touchEndX = e.changedTouches[0].screenX;
+          if (touchStartX - touchEndX > swipeThreshold) {
+            // Swiped left: hide sidebar
+            sidebar.classList.add("hidden");
+            toggleBtn.style.display = "block";
+          }
+        });
+        
+        // Clicking the toggle button shows the sidebar again
+        toggleBtn.addEventListener("click", function() {
+          sidebar.classList.remove("hidden");
+          toggleBtn.style.display = "none";
+        });
       })();
     </script>
   </body>
