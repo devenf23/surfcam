@@ -94,7 +94,7 @@
         box-sizing: border-box;
         margin-bottom: 40px;
       }
-      /* Mobile player container (scaled ≈4× smaller) */
+      /* Mobile player container (scaled ~4× smaller) */
       .player-container.mobile {
         width: 240px;
         height: 150px;
@@ -105,7 +105,9 @@
         box-sizing: border-box;
         margin-bottom: 20px;
       }
-      /* Desktop: Instead of visibility:hidden, set opacity:0 on the video so it keeps playing */
+      /* Desktop:
+         Rather than hiding the video element entirely (visibility:hidden), we set its opacity to 0
+         and use it as the source for the canvas. */
       .player-container.desktop .source-video {
         opacity: 0;
         position: absolute;
@@ -115,13 +117,13 @@
         height: 540px;
         pointer-events: none;
       }
-      /* Desktop: Canvas to display video frames */
+      /* Desktop: Canvas displays the video frames */
       .player-container.desktop .display-canvas {
         background: black;
         width: 960px;
         height: 540px;
       }
-      /* Mobile: Show native video element with controls */
+      /* Mobile: Show the video element with native controls */
       .player-container.mobile .source-video {
         opacity: 1;
         width: 240px;
@@ -475,7 +477,7 @@
           container.panX = Math.min(halfW*Z - halfW, Math.max(halfW - halfW*Z, container.panX));
           container.panY = Math.min(halfH*Z - halfH, Math.max(halfH - halfH*Z, container.panY));
         }
-        // Create a player container for a given stream.
+        // Create a player container for a stream.
         // Desktop uses Hls.js with a canvas renderer; mobile uses the native video element.
         function createPlayerContainer(streamConfig) {
           if (!streamConfig.enabled) return null;
@@ -495,7 +497,7 @@
           
           container.addEventListener("dblclick", function(e) { toggleFullScreen(container); });
           
-          // Create video element.
+          // Create the video element.
           const sourceVideo = document.createElement("video");
           sourceVideo.className = "source-video";
           sourceVideo.muted = true;
@@ -538,8 +540,20 @@
             container.appendChild(displayCanvas);
             ctx = displayCanvas.getContext("2d");
             
-            // (Removed canvas-click toggling to avoid potential conflicts; desktop play/pause is controlled via button.)
-            // Enable zoom/pan if space is held.
+            // Add a render loop to draw video frames onto the canvas.
+            function renderFrame() {
+              if (sourceVideo.readyState >= 2) {
+                try {
+                  ctx.drawImage(sourceVideo, 0, 0, 960, 540);
+                } catch (err) {
+                  console.error("Error rendering video frame:", err);
+                }
+              }
+              requestAnimationFrame(renderFrame);
+            }
+            requestAnimationFrame(renderFrame);
+            
+            // Enable zoom/panning only if spacebar is held.
             let startX = 0, startY = 0, isDragging = false;
             const dragThreshold = 5;
             displayCanvas.addEventListener("mousedown", function(e) {
@@ -588,7 +602,7 @@
               savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
             }, { passive: false });
           } else {
-            // Mobile: Add touchend to trigger playback.
+            // Mobile: Add touchend listener to trigger play.
             sourceVideo.addEventListener("touchend", function(e) {
               if (sourceVideo.paused) {
                 sourceVideo.play().then(() => {
@@ -610,7 +624,7 @@
                 sourceVideo.pause();
               }
             });
-            // Add a "Tap to Play" overlay.
+            // Add a “Tap to Play” overlay.
             let mobileOverlay = document.createElement("div");
             mobileOverlay.className = "mobile-play-overlay";
             mobileOverlay.innerText = "Tap to Play";
@@ -699,7 +713,7 @@
             titleBar.textContent = title;
             controlsContainer.appendChild(titleBar);
             
-            // Fullscreen: Fade controls out after 3 sec when mouse near bottom.
+            // In full screen, fade controls out after 3 seconds if mouse near bottom.
             let hideControlsTimeout = null;
             function scheduleControlsHide() {
               if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
