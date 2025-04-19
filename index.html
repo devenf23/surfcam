@@ -112,7 +112,7 @@
         width: 100%;
         height: 100%;
       }
-      /* Title bar below player */
+      /* Title bar below each video */
       .title-bar {
         background: #333;
         text-align: center;
@@ -205,7 +205,7 @@
   <body>
     <!-- Mobile sidebar toggle -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners (for potential keyboard control) -->
+    <!-- Global Spacebar Listeners (if additional keyboard pan/zoom is desired) -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -240,7 +240,7 @@
     <!-- Load videojs-panzoom plugin (version 2.0.0) -->
     <script src="https://unpkg.com/videojs-panzoom@2.0.0/dist/videojs-panzoom.min.js"></script>
     <script>
-      // Register panzoom plugin if not already registered.
+      // Register panzoom plugin if not already available.
       if (typeof videojs.getPlugin('panzoom') !== 'function' && typeof panzoom === 'function') {
           videojs.registerPlugin('panzoom', panzoom);
       }
@@ -341,15 +341,18 @@
         function createPlayerContainer(streamConfig) {
           if(!streamConfig.enabled) return null;
           const videoSrcOrig = streamConfig.url;
-          // Wrap the original URL via the proxy. This ensures the manifest and all fragment URLs are routed through your proxy.
+          // Wrap the original manifest URL with the proxy.
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
           const proxiedUrl = proxyPrefix + encodeURIComponent(videoSrcOrig);
           const title = extractTitle(videoSrcOrig);
           const isMobile = document.documentElement.classList.contains("mobile");
           const container = document.createElement("div");
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
-          // We still store the original (unproxied) URL in the container.
+          // Save the original URL in the container.
           container.setAttribute("data-url", videoSrcOrig);
+      
+          // Save the base URL (for resolving relative fragment URLs)
+          var manifestBase = videoSrcOrig.substring(0, videoSrcOrig.lastIndexOf("/") + 1);
       
           // Create a unique video element.
           const videoId = "vid_" + Math.random().toString(36).substring(2,10);
@@ -363,13 +366,14 @@
             videoEl.style.width = "960px";
             videoEl.style.height = "540px";
           }
+          // Create source element with the proxied URL.
           const sourceEl = document.createElement("source");
           sourceEl.src = proxiedUrl;
           sourceEl.type = "application/x-mpegURL";
           videoEl.appendChild(sourceEl);
           container.appendChild(videoEl);
       
-          // Options: enable autoplay and mute (required by most modern browsers).
+          // Video.js options: autoplay=true and muted=true for autoplay in modern browsers.
           const vjsOptions = {
             controls: true,
             autoplay: true,
@@ -382,36 +386,45 @@
             console.log("Video.js player ready for stream:", videoSrcOrig);
           });
       
-          // Set VHS beforeRequest hook to rewrite all requests (manifest & fragments) through the proxy.
-          // Modern Video.js uses VHS (HTTP Streaming); we can use its beforeRequest hook.
-          if (vjsPlayer.tech(true) && vjsPlayer.tech(true).vhs) {
-            var vhsOptions = vjsPlayer.tech(true).vhs.options_ || {};
-            vhsOptions.beforeRequest = function(options) {
-              // Only rewrite if the URL is not already prefixed.
-              var proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
-              if (!options.uri.startsWith(proxyPrefix)) {
-                options.uri = proxyPrefix + encodeURIComponent(options.uri);
-              }
-              return options;
-            };
-            vjsPlayer.tech(true).vhs.options_ = vhsOptions;
-          }
-      
-          // On desktop, initialize videojs-panzoom.
-          if (!isMobile) {
-            var savedState = loadPanzoomState(videoSrcOrig);
-            if (typeof vjsPlayer.panzoom === 'function') {
-              vjsPlayer.panzoom(savedState);
-              vjsPlayer.on("panzoomchange", function(){
-                var state = vjsPlayer.panzoom.getState();
-                savePanzoomState(videoSrcOrig, state);
-              });
-            } else {
-              console.error("videojs-panzoom plugin is not available on this player.");
+          // Set up a VHS beforeRequest hook to rewrite ALL HTTP requests (manifest and fragments):
+          vjsPlayer.ready(function() {
+            if (vjsPlayer.tech(true) && vjsPlayer.tech(true).vhs) {
+              var vhsOptions = vjsPlayer.tech(true).vhs.options_ || {};
+              // Set (or extend) beforeRequest:
+              vhsOptions.beforeRequest = function(options) {
+                // If the URL is relative, resolve it against the manifest base.
+                if (!/^https?:\/\//.test(options.uri)) {
+                  options.uri = new URL(options.uri, manifestBase).toString();
+                }
+                // Wrap only if not already proxied.
+                if (!options.uri.startsWith(proxyPrefix)) {
+                  options.uri = proxyPrefix + encodeURIComponent(options.uri);
+                }
+                // For debugging:
+                // console.log("Rewritten request URI:", options.uri);
+                return options;
+              };
+              vjsPlayer.tech(true).vhs.options_ = vhsOptions;
             }
+          });
+      
+          // On desktop, initialize the panzoom plugin once the player is ready.
+          if(!isMobile) {
+            var savedState = loadPanzoomState(videoSrcOrig);
+            vjsPlayer.ready(function() {
+              if (typeof vjsPlayer.panzoom === 'function') {
+                vjsPlayer.panzoom(savedState);
+                vjsPlayer.on("panzoomchange", function(){
+                  var state = vjsPlayer.panzoom.getState();
+                  savePanzoomState(videoSrcOrig, state);
+                });
+              } else {
+                console.error("videojs-panzoom plugin is not available on this player.");
+              }
+            });
           }
       
-          // Append a title below the player.
+          // Append a title bar below the player.
           var titleBar = document.createElement("div");
           titleBar.className = "title-bar";
           titleBar.textContent = title;
@@ -441,7 +454,7 @@
             streams[idx].enabled = enabled;
             saveStreamList(streams);
           }
-          let playerContainer = document.querySelector('.player-container[data-url="' + url + '"]');
+          let playerContainer = document.querySelector('.player-container[data-url="'+url+'"]');
           const mainContent = document.getElementById("main-content");
           if (enabled) {
             if (!playerContainer) {
@@ -459,7 +472,7 @@
             }
           }
           reorderPlayerContainers();
-          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
+          const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="'+url+'"]');
           if (checkbox) checkbox.checked = enabled;
         }
       
@@ -513,7 +526,6 @@
           modal.style.display = "block";
           backdrop.style.display = "block";
         }
-      
         function hideModal(saveChanges) {
           modal.style.display = "none";
           backdrop.style.display = "none";
@@ -523,8 +535,7 @@
             const newConfig = [];
             newUrls.forEach(url => {
               const existing = oldStreams.find(s => s.url === url);
-              if (existing) { newConfig.push(existing); }
-              else { newConfig.push({ url: url, enabled: true }); }
+              if (existing) { newConfig.push(existing); } else { newConfig.push({ url: url, enabled: true }); }
             });
             saveStreamList(newConfig);
             updateStreamSidebar();
