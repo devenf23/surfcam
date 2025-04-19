@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live DVR – Full‑Screen & Spacebar Zoom/Pan (v28i)</title>
+    <title>Live DVR – Full‑Screen, Zoom/Pan, & Timeline (vLatest)</title>
     <style>
       /* GENERAL STYLES */
       html, body {
@@ -94,7 +94,7 @@
         box-sizing: border-box;
         margin-bottom: 40px;
       }
-      /* Mobile player container (scaled ~4× smaller) */
+      /* Mobile player container (approximately 4× smaller) */
       .player-container.mobile {
         width: 240px;
         height: 150px;
@@ -106,8 +106,8 @@
         margin-bottom: 20px;
       }
       /* Desktop:
-         Rather than hiding the video element entirely (visibility:hidden), we set its opacity to 0
-         and use it as the source for the canvas. */
+         The video element is left in the DOM (and is scaled to the canvas size) with opacity:0 so its frames play,
+         and the canvas is used for the visible output. */
       .player-container.desktop .source-video {
         opacity: 0;
         position: absolute;
@@ -117,25 +117,26 @@
         height: 540px;
         pointer-events: none;
       }
-      /* Desktop: Canvas displays the video frames */
       .player-container.desktop .display-canvas {
         background: black;
         width: 960px;
         height: 540px;
       }
-      /* Mobile: Show the video element with native controls */
+      /* Mobile:
+         Show the native video element with controls; hide the canvas. */
       .player-container.mobile .source-video {
         opacity: 1;
         width: 240px;
-        height: 135px; /* roughly 540/4 */
+        height: 135px;
       }
-      /* Mobile: Hide the desktop canvas */
       .player-container.mobile .display-canvas {
         display: none;
       }
       /* Desktop custom controls overlay */
       .controls-container {
         transition: opacity 0.5s;
+        position: relative;
+        z-index: 2;
       }
       .control-bar {
         height: 60px;
@@ -178,10 +179,10 @@
         left: 0;
         width: 100%;
         height: 100%;
+        background: rgba(0,0,0,0.5);
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0,0,0,0.5);
         color: #fff;
         font-size: 24px;
         z-index: 10;
@@ -270,16 +271,16 @@
       }
     </style>
     <script>
-      // Add "mobile" class if a mobile device is detected.
+      // Add mobile class if necessary.
       if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
         document.documentElement.classList.add("mobile");
       }
     </script>
   </head>
   <body>
-    <!-- Mobile sidebar toggle -->
+    <!-- Mobile sidebar toggle button -->
     <button id="sidebarToggle">&#x25B6;</button>
-    <!-- Global Spacebar Listeners -->
+    <!-- Global Spacebar Listeners (for desktop panning/zooming) -->
     <script>
       let spaceHeld = false;
       window.addEventListener("keydown", function(e) {
@@ -314,6 +315,7 @@
     <script>
       /* ----------------------------------------------------------------
          Desktop: Custom Loader using our proxy.
+         (For brevity, the ProxyLoader remains similar to previous versions.)
       ---------------------------------------------------------------- */
       class ProxyLoader {
         constructor(config) {
@@ -324,44 +326,32 @@
         load(context, config, callbacks) {
           const proxyPrefix = "https://surfcam-alpha.vercel.app/api/proxy?url=";
           const customBase = this.customPlaylistBase;
-          console.log("ProxyLoader: customPlaylistBase =", customBase);
-          console.log("ProxyLoader: Request type =", context.type);
           if ((context.type === "fragment" || context.type === undefined) && context.url.endsWith(".ts")) {
             let rawUrl = context.url;
-            console.log("ProxyLoader: Original fragment URL =", rawUrl);
             if (rawUrl.startsWith(proxyPrefix)) {
               try {
                 const wrapped = new URL(rawUrl);
                 rawUrl = wrapped.searchParams.get("url") || rawUrl;
               } catch (e) {
-                console.warn("ProxyLoader: Error unwrapping URL:", e);
+                console.warn(e);
               }
             }
-            console.log("ProxyLoader: Unwrapped fragment URL =", rawUrl);
             if (rawUrl.indexOf("://localhost:3000/api/") !== -1 || !rawUrl.startsWith("https://")) {
               const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
               rawUrl = customBase + segFilename;
-              console.log("ProxyLoader: Rebuilt fragment URL using custom base:", rawUrl);
             } else if (customBase && !rawUrl.startsWith(customBase)) {
               const segFilename = rawUrl.substring(rawUrl.lastIndexOf("/") + 1);
               rawUrl = customBase + segFilename;
-              console.log("ProxyLoader: Raw fragment URL did not start with custom base; rebuilt as:", rawUrl);
-            } else {
-              console.log("ProxyLoader: Raw fragment URL is correct:", rawUrl);
             }
             context.url = proxyPrefix + encodeURIComponent(rawUrl);
-            console.log("ProxyLoader: Final proxied fragment URL =", context.url);
           } else if (context.type === "manifest") {
-            console.log("ProxyLoader: Original manifest URL =", context.url);
             if (!context.url.startsWith(proxyPrefix)) {
               context.url = proxyPrefix + encodeURIComponent(context.url);
             }
-            console.log("ProxyLoader: Final proxied manifest URL =", context.url);
           } else {
             if (!context.url.startsWith(proxyPrefix)) {
               context.url = proxyPrefix + encodeURIComponent(context.url);
             }
-            console.log("ProxyLoader: Final generic URL =", context.url);
           }
           this.loader.load(context, config, callbacks);
         }
@@ -370,7 +360,7 @@
       }
       /* ---------------------------------------------------------------- */
       
-      // Utility functions for persistent settings.
+      // Utility functions for persisting settings.
       function loadPlayerSettings(url) {
         const ps = localStorage.getItem("playerSettings");
         if (ps) {
@@ -378,7 +368,6 @@
             const settings = JSON.parse(ps);
             return settings[url] || { zoomScale: 1, panX: 0, panY: 0 };
           } catch (err) {
-            console.error("Error parsing playerSettings", err);
             return { zoomScale: 1, panX: 0, panY: 0 };
           }
         }
@@ -390,9 +379,7 @@
         if (ps) {
           try {
             settings = JSON.parse(ps);
-          } catch (err) {
-            console.error("Error parsing playerSettings", err);
-          }
+          } catch (err) { }
         }
         settings[url] = data;
         localStorage.setItem("playerSettings", JSON.stringify(settings));
@@ -402,7 +389,6 @@
       (function() {
         const storageKey = "streamConfigs";
         const activeLabels = new Set();
-        
         function extractTitle(url) {
           const match = url.match(/wc-([^\/]+)\/playlist/);
           return match ? match[1] : url;
@@ -416,7 +402,6 @@
           try {
             return JSON.parse(storedData);
           } catch (e) {
-            console.error("Error parsing stored streams", e);
             return [];
           }
         }
@@ -427,7 +412,7 @@
           if (!streams.length) {
             const p = document.createElement("p");
             p.className = "no-streams";
-            p.textContent = "No streams added. Please click 'Add URLs' to add streams.";
+            p.textContent = "No streams added. Click 'Add URLs' to add streams.";
             sidebarList.appendChild(p);
           } else {
             streams.forEach(stream => {
@@ -445,20 +430,10 @@
               label.textContent = title;
               label.setAttribute("data-url", videoSrc);
               label.addEventListener("mousedown", function(e) {
-                if (e.button === 0) {
-                  checkbox.checked = !checkbox.checked;
-                  activeLabels.add(label);
-                  e.preventDefault();
-                }
+                if (e.button === 0) { checkbox.checked = !checkbox.checked; activeLabels.add(label); e.preventDefault(); }
               });
               label.addEventListener("mouseenter", function(e) {
-                if (e.buttons & 1 && !activeLabels.has(label)) {
-                  checkbox.checked = !checkbox.checked;
-                  activeLabels.add(label);
-                }
-              });
-              label.addEventListener("click", function(e) {
-                if (!activeLabels.has(label)) activeLabels.add(label);
+                if (e.buttons & 1 && !activeLabels.has(label)) { checkbox.checked = !checkbox.checked; activeLabels.add(label); }
               });
               item.appendChild(label);
               sidebarList.appendChild(item);
@@ -467,9 +442,9 @@
         }
         function toggleFullScreen(container) {
           if (!document.fullscreenElement) {
-            container.requestFullscreen().catch(err => console.error("Error entering full-screen:", err));
+            container.requestFullscreen().catch(err => console.error(err));
           } else {
-            document.exitFullscreen().catch(err => console.error("Error exiting full-screen:", err));
+            document.exitFullscreen().catch(err => console.error(err));
           }
         }
         function clampPan(container) {
@@ -478,7 +453,8 @@
           container.panY = Math.min(halfH*Z - halfH, Math.max(halfH - halfH*Z, container.panY));
         }
         // Create a player container for a stream.
-        // Desktop uses Hls.js with a canvas renderer; mobile uses the native video element.
+        // Desktop uses the hidden video element with a render loop drawing to a canvas.
+        // Mobile uses native video.
         function createPlayerContainer(streamConfig) {
           if (!streamConfig.enabled) return null;
           const videoSrc = streamConfig.url;
@@ -488,16 +464,12 @@
           container.className = "player-container " + (isMobile ? "mobile" : "desktop");
           container.setAttribute("data-url", videoSrc);
           container.userPaused = false;
-          
-          // Desktop: load persisted zoom/pan settings.
+          // Load stored zoom/pan for desktop.
           const saved = loadPlayerSettings(videoSrc);
           container.zoomScale = saved.zoomScale;
           container.panX = saved.panX;
           container.panY = saved.panY;
-          
           container.addEventListener("dblclick", function(e) { toggleFullScreen(container); });
-          
-          // Create the video element.
           const sourceVideo = document.createElement("video");
           sourceVideo.className = "source-video";
           sourceVideo.muted = true;
@@ -508,72 +480,78 @@
           sourceVideo.crossOrigin = "anonymous";
           if (isMobile) {
             sourceVideo.setAttribute("controls", "true");
-            if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
+            if (sourceVideo.canPlayType("application/vnd.apple.mpegurl"))
               sourceVideo.src = videoSrc;
-            }
             sourceVideo.autoplay = true;
           } else {
             sourceVideo.autoplay = true;
           }
           container.appendChild(sourceVideo);
-          
           sourceVideo.addEventListener("loadedmetadata", function() {
             console.log("loadedmetadata:", sourceVideo.videoWidth, sourceVideo.videoHeight);
-          });
-          sourceVideo.addEventListener("canplay", function() {
-            console.log("canplay:", sourceVideo.src);
-          });
-          sourceVideo.addEventListener("playing", function() {
-            console.log("playing:", sourceVideo.src);
+            if (!isMobile) { timeline.max = sourceVideo.duration || 0; }
           });
           sourceVideo.addEventListener("timeupdate", function() {
-            console.log("timeupdate:", sourceVideo.currentTime);
+            if (!isMobile) timeline.value = sourceVideo.currentTime;
           });
-          
-          // Desktop: Create canvas for rendering video frames.
+          // Desktop: create a canvas.
           let displayCanvas = null, ctx = null;
           if (!isMobile) {
             displayCanvas = document.createElement("canvas");
             displayCanvas.className = "display-canvas";
+            // For full-screen adjustments, we use the container's clientWidth/Height
             displayCanvas.width = 960;
             displayCanvas.height = 540;
             container.appendChild(displayCanvas);
             ctx = displayCanvas.getContext("2d");
-            
-            // Add a render loop to draw video frames onto the canvas.
+            // Render loop: apply pan/zoom transform and draw the video frame.
             function renderFrame() {
               if (sourceVideo.readyState >= 2) {
-                try {
-                  ctx.drawImage(sourceVideo, 0, 0, 960, 540);
-                } catch (err) {
-                  console.error("Error rendering video frame:", err);
+                // If in full screen, update canvas size from container.
+                if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
+                  displayCanvas.width = container.clientWidth;
+                  displayCanvas.height = container.clientHeight;
+                } else {
+                  displayCanvas.width = 960;
+                  displayCanvas.height = 540;
                 }
+                ctx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+                ctx.save();
+                let centerX = displayCanvas.width/2;
+                let centerY = displayCanvas.height/2;
+                // Translate to center, apply scaling/translation, then translate back.
+                ctx.translate(centerX, centerY);
+                ctx.scale(container.zoomScale, container.zoomScale);
+                ctx.translate(container.panX, container.panY);
+                ctx.translate(-centerX, -centerY);
+                try {
+                  ctx.drawImage(sourceVideo, 0, 0, displayCanvas.width, displayCanvas.height);
+                } catch (err) {
+                  console.error("drawImage error:", err);
+                }
+                ctx.restore();
               }
               requestAnimationFrame(renderFrame);
             }
             requestAnimationFrame(renderFrame);
-            
-            // Enable zoom/panning only if spacebar is held.
-            let startX = 0, startY = 0, isDragging = false;
+            // Zoom/Pan event handlers (active only if spacebar held)
+            let startX = 0, startY = 0, dragging = false;
             const dragThreshold = 5;
             displayCanvas.addEventListener("mousedown", function(e) {
               if (e.button !== 0) return;
               if (!document.fullscreenElement && !spaceHeld) return;
               startX = e.clientX;
               startY = e.clientY;
-              isDragging = false;
+              dragging = false;
             });
             displayCanvas.addEventListener("mousemove", function(e) {
               if (e.buttons & 1) {
                 if (!document.fullscreenElement && !spaceHeld) return;
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
-                if (!isDragging && Math.sqrt(dx*dx + dy*dy) > dragThreshold) {
-                  isDragging = true;
-                }
-                if (isDragging) {
-                  container.panX += dx;
-                  container.panY += dy;
+                let dx = e.clientX - startX, dy = e.clientY - startY;
+                if (!dragging && Math.sqrt(dx*dx+dy*dy)>dragThreshold) dragging = true;
+                if (dragging) {
+                  container.panX += dx / container.zoomScale;
+                  container.panY += dy / container.zoomScale;
                   clampPan(container);
                   savePlayerSettings(videoSrc, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
                   startX = e.clientX;
@@ -587,91 +565,65 @@
               const rect = displayCanvas.getBoundingClientRect();
               const cssX = e.clientX - rect.left;
               const cssY = e.clientY - rect.top;
-              const logicalX = (cssX / rect.width) * 960;
-              const logicalY = (cssY / rect.height) * 540;
-              const centerX = 960/2, centerY = 540/2;
+              const logicalX = (cssX / rect.width) * displayCanvas.width;
+              const logicalY = (cssY / rect.height) * displayCanvas.height;
+              const centerX = displayCanvas.width/2, centerY = displayCanvas.height/2;
               const oldZoom = container.zoomScale;
-              let newZoom = oldZoom;
-              const sensitivity = 0.1;
-              newZoom += (e.deltaY < 0) ? sensitivity : -sensitivity;
+              let sensitivity = 0.1;
+              let newZoom = container.zoomScale + (e.deltaY < 0 ? sensitivity : -sensitivity);
               newZoom = Math.max(1, Math.min(newZoom, 3));
-              container.panX += (oldZoom - newZoom) * (logicalX - centerX);
-              container.panY += (oldZoom - newZoom) * (logicalY - centerY);
+              // Adjust pan so that zoom is centered at the pointer.
+              container.panX += (oldZoom - newZoom) * ( (logicalX - centerX) / newZoom );
+              container.panY += (oldZoom - newZoom) * ( (logicalY - centerY) / newZoom );
               container.zoomScale = newZoom;
               clampPan(container);
               savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
-            }, { passive: false });
-          } else {
-            // Mobile: Add touchend listener to trigger play.
+            }, {passive:false});
+          }
+          else { // Mobile handlers
             sourceVideo.addEventListener("touchend", function(e) {
               if (sourceVideo.paused) {
-                sourceVideo.play().then(() => {
-                  console.log("Mobile playback started via touchend");
-                }).catch(err => {
-                  console.error("Mobile play error:", err);
-                });
+                sourceVideo.play().catch(err => console.error(err));
               }
             });
-            // Also, clicking the video toggles play/pause.
             sourceVideo.addEventListener("click", function(e) {
-              if (sourceVideo.paused) {
-                sourceVideo.play().then(() => {
-                  console.log("Mobile playback toggled on via click");
-                }).catch(err => {
-                  console.error("Mobile play error:", err);
-                });
-              } else {
-                sourceVideo.pause();
-              }
+              if (sourceVideo.paused) { sourceVideo.play().catch(err => console.error(err)); }
+              else { sourceVideo.pause(); }
             });
-            // Add a “Tap to Play” overlay.
+            // Add a Tap To Play overlay.
             let mobileOverlay = document.createElement("div");
             mobileOverlay.className = "mobile-play-overlay";
             mobileOverlay.innerText = "Tap to Play";
             container.appendChild(mobileOverlay);
-            // Hide overlay when playing.
-            sourceVideo.addEventListener("play", function() {
-              mobileOverlay.style.display = "none";
-            });
-            sourceVideo.addEventListener("pause", function() {
-              mobileOverlay.style.display = "flex";
-            });
+            sourceVideo.addEventListener("play", function() { mobileOverlay.style.display = "none"; });
+            sourceVideo.addEventListener("pause", function() { mobileOverlay.style.display = "flex"; });
             mobileOverlay.addEventListener("click", function() {
-              sourceVideo.play().then(() => {
-                mobileOverlay.style.display = "none";
-              }).catch(err => {
-                console.error("Mobile overlay play error:", err);
-              });
+              sourceVideo.play().then(() => { mobileOverlay.style.display = "none"; })
+              .catch(err => console.error("Overlay play error:", err));
             });
           }
-          
-          // Desktop: Add custom controls overlay.
-          let playPauseBtn = null;
+          // Desktop control bar (only for desktop)
+          let playPauseBtn = null, timeline = null;
           if (!isMobile) {
             const controlsContainer = document.createElement("div");
             controlsContainer.className = "controls-container overlay-controls";
             controlsContainer.style.opacity = 1;
             container.appendChild(controlsContainer);
-            
             const controlBar = document.createElement("div");
             controlBar.className = "control-bar";
-            
             playPauseBtn = document.createElement("button");
             playPauseBtn.textContent = "Play";
             playPauseBtn.addEventListener("click", function(e) {
               if (sourceVideo.paused) {
-                sourceVideo.play().catch(err => console.error("Play error (button):", err));
+                sourceVideo.play().catch(err => console.error(err));
                 playPauseBtn.textContent = "Pause";
-                container.userPaused = false;
               } else {
                 sourceVideo.pause();
                 playPauseBtn.textContent = "Play";
-                container.userPaused = true;
               }
             });
             controlBar.appendChild(playPauseBtn);
-            
-            const timeline = document.createElement("input");
+            timeline = document.createElement("input");
             timeline.type = "range";
             timeline.min = 0;
             timeline.value = 0;
@@ -681,12 +633,10 @@
               sourceVideo.currentTime = timeline.value;
             });
             controlBar.appendChild(timeline);
-            
             const fsBtn = document.createElement("button");
             fsBtn.textContent = "Full‑screen";
             fsBtn.addEventListener("click", function(e) { toggleFullScreen(container); });
             controlBar.appendChild(fsBtn);
-            
             const resetBtn = document.createElement("button");
             resetBtn.textContent = "Reset";
             resetBtn.addEventListener("click", function(e) {
@@ -696,7 +646,6 @@
               savePlayerSettings(videoSrc, { zoomScale: 1, panX: 0, panY: 0 });
             });
             controlBar.appendChild(resetBtn);
-            
             const disableBtn = document.createElement("button");
             disableBtn.className = "disable-btn";
             disableBtn.textContent = "X";
@@ -705,35 +654,31 @@
               updateStreamEnabled(videoSrc, false);
             });
             controlBar.appendChild(disableBtn);
-            
             controlsContainer.appendChild(controlBar);
-            
             const titleBar = document.createElement("div");
             titleBar.className = "title-bar";
             titleBar.textContent = title;
             controlsContainer.appendChild(titleBar);
-            
-            // In full screen, fade controls out after 3 seconds if mouse near bottom.
+            // In full screen, fade controls if mouse is near bottom.
             let hideControlsTimeout = null;
             function scheduleControlsHide() {
               if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
                 clearTimeout(hideControlsTimeout);
-                hideControlsTimeout = setTimeout(() => {
-                  controlsContainer.style.opacity = 0;
-                }, 3000);
+                hideControlsTimeout = setTimeout(()=>{
+                  controlsContainer.style.opacity=0;
+                },3000);
               }
             }
             document.addEventListener("mousemove", function(e) {
               if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
-                if (e.clientY > window.innerHeight - 100) {
+                if(e.clientY > window.innerHeight-100) {
                   controlsContainer.style.opacity = 1;
                   scheduleControlsHide();
                 }
               }
             });
           }
-          
-          // Initialize Hls.js.
+          // Initialize Hls.js if supported.
           if (Hls.isSupported()) {
             if (!isMobile) {
               const hlsConfig = {
@@ -763,25 +708,22 @@
               hls.on(Hls.Events.ERROR, function(event, data) {
                 console.error("Hls.js error:", data);
                 if (data.fatal) {
-                  switch (data.type) {
+                  switch(data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                      console.error("Fatal network error, attempting recovery...");
                       hls.startLoad();
                       break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
-                      console.error("Fatal media error, attempting recovery...");
                       hls.recoverMediaError();
                       break;
                     default:
-                      console.error("Unrecoverable error, destroying HLS instance.");
                       hls.destroy();
                       break;
                   }
                 }
               });
               container.hlsInstance = hls;
-            } else {
-              // Mobile: Prefer native HLS if supported.
+            }
+            else {
               if (!sourceVideo.src && sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
                 console.log("Mobile native HLS: setting sourceVideo.src");
                 sourceVideo.src = videoSrc;
@@ -803,17 +745,14 @@
                 hls.on(Hls.Events.ERROR, function(event, data) {
                   console.error("Hls.js mobile error:", data);
                   if (data.fatal) {
-                    switch (data.type) {
+                    switch(data.type) {
                       case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.error("Fatal network error, attempting recovery...");
                         hls.startLoad();
                         break;
                       case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.error("Fatal media error, attempting recovery...");
                         hls.recoverMediaError();
                         break;
                       default:
-                        console.error("Unrecoverable error, destroying HLS instance.");
                         hls.destroy();
                         break;
                     }
@@ -822,31 +761,26 @@
                 container.hlsInstance = hls;
               }
             }
-          } else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
+          }
+          else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
             sourceVideo.src = videoSrc;
             sourceVideo.addEventListener("loadedmetadata", function() {
-              console.log("Native HLS loaded, attempting playback");
-              sourceVideo.play().catch(err => console.error("Native play error:", err));
+              sourceVideo.play().catch(err => console.error(err));
             });
           }
-          
           return container;
         }
-        
         function reorderPlayerContainers() {
           const mainContent = document.getElementById("main-content");
           const config = getStreamList();
           const players = Array.from(mainContent.querySelectorAll(".player-container"));
-          players.sort(function(a, b) {
-            const urlA = a.getAttribute("data-url");
-            const urlB = b.getAttribute("data-url");
-            const indexA = config.findIndex(s => s.url === urlA);
-            const indexB = config.findIndex(s => s.url === urlB);
+          players.sort((a, b) => {
+            let indexA = config.findIndex(s => s.url === a.getAttribute("data-url"));
+            let indexB = config.findIndex(s => s.url === b.getAttribute("data-url"));
             return indexA - indexB;
           });
           players.forEach(p => mainContent.appendChild(p));
         }
-        
         function updateStreamEnabled(url, enabled) {
           let streams = getStreamList();
           const idx = streams.findIndex(s => s.url === url);
@@ -863,8 +797,6 @@
               if (player) mainContent.appendChild(player);
             } else {
               player.style.display = "flex";
-              if (typeof player.startStream === "function")
-                player.startStream();
             }
           } else {
             if (player) {
@@ -872,21 +804,16 @@
                 player.hlsInstance.destroy();
                 player.hlsInstance = null;
               }
-              if (typeof player.stopStream === "function")
-                player.stopStream();
-              if (player.parentNode)
-                player.parentNode.removeChild(player);
+              if (player.parentNode) player.parentNode.removeChild(player);
             }
           }
           reorderPlayerContainers();
           const checkbox = document.querySelector('#streamList input[type="checkbox"][data-url="' + url + '"]');
           if (checkbox) checkbox.checked = enabled;
         }
-        
         function updateFullUI(refresh = true) {
           if (refresh) {
             const mainContent = document.getElementById("main-content");
-            Array.from(mainContent.querySelectorAll(".player-container")).forEach(p => { if (p.stopStream) p.stopStream(); });
             mainContent.innerHTML = "";
             const streamList = getStreamList();
             const enabledStreams = streamList.filter(s => s.enabled);
@@ -900,7 +827,6 @@
             updateStreamSidebar();
           }
         }
-        
         document.addEventListener("mouseup", function(e) {
           activeLabels.forEach(function(label) {
             const url = label.getAttribute("data-url");
@@ -909,7 +835,6 @@
           });
           activeLabels.clear();
         });
-        
         function showAllStreams() {
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, true); });
@@ -918,16 +843,13 @@
           const streams = getStreamList();
           streams.forEach(stream => { updateStreamEnabled(stream.url, false); });
         }
-        
         document.getElementById("btn-show-all").addEventListener("click", showAllStreams);
         document.getElementById("btn-hide-all").addEventListener("click", hideAllStreams);
-        
         const modal = document.getElementById("urlModal");
         const backdrop = document.getElementById("modalBackdrop");
         const btnAddUrls = document.getElementById("btn-add-urls");
         const btnSaveUrls = document.getElementById("saveUrls");
         const urlInput = document.getElementById("urlInput");
-        
         function showModal() {
           const streams = getStreamList();
           urlInput.value = streams.map(s => s.url).join("\n");
@@ -952,27 +874,21 @@
           }
           urlInput.value = "";
         }
-        
         btnAddUrls.addEventListener("click", showModal);
         btnSaveUrls.addEventListener("click", function() { hideModal(true); });
         window.addEventListener("keydown", function(e) {
           if (e.key === "Escape") { if (modal.style.display === "block") hideModal(false); }
         });
-        
         updateFullUI();
       })();
-      
-      // Mobile: Sidebar swipe handling and toggle.
+      // Mobile: Sidebar swipe handling.
       (function() {
         if (!document.documentElement.classList.contains("mobile")) return;
         const sidebar = document.getElementById("sidebar");
         const toggleBtn = document.getElementById("sidebarToggle");
-        let touchStartX = 0;
-        let touchEndX = 0;
+        let touchStartX = 0, touchEndX = 0;
         const swipeThreshold = 50;
-        sidebar.addEventListener("touchstart", function(e) {
-          touchStartX = e.changedTouches[0].screenX;
-        });
+        sidebar.addEventListener("touchstart", function(e) { touchStartX = e.changedTouches[0].screenX; });
         sidebar.addEventListener("touchend", function(e) {
           touchEndX = e.changedTouches[0].screenX;
           if (touchStartX - touchEndX > swipeThreshold) {
