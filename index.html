@@ -84,7 +84,7 @@
       gap: 20px;
       overflow: auto;
     }
-    /* Desktop player container dimensions */
+    /* Desktop players – full size */
     .player-container.desktop {
       width: 960px;
       height: 600px;
@@ -95,7 +95,7 @@
       box-sizing: border-box;
       margin-bottom: 40px;
     }
-    /* Mobile player container dimensions (approx. 4× smaller) */
+    /* Mobile players – scaled down roughly 4× */
     .player-container.mobile {
       width: 240px;
       height: 150px;
@@ -106,25 +106,25 @@
       box-sizing: border-box;
       margin-bottom: 20px;
     }
-    /* Desktop: hide video element; canvas is used */
+    /* Desktop: hide the video element; canvas is used */
     .player-container.desktop .source-video {
       visibility: hidden;
       width: 1px;
       height: 1px;
     }
-    /* Desktop: Canvas dimensions */
+    /* Desktop: canvas dimensions */
     .player-container.desktop .display-canvas {
       background: black;
       width: 960px;
       height: 540px;
     }
-    /* Mobile: show the native video element with controls */
+    /* Mobile: show native video with controls at scaled size */
     .player-container.mobile .source-video {
       visibility: visible;
       width: 240px;
-      height: 135px; /* about 540/4 */
+      height: 135px; /* 540/4 approx */
     }
-    /* Mobile: hide the desktop canvas */
+    /* Mobile: hide desktop’s canvas */
     .player-container.mobile .display-canvas {
       display: none;
     }
@@ -159,7 +159,7 @@
       background: rgba(0, 0, 0, 0.75);
       font-size: 16px;
     }
-    /* Fullscreen overlay (desktop only) */
+    /* Fullscreen controls overlay (desktop only) */
     .overlay-controls {
       position: absolute;
       bottom: 0;
@@ -206,12 +206,12 @@
     }
     /* Mobile-specific adjustments */
     html.mobile #urlModal {
-      width: 300px; /* 1200/4 */
+      width: 300px;
       padding: 4px;
       font-size: 12px;
     }
     html.mobile #urlModal textarea {
-      height: 150px; /* 600/4 */
+      height: 150px;
       padding: 5px;
       font-size: 12px;
     }
@@ -229,7 +229,7 @@
     html.mobile #main-content {
       margin-left: 0;
     }
-    /* Mobile: Sidebar toggle arrow */
+    /* Sidebar toggle arrow for mobile */
     #sidebarToggle {
       display: none;
     }
@@ -258,7 +258,7 @@
 <body>
   <!-- Mobile sidebar toggle button -->
   <button id="sidebarToggle">&#x25B6;</button>
-  <!-- Global Spacebar Listeners (prevents default scrolling) -->
+  <!-- Global Spacebar Listeners (prevents default scrolling for spacebar) -->
   <script>
     let spaceHeld = false;
     window.addEventListener("keydown", function(e) {
@@ -452,14 +452,14 @@
         }
       }
       function clampPan(container) {
-        const Z = container.zoomScale, halfW = 960 / 2, halfH = 540 / 2;
-        container.panX = Math.min(halfW * Z - halfW, Math.max(halfW - halfW * Z, container.panX));
-        container.panY = Math.min(halfH * Z - halfH, Math.max(halfH - halfH * Z, container.panY));
+        const Z = container.zoomScale, halfW = 960/2, halfH = 540/2;
+        container.panX = Math.min(halfW*Z - halfW, Math.max(halfW - halfW*Z, container.panX));
+        container.panY = Math.min(halfH*Z - halfH, Math.max(halfH - halfH*Z, container.panY));
       }
       
-      // Create a player container for a given stream.
-      // Desktop uses Hls.js + canvas rendering with zoom/pan (only active when spacebar is held).
-      // Mobile uses native video with controls.
+      // Create a player container for a stream.
+      // Desktop uses Hls.js with canvas rendering (with zoom/pan active only when space is held) and toggles play/pause on click.
+      // Mobile uses the native video element.
       function createPlayerContainer(streamConfig) {
         const videoSrc = streamConfig.url;
         const title = extractTitle(videoSrc);
@@ -469,7 +469,7 @@
         container.setAttribute("data-url", videoSrc);
         container.userPaused = false;
         
-        // Desktop: load persistent zoom/pan settings.
+        // Desktop: load zoom/pan persistence.
         const saved = loadPlayerSettings(videoSrc);
         container.zoomScale = saved.zoomScale;
         container.panX = saved.panX;
@@ -486,12 +486,11 @@
         sourceVideo.setAttribute("webkit-playsinline", "true");
         sourceVideo.preload = "auto";
         sourceVideo.crossOrigin = "anonymous";
-        // On mobile, show native controls.
-        if (isMobile) {
+        // On mobile, show native controls and force autoplay if possible.
+        if(isMobile) {
           sourceVideo.setAttribute("controls", "true");
           sourceVideo.autoplay = true;
         } else {
-          // Desktop: Autoplay the hidden video.
           sourceVideo.autoplay = true;
         }
         container.appendChild(sourceVideo);
@@ -509,7 +508,7 @@
           console.log("timeupdate:", sourceVideo.currentTime);
         });
         
-        // Desktop: Create and append the canvas for drawing video.
+        // For desktop, create a canvas for rendering the video.
         let displayCanvas = null, ctx = null;
         if (!isMobile) {
           displayCanvas = document.createElement("canvas");
@@ -519,12 +518,22 @@
           container.appendChild(displayCanvas);
           ctx = displayCanvas.getContext("2d");
           
-          // Panning/zooming: Only active if spacebar is held (or in full screen)
+          // Toggle play/pause on canvas click.
+          displayCanvas.addEventListener("click", function(e) {
+            if (sourceVideo.paused) {
+              sourceVideo.play().catch(err => console.error("Play error (canvas click):", err));
+              if (playPauseBtn) playPauseBtn.textContent = "Pause";
+            } else {
+              sourceVideo.pause();
+              if (playPauseBtn) playPauseBtn.textContent = "Play";
+            }
+          });
+          
+          // Enable zoom/pan only when spacebar is held (or in full screen)
           let startX = 0, startY = 0, isDragging = false;
           const dragThreshold = 5;
           displayCanvas.addEventListener("mousedown", function(e) {
             if (e.button !== 0) return;
-            // If not in full screen, require holding the spacebar.
             if (!document.fullscreenElement && !spaceHeld) return;
             startX = e.clientX;
             startY = e.clientY;
@@ -532,11 +541,10 @@
           });
           displayCanvas.addEventListener("mousemove", function(e) {
             if (e.buttons & 1) {
-              // Only pan if spacebar is held, unless in full screen.
               if (!document.fullscreenElement && !spaceHeld) return;
               const dx = e.clientX - startX;
               const dy = e.clientY - startY;
-              if (!isDragging && Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
+              if (!isDragging && Math.sqrt(dx*dx + dy*dy) > dragThreshold) {
                 isDragging = true;
               }
               if (isDragging) {
@@ -550,7 +558,6 @@
             }
           });
           displayCanvas.addEventListener("wheel", function(e) {
-            // Only allow zoom when spacebar is held (unless in full screen)
             if (!document.fullscreenElement && !spaceHeld) return;
             e.preventDefault();
             const rect = displayCanvas.getBoundingClientRect();
@@ -564,21 +571,14 @@
             const sensitivity = 0.1;
             if (e.deltaY < 0) newZoom += sensitivity; else newZoom -= sensitivity;
             newZoom = Math.max(1, Math.min(newZoom, 3));
-            // Adjust pan so that zoom is centered at pointer.
             container.panX += (oldZoom - newZoom) * (logicalX - centerX);
             container.panY += (oldZoom - newZoom) * (logicalY - centerY);
             container.zoomScale = newZoom;
             clampPan(container);
             savePlayerSettings(videoSrc, { zoomScale: newZoom, panX: container.panX, panY: container.panY });
           }, { passive: false });
-          
-          displayCanvas.addEventListener("click", function(e) {
-            if (!isDragging && sourceVideo.paused) {
-              sourceVideo.play().catch(err => console.error("Play error:", err));
-            }
-          });
         } else {
-          // Mobile: also add a touchend event on the video to trigger playback (if not already playing).
+          // Mobile: try to trigger play on tapping the video.
           sourceVideo.addEventListener("touchend", function(e) {
             if (sourceVideo.paused) {
               sourceVideo.play().then(() => {
@@ -588,9 +588,22 @@
               });
             }
           });
+          // Also, click toggles play/pause.
+          sourceVideo.addEventListener("click", function(e) {
+            if (sourceVideo.paused) {
+              sourceVideo.play().then(() => {
+                console.log("Mobile playback toggled on via click");
+              }).catch(err => {
+                console.error("Mobile play error:", err);
+              });
+            } else {
+              sourceVideo.pause();
+            }
+          });
         }
         
         // Desktop: add custom controls overlay.
+        let playPauseBtn = null;
         if (!isMobile) {
           const controlsContainer = document.createElement("div");
           controlsContainer.className = "controls-container overlay-controls";
@@ -600,11 +613,12 @@
           const controlBar = document.createElement("div");
           controlBar.className = "control-bar";
           
-          const playPauseBtn = document.createElement("button");
+          playPauseBtn = document.createElement("button");
           playPauseBtn.textContent = "Play";
           playPauseBtn.addEventListener("click", function(e) {
+            // Toggle play/pause when button is clicked.
             if (sourceVideo.paused) {
-              sourceVideo.play().catch(err => console.error("Play error:", err));
+              sourceVideo.play().catch(err => console.error("Play error (button):", err));
               playPauseBtn.textContent = "Pause";
               container.userPaused = false;
             } else {
@@ -628,7 +642,9 @@
           
           const fsBtn = document.createElement("button");
           fsBtn.textContent = "Full‑screen";
-          fsBtn.addEventListener("click", function(e) { toggleFullScreen(container); });
+          fsBtn.addEventListener("click", function(e) {
+            toggleFullScreen(container);
+          });
           controlBar.appendChild(fsBtn);
           
           const resetBtn = document.createElement("button");
@@ -657,36 +673,25 @@
           titleBar.textContent = title;
           controlsContainer.appendChild(titleBar);
           
-          // Render loop for desktop: draw video frame onto canvas.
-          if (ctx) {
-            function renderFrame() {
-              if (sourceVideo.readyState >= 2) {
-                if (sourceVideo.duration) {
-                  timeline.max = sourceVideo.duration;
-                  timeline.value = sourceVideo.currentTime;
-                }
-                if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
-                  displayCanvas.style.width = container.clientWidth + "px";
-                  displayCanvas.style.height = container.clientHeight + "px";
-                } else {
-                  displayCanvas.style.width = "960px";
-                  displayCanvas.style.height = "540px";
-                }
-                ctx.clearRect(0, 0, 960, 540);
-                ctx.save();
-                const centerX = 960 / 2, centerY = 540 / 2;
-                ctx.setTransform(
-                  container.zoomScale, 0, 0, container.zoomScale,
-                  centerX - container.zoomScale * centerX + container.panX,
-                  centerY - container.zoomScale * centerY + container.panY
-                );
-                ctx.drawImage(sourceVideo, 0, 0, 960, 540);
-                ctx.restore();
-              }
-              requestAnimationFrame(renderFrame);
+          // Fullscreen controls fade behavior: when in full screen, hide overlay controls after 3 sec
+          let hideControlsTimeout = null;
+          function scheduleControlsHide() {
+            if (document.fullscreenElement && container.contains(document.fullscreenElement)) {
+              clearTimeout(hideControlsTimeout);
+              hideControlsTimeout = setTimeout(() => {
+                controlsContainer.style.opacity = 0;
+              }, 3000);
             }
-            requestAnimationFrame(renderFrame);
           }
+          // Show controls if mouse near bottom (e.g. within 100px)
+          document.addEventListener("mousemove", function(e) {
+            if (document.fullscreenElement &&
+                container.contains(document.fullscreenElement) &&
+                e.clientY > window.innerHeight - 100) {
+              controlsContainer.style.opacity = 1;
+              scheduleControlsHide();
+            }
+          });
         }
         
         // Initialize Hls.js for both desktop and mobile.
@@ -710,10 +715,12 @@
           hls.attachMedia(sourceVideo);
           hls.on(Hls.Events.MANIFEST_PARSED, function() {
             console.log("Manifest parsed for", videoSrc);
-            // On desktop: since the video is hidden, we want to enable autoplay to feed the canvas
-            // (zoom/pan will work when holding spacebar)
+            // On both desktop and mobile, attempt autoplay
             sourceVideo.play().then(() => {
-              console.log("Autoplay initiated (desktop/mobile)");
+              console.log("Autoplay initiated");
+              if (!isMobile && playPauseBtn) {
+                playPauseBtn.textContent = "Pause";
+              }
             }).catch(err => {
               console.error("Autoplay error:", err);
             });
@@ -738,7 +745,7 @@
             }
           });
           container.hlsInstance = hls;
-        } else if(sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
+        } else if (sourceVideo.canPlayType("application/vnd.apple.mpegurl")) {
           // Fallback for browsers with native HLS support.
           sourceVideo.src = videoSrc;
           sourceVideo.addEventListener("loadedmetadata", function() {
@@ -799,7 +806,9 @@
       function updateFullUI(refresh = true) {
         if (refresh) {
           const mainContent = document.getElementById("main-content");
-          Array.from(mainContent.querySelectorAll(".player-container")).forEach(p => { if (p.stopStream) p.stopStream(); });
+          Array.from(mainContent.querySelectorAll(".player-container")).forEach(p => {
+            if (p.stopStream) p.stopStream();
+          });
           mainContent.innerHTML = "";
           const streamList = getStreamList();
           const enabledStreams = streamList.filter(s => s.enabled);
@@ -847,7 +856,6 @@
         modal.style.display = "block";
         backdrop.style.display = "block";
       }
-      
       function hideModal(saveChanges) {
         modal.style.display = "none";
         backdrop.style.display = "none";
@@ -876,7 +884,7 @@
       updateFullUI();
     })();
     
-    // Mobile sidebar swipe handling and toggle button.
+    // Mobile: Sidebar swipe handling and toggle button.
     (function() {
       if (!document.documentElement.classList.contains("mobile")) return;
       const sidebar = document.getElementById("sidebar");
