@@ -457,17 +457,23 @@
           }
 
           // Hls.js attach
-          if(Hls.isSupported()){
+          if (Hls.isSupported()) {
             const hls = new Hls({
-              maxBufferLength: 120,
-              maxBufferSize: 60*1000*1024,
-              liveSyncDurationCount: 3,
-              manifestLoadingTimeOut: 30000,
-              levelLoadingTimeOut: 30000,
               loader: class extends Hls.DefaultConfig.loader {
-                load(ctx, cfg, cb) {
-                  ctx.url = PROXY_PREFIX + encodeURIComponent(ctx.url);
-                  super.load(ctx, cfg, cb);
+                load(context, config, callbacks) {
+                  // 1) grab the incoming URL
+                  let url = context.url;
+
+                  // 2) if it's already our proxy URL, decode it back to the real source
+                  if (url.startsWith(PROXY_PREFIX)) {
+                    url = decodeURIComponent(url.slice(PROXY_PREFIX.length));
+                  }
+
+                  // 3) wrap *that* in our proxy prefix
+                  context.url = PROXY_PREFIX + encodeURIComponent(url);
+
+                  // 4) hand off to the normal HLS.js loader
+                  super.load(context, config, callbacks);
                 }
               }
             });
