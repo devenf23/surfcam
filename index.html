@@ -77,6 +77,12 @@
     }
     .player-container.mobile .display-canvas { display: none; }
 
+    /* make wrapper fill full-screen */
+    .player-container:fullscreen .canvas-wrapper,
+    .player-container:-webkit-full-screen .canvas-wrapper {
+      width: 100% !important; height: 100% !important;
+    }
+
     /* ------ CONTROLS & OVERLAYS ------ */
     .controls-container { position: relative; z-index: 2; }
     .control-bar {
@@ -85,18 +91,35 @@
     }
     .control-bar button { padding: 4px 8px; cursor: pointer; }
 
-    /* Progress bar */
+    /* Custom progress bar */
     .progress-bar {
       position: relative; flex: 1 1 0; height: 6px;
-      background: #fff; border-radius: 3px; overflow: hidden;
-      cursor: pointer; margin: 0 5px;
+      background: #fff; border-radius: 3px;
+      overflow: hidden; cursor: pointer; margin: 0 5px;
     }
     .progress-bar .buffered,
     .progress-bar .played {
       position: absolute; top: 0; bottom: 0; left: 0;
     }
-    .progress-bar .played { background: #4d90fe; width: 0%; }
-    .progress-bar .buffered { background: #888; width: 0%; }
+    .progress-bar .played   { background: #4d90fe; width: 0%; }
+    .progress-bar .buffered { background: #888;   width: 0%; }
+    /* transparent range on top */
+    .progress-bar input[type="range"] {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; margin: 0;
+      background: transparent; 
+      -webkit-appearance: none; appearance: none;
+    }
+    .progress-bar input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px; height: 12px; background: #fff;
+      border-radius: 50%; cursor: pointer;
+      margin: 0; transform: translateY(-3px);
+    }
+    .progress-bar input[type="range"]::-moz-range-thumb {
+      width: 12px; height: 12px; background: #fff;
+      border-radius: 50%; cursor: pointer;
+    }
 
     .disable-btn { background: red; color: #fff; border: none; }
     .title-bar {
@@ -145,12 +168,6 @@
       background: #444; border: none; padding: 10px 12px;
       font-size: 24px; color: #fff; cursor: pointer;
     }
-
-    /* -- Stretch canvas full-screen -- */
-    .player-container:fullscreen .display-canvas,
-    .player-container:-webkit-full-screen .display-canvas {
-      width: 100% !important; height: 100% !important;
-    }
   </style>
   <script>
     if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))
@@ -158,8 +175,9 @@
 
     let spaceHeld = false;
     window.addEventListener("keydown", e => {
-      if (e.code==="Space" && !["input","textarea","button"]
-        .includes(document.activeElement.tagName.toLowerCase())) {
+      if (e.code === "Space" &&
+         !["input","textarea","button"]
+           .includes(document.activeElement.tagName.toLowerCase())) {
         e.preventDefault(); spaceHeld = true;
       }
     });
@@ -217,9 +235,9 @@
       if(e) return e.call(document);
     }
 
-    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+    const PROXY_PREFIX="https://surfcam-alpha.vercel.app/api/proxy?url=";
     function loadPlayerSettings(u){
-      try{ return JSON.parse(localStorage.playerSettings||"{}")[u]
+      try{return JSON.parse(localStorage.playerSettings||"{}")[u]
              ||{zoomScale:1,panX:0,panY:0};}
       catch{return{zoomScale:1,panX:0,panY:0};}
     }
@@ -227,12 +245,12 @@
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
-    function clampPan(c){
-      const Z=c.zoomScale,
-            w=c.clientWidth, h=c.clientHeight,
+    function clampPan(container){
+      const Z=container.zoomScale,
+            w=container.clientWidth, h=container.clientHeight,
             mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
-      c.panX = Math.min(mx,Math.max(-mx,c.panX));
-      c.panY = Math.min(my,Math.max(-my,c.panY));
+      container.panX = Math.min(mx,Math.max(-mx,container.panX));
+      container.panY = Math.min(my,Math.max(-my,container.panY));
     }
 
     (function(){
@@ -289,7 +307,8 @@
       });
 
       function reorderPlayers(){
-        const main=document.getElementById("main-content"), cfg=getStreamList();
+        const main=document.getElementById("main-content"),
+              cfg=getStreamList();
         Array.from(main.children).sort((a,b)=>
           cfg.findIndex(x=>x.url===a.dataset.url)-
           cfg.findIndex(x=>x.url===b.dataset.url)
@@ -355,6 +374,7 @@
           });
           video.addEventListener("play", ()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
+
           const mc=document.createElement("div"); mc.className="controls-container";
           container.appendChild(mc);
           const mb=document.createElement("div"); mb.className="control-bar";
@@ -379,7 +399,7 @@
           mc.appendChild(tM);
 
         } else {
-          // CANVAS WRAPPER & RENDER
+          /* CANVAS WRAPPER */
           const wrapper=document.createElement("div");
           wrapper.className="canvas-wrapper";
           container.appendChild(wrapper);
@@ -390,11 +410,10 @@
           (function render(){
             if(video.readyState>=2){
               if(document.fullscreenElement===container){
-                canvas.width = container.clientWidth;
-                canvas.height= container.clientHeight;
+                canvas.width=container.clientWidth;
+                canvas.height=container.clientHeight;
               } else {
-                canvas.width = 960;
-                canvas.height=540;
+                canvas.width=960; canvas.height=540;
               }
               clampPan(container);
               ctx.save();
@@ -435,8 +454,8 @@
             const oldZ=container.zoomScale;
             let z=oldZ + (e.deltaY<0?0.1:-0.1);
             z=Math.max(1,Math.min(3,z));
-            container.panX += (dx - rect.width/2)*(1/z - 1/oldZ);
-            container.panY += (dy - rect.height/2)*(1/z - 1/oldZ);
+            container.panX+=(dx-rect.width/2)*(1/z-1/oldZ);
+            container.panY+=(dy-rect.height/2)*(1/z-1/oldZ);
             container.zoomScale=z;
             clampPan(container);
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
@@ -449,7 +468,7 @@
           });
           wrapper.addEventListener("mouseup",e=>{
             const dt=Date.now()-ct;
-            if(dt<200 && Math.hypot(e.clientX-cx,e.clientY-cy)<5){
+            if(dt<200&&Math.hypot(e.clientX-cx,e.clientY-cy)<5){
               video.paused?video.play().catch(()=>{}):video.pause();
             }
           });
@@ -473,36 +492,43 @@
           });
           bar.appendChild(playBtn);
 
-          // progress bar
+          // custom progress
           const prog=document.createElement("div");
           prog.className="progress-bar";
-          const playedBar=document.createElement("div");
-          playedBar.className="played";
-          const bufferedBar=document.createElement("div");
-          bufferedBar.className="buffered";
-          prog.appendChild(bufferedBar);
-          prog.appendChild(playedBar);
+          const bufBar=document.createElement("div"), playBar=document.createElement("div");
+          bufBar.className="buffered"; playBar.className="played";
+          prog.appendChild(bufBar);
+          prog.appendChild(playBar);
           bar.appendChild(prog);
 
+          // transparent input for thumb + scrubbing
+          const inputRange=document.createElement("input");
+          inputRange.type="range"; inputRange.min=0; inputRange.step=0.1; inputRange.value=0;
+          prog.appendChild(inputRange);
+
+          inputRange.addEventListener("input",()=>{
+            video.currentTime=parseFloat(inputRange.value);
+          });
           prog.addEventListener("click",e=>{
             if(!video.duration) return;
             const rect=prog.getBoundingClientRect();
             const pct=(e.clientX-rect.left)/rect.width;
-            video.currentTime = pct*video.duration;
+            video.currentTime=pct*video.duration;
           });
 
           function updateProgress(){
-            const d=video.duration||0; if(!d)return;
+            const d=video.duration||0; if(!d) return;
             const c=video.currentTime,
                   bufEnd=video.buffered.length
                     ?video.buffered.end(video.buffered.length-1)
                     :c;
-            playedBar.style.width   = (c/d*100)+"%";
-            bufferedBar.style.width = (bufEnd/d*100)+"%";
+            inputRange.max=d; inputRange.value=c;
+            playBar.style.width   = (c   /d*100)+"%";
+            bufBar.style.width    = (bufEnd/d*100)+"%";
           }
           video.addEventListener("loadedmetadata",updateProgress);
-          video.addEventListener("timeupdate",updateProgress);
-          video.addEventListener("progress",updateProgress);
+          video.addEventListener("timeupdate",   updateProgress);
+          video.addEventListener("progress",     updateProgress);
 
           // fullscreen
           const fsBtn=document.createElement("button");
@@ -551,7 +577,7 @@
           });
         }
 
-        /* HLS or native */
+        /* HLS or Native */
         const canNative=video.canPlayType("application/vnd.apple.mpegurl");
         if(Hls.isSupported()&&!canNative){
           const hls=new Hls({
@@ -598,7 +624,7 @@
       document.getElementById("btn-hide-all")
         .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
 
-      // URL modal logic
+      // URL modal
       const modal=document.getElementById("urlModal"),
             backdrop=document.getElementById("modalBackdrop"),
             btnAdd=document.getElementById("btn-add-urls"),
@@ -610,7 +636,7 @@
       });
       btnSave.addEventListener("click",()=>{
         const lines=urlInput.value.split("\n").map(u=>u.trim()).filter(Boolean),
-              old=getStreamList(), newCfg=[]; 
+              old=getStreamList(), newCfg=[];
         lines.forEach(u=>{
           const ex=old.find(s=>s.url===u);
           newCfg.push(ex?ex:{url:u,enabled:true});
@@ -629,6 +655,7 @@
         if(e.key==="Escape"&&backdrop.style.display==="block") backdrop.click();
       });
 
+      // mobile tap-out
       if(document.documentElement.classList.contains("mobile")){
         const sidebar=document.getElementById("sidebar"),
               toggle=document.getElementById("sidebarToggle"),
@@ -647,7 +674,7 @@
         });
       }
 
-      // initial render
+      // initial
       updateStreamSidebar();
       getStreamList().forEach(s=>{ if(s.enabled) updateStreamEnabled(s.url,true); });
     })();
