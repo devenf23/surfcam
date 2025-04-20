@@ -38,10 +38,11 @@
       box-sizing: border-box; display: flex;
       flex-wrap: wrap; gap: 20px; overflow: auto;
     }
-    /* Mobile: single column, centered */
+    /* Mobile: single column, centered, no wrap */
     html.mobile #main-content {
       flex-direction: column;
       align-items: center;
+      flex-wrap: nowrap;
       margin-left: 0;
     }
 
@@ -84,8 +85,8 @@
     .control-bar button { padding: 4px 8px; cursor: pointer; }
     .control-bar input[type="range"] {
       -webkit-appearance: none; appearance: none;
-      width: 100%; height: 6px; background: #555;
-      border-radius: 3px; outline: none; margin: 0 5px;
+      flex: 1; height: 6px; background: #555;
+      border-radius: 3px; outline: none;
     }
     .control-bar input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none; appearance: none;
@@ -165,22 +166,22 @@
     });
     window.addEventListener("keyup", e => { if(e.code==="Space") spaceHeld=false; });
 
-    // cursor hide in fullscreen after idle
+    // cursor hide in fullscreen
     let cursorTimeout;
     function showCursor(){ document.body.style.cursor=""; }
     function hideCursor(){ document.body.style.cursor="none"; }
     document.addEventListener("fullscreenchange", ()=>{
-      if (document.fullscreenElement) {
+      if(document.fullscreenElement){
         showCursor(); clearTimeout(cursorTimeout);
-        cursorTimeout = setTimeout(hideCursor,2000);
+        cursorTimeout=setTimeout(hideCursor,2000);
       } else {
         showCursor(); clearTimeout(cursorTimeout);
       }
     });
     document.addEventListener("mousemove", ()=>{
-      if (document.fullscreenElement) {
+      if(document.fullscreenElement){
         showCursor(); clearTimeout(cursorTimeout);
-        cursorTimeout = setTimeout(hideCursor,2000);
+        cursorTimeout=setTimeout(hideCursor,2000);
       }
     });
   </script>
@@ -209,35 +210,32 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
   <script>
-    // Fullscreen helpers
     function enterFullScreen(el) {
-      const r = el.requestFullscreen||el.webkitRequestFullscreen||
-                el.mozRequestFullScreen||el.msRequestFullscreen;
+      const r=el.requestFullscreen||el.webkitRequestFullscreen||
+              el.mozRequestFullScreen||el.msRequestFullscreen;
       if(r) return r.call(el);
     }
-    function exitFullScreen() {
-      const e = document.exitFullscreen||document.webkitExitFullscreen||
-                document.mozCancelFullScreen||document.msExitFullscreen;
+    function exitFullScreen(){
+      const e=document.exitFullscreen||document.webkitExitFullscreen||
+              document.mozCancelFullScreen||document.msExitFullscreen;
       if(e) return e.call(document);
     }
 
-    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
-
-    function loadPlayerSettings(url){
-      try{return JSON.parse(localStorage.playerSettings||"{}")[url]
-             ||{zoomScale:1,panX:0,panY:0};}catch{return{zoomScale:1,panX:0,panY:0};}
+    const PROXY_PREFIX="https://surfcam-alpha.vercel.app/api/proxy?url=";
+    function loadPlayerSettings(u){
+      try{return JSON.parse(localStorage.playerSettings||"{}")[u]||{zoomScale:1,panX:0,panY:0};}
+      catch{return{zoomScale:1,panX:0,panY:0};}
     }
-    function savePlayerSettings(url,data){
+    function savePlayerSettings(u,d){
       let o={};
       try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
-      o[url]=data; localStorage.playerSettings=JSON.stringify(o);
+      o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
-    // clamp pan XY within zoom bounds
-    function clampPan(container,canvas){
-      const hw=canvas.width/2, hh=canvas.height/2, Z=container.zoomScale;
-      const maxX=hw*(Z-1), maxY=hh*(Z-1);
-      container.panX = Math.min(maxX, Math.max(-maxX, container.panX));
-      container.panY = Math.min(maxY, Math.max(-maxY, container.panY));
+    function clampPan(c,cv){
+      const hw=cv.width/2, hh=cv.height/2, Z=c.zoomScale;
+      const mx=hw*(Z-1), my=hh*(Z-1);
+      c.panX=Math.min(mx,Math.max(-mx,c.panX));
+      c.panY=Math.min(my,Math.max(-my,c.panY));
     }
 
     (function(){
@@ -246,12 +244,10 @@
       function getStreamList(){
         try{return JSON.parse(localStorage[storageKey]||"[]");}catch{return[];}
       }
-      function saveStreamList(list){
-        localStorage[storageKey]=JSON.stringify(list);
-      }
-      function extractTitle(url){
-        const m=url.match(/wc-([^\/]+)\/playlist/);
-        return m?m[1]:url;
+      function saveStreamList(l){ localStorage[storageKey]=JSON.stringify(l); }
+      function extractTitle(u){
+        const m=u.match(/wc-([^\/]+)\/playlist/);
+        return m?m[1]:u;
       }
 
       function updateStreamSidebar(){
@@ -279,7 +275,7 @@
               if(e.button===0){cb.checked=!cb.checked;activeLabels.add(lbl);e.preventDefault();}
             });
             lbl.addEventListener("mouseenter",e=>{
-              if(e.buttons&1 && !activeLabels.has(lbl)){cb.checked=!cb.checked;activeLabels.add(lbl);}
+              if(e.buttons&1&&!activeLabels.has(lbl)){cb.checked=!cb.checked;activeLabels.add(lbl);}
             });
             item.appendChild(lbl);
             sb.appendChild(item);
@@ -297,10 +293,11 @@
 
       function reorderPlayers(){
         const main=document.getElementById("main-content"), cfg=getStreamList();
-        Array.from(main.children).sort((a,b)=>
-          cfg.findIndex(x=>x.url===a.dataset.url)
-          -cfg.findIndex(x=>x.url===b.dataset.url)
-        ).forEach(el=>main.appendChild(el));
+        Array.from(main.children)
+          .sort((a,b)=>
+            cfg.findIndex(x=>x.url===a.dataset.url)
+            -cfg.findIndex(x=>x.url===b.dataset.url))
+          .forEach(el=>main.appendChild(el));
       }
 
       function updateStreamEnabled(url,enabled){
@@ -326,9 +323,9 @@
 
       function createPlayerContainer(stream){
         if(!stream.enabled) return null;
-        const url=stream.url;
-        const isMobile=document.documentElement.classList.contains("mobile");
-        const saved=loadPlayerSettings(url);
+        const url=stream.url,
+              isMobile=document.documentElement.classList.contains("mobile"),
+              saved=loadPlayerSettings(url);
 
         const container=document.createElement("div");
         container.className="player-container "+(isMobile?"mobile":"desktop");
@@ -337,7 +334,6 @@
         container.panX=saved.panX;
         container.panY=saved.panY;
 
-        // VIDEO
         const video=document.createElement("video");
         video.className="source-video";
         video.setAttribute("playsinline","true");
@@ -353,7 +349,6 @@
         container.appendChild(video);
 
         if(isMobile){
-          // overlay
           const overlay=document.createElement("div");
           overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start";
@@ -364,11 +359,12 @@
           });
           video.addEventListener("play", ()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
-          // custom scrub
+
           const mc=document.createElement("div"); mc.className="controls-container";
           container.appendChild(mc);
           const mb=document.createElement("div"); mb.className="control-bar";
           mc.appendChild(mb);
+
           const mt=document.createElement("input");
           mt.type="range"; mt.min=0; mt.step=0.1; mt.value=0;
           let seekingM=false;
@@ -382,13 +378,12 @@
             if(!seekingM) mt.value=video.currentTime;
           });
           mb.appendChild(mt);
-          // mobile title
+
           const tM=document.createElement("div");
           tM.className="title-bar"; tM.textContent=extractTitle(url);
           mc.appendChild(tM);
 
         } else {
-          // CANVAS & RENDER
           const canvas=document.createElement("canvas");
           canvas.className="display-canvas";
           canvas.width=960; canvas.height=540;
@@ -396,9 +391,9 @@
           const ctx=canvas.getContext("2d");
           (function render(){
             if(video.readyState>=2){
+              clampPan(container,canvas);
               ctx.save();
               ctx.clearRect(0,0,960,540);
-              clampPan(container,canvas);
               const cx=480, cy=270;
               ctx.translate(cx,cy);
               ctx.scale(container.zoomScale,container.zoomScale);
@@ -410,7 +405,6 @@
             requestAnimationFrame(render);
           })();
 
-          // PAN/ZOOM
           let sx, sy, dragging=false;
           canvas.addEventListener("mousedown", e=>{
             if(e.button!==0||(!spaceHeld&&document.fullscreenElement!==container))return;
@@ -439,7 +433,6 @@
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
           },{passive:false});
 
-          // CLICK vs PAN
           let ct=0, cx=0, cy=0;
           canvas.addEventListener("mousedown", e=>{
             if(e.button!==0)return;
@@ -453,7 +446,6 @@
           });
         }
 
-        // DESKTOP CONTROLS
         if(!isMobile){
           const cc=document.createElement("div");
           cc.className="controls-container overlay-controls";
@@ -461,7 +453,6 @@
           const bar=document.createElement("div");
           bar.className="control-bar";
 
-          // Play/Pause
           const playBtn=document.createElement("button");
           playBtn.textContent="Play";
           video.addEventListener("play", ()=>playBtn.textContent="Pause");
@@ -471,60 +462,54 @@
           });
           bar.appendChild(playBtn);
 
-          // TIMELINE FULL DURATION + SHADING
           const timeline=document.createElement("input");
           timeline.type="range"; timeline.min=0; timeline.step=0.1; timeline.value=0;
           let seeking=false;
-          timeline.addEventListener("mousedown",()=>seeking=true);
-          timeline.addEventListener("mouseup",  ()=>seeking=false);
-          timeline.addEventListener("input",    ()=>video.currentTime=parseFloat(timeline.value));
-          video.addEventListener("loadedmetadata", ()=>{
+          timeline.addEventListener("mousedown", ()=>seeking=true);
+          timeline.addEventListener("mouseup",   ()=>seeking=false);
+          timeline.addEventListener("input",     ()=>video.currentTime=parseFloat(timeline.value));
+          video.addEventListener("loadedmetadata",()=>{
             timeline.max=video.duration||0;
           });
           function updateBuffer(){
-            const dur=video.duration||0;
-            if(!dur) return;
-            const cur=video.currentTime;
-            timeline.value=cur;
-            // shading: played=blue, buffered region gray, future white
-            let bufEnd=cur;
+            const d=video.duration||0;
+            if(!d) return;
+            const c=video.currentTime;
+            timeline.value=c;
+            let bufEnd=c;
             if(video.buffered.length){
               bufEnd=video.buffered.end(video.buffered.length-1);
             }
-            const pPct = (cur/dur)*100;
-            const bPct = (bufEnd/dur)*100;
+            const pPct=(c/d)*100, bPct=(bufEnd/d)*100;
             timeline.style.background=
               `linear-gradient(to right,
                 #4d90fe 0%, #4d90fe ${pPct}%,
                 #888 ${pPct}%, #888 ${bPct}%,
                 #fff ${bPct}%, #fff 100%)`;
           }
-          video.addEventListener("timeupdate", updateBuffer);
-          video.addEventListener("progress",   updateBuffer);
+          video.addEventListener("timeupdate",updateBuffer);
+          video.addEventListener("progress",  updateBuffer);
           bar.appendChild(timeline);
 
-          // Fullscreen
           const fsBtn=document.createElement("button");
           fsBtn.textContent="⛶";
-          fsBtn.addEventListener("click", ()=>{
+          fsBtn.addEventListener("click",()=>{
             if(!document.fullscreenElement) enterFullScreen(container);
             else exitFullScreen();
           });
           bar.appendChild(fsBtn);
 
-          // Reset
           const resetBtn=document.createElement("button");
           resetBtn.textContent="Reset";
-          resetBtn.addEventListener("click", ()=>{
+          resetBtn.addEventListener("click",()=>{
             container.zoomScale=1; container.panX=0; container.panY=0;
             savePlayerSettings(url,{zoomScale:1,panX:0,panY:0});
           });
           bar.appendChild(resetBtn);
 
-          // Disable
           const disableBtn=document.createElement("button");
           disableBtn.className="disable-btn"; disableBtn.textContent="X";
-          disableBtn.addEventListener("click", e=>{
+          disableBtn.addEventListener("click",e=>{
             e.stopPropagation(); updateStreamEnabled(url,false);
           });
           bar.appendChild(disableBtn);
@@ -534,26 +519,24 @@
           titleBar.className="title-bar"; titleBar.textContent=extractTitle(url);
           cc.appendChild(titleBar);
 
-          // fade only in full-screen
           let hideTO;
           function scheduleHide(){ hideTO=setTimeout(()=>cc.style.opacity=0,3000); }
-          document.addEventListener("fullscreenchange", ()=>{
+          document.addEventListener("fullscreenchange",()=>{
             if(document.fullscreenElement===container){
               cc.style.opacity=1; scheduleHide();
             } else {
               cc.style.opacity=1; clearTimeout(hideTO);
             }
           });
-          document.addEventListener("mousemove", e=>{
+          document.addEventListener("mousemove",e=>{
             if(document.fullscreenElement===container && e.clientY>window.innerHeight-100){
               cc.style.opacity=1; clearTimeout(hideTO); scheduleHide();
             }
           });
         }
 
-        // HLS vs Native
-        const canNative = video.canPlayType("application/vnd.apple.mpegurl");
-        if(Hls.isSupported() && !canNative){
+        const canNative=video.canPlayType("application/vnd.apple.mpegurl");
+        if(Hls.isSupported()&&!canNative){
           const hls=new Hls({
             maxBufferLength:120, maxBufferSize:60*1024*1024,
             liveSyncDurationCount:3, manifestLoadingTimeOut:30000,
@@ -568,7 +551,7 @@
             }
           });
           hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play().catch(console.error));
+          hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(console.error));
           hls.loadSource(url);
           hls.on(Hls.Events.ERROR,(_,data)=>{
             if(data.fatal){
@@ -585,8 +568,7 @@
           if(!isMobile) video.play().catch(console.error);
         }
 
-        // dblclick fullscreen
-        container.addEventListener("dblclick", ()=>{
+        container.addEventListener("dblclick",()=>{
           if(!document.fullscreenElement) enterFullScreen(container);
           else exitFullScreen();
         });
@@ -594,13 +576,11 @@
         return container;
       }
 
-      // controls
       document.getElementById("btn-show-all")
-        .addEventListener("click", ()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,true)));
+        .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,true)));
       document.getElementById("btn-hide-all")
-        .addEventListener("click", ()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
+        .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
 
-      // URL modal
       const modal=document.getElementById("urlModal"),
             backdrop=document.getElementById("modalBackdrop"),
             btnAdd=document.getElementById("btn-add-urls"),
@@ -631,7 +611,6 @@
         if(e.key==="Escape"&&backdrop.style.display==="block") backdrop.click();
       });
 
-      // Mobile tap-out sidebar
       if(document.documentElement.classList.contains("mobile")){
         const sidebar=document.getElementById("sidebar"),
               toggle=document.getElementById("sidebarToggle"),
@@ -650,7 +629,7 @@
         });
       }
 
-      // initial load
+      // initial
       updateStreamSidebar();
       getStreamList().forEach(s=>{ if(s.enabled) updateStreamEnabled(s.url,true); });
     })();
