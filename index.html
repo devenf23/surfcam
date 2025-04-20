@@ -32,11 +32,7 @@
     /* --------- VIDEO & CANVAS --------- */
     .canvas-wrapper { position:relative; width:960px; height:540px; overflow:hidden; }
     .canvas-wrapper canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
-    .player-container.desktop .source-video { opacity:0; position:absolute; top:0; left:0; width:960px; height:540px; pointer-events:none; }
-    .player-container.mobile .source-video { width:240px; height:135px; }
-    .player-container.mobile .display-canvas { display:none; }
-
-    /* full‑screen wrapper */
+    /* Fullscreen expands wrapper by CSS only */
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
       width:100%!important; height:100%!important;
@@ -45,6 +41,9 @@
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
       width:100%!important; height:100%!important;
     }
+    .player-container.desktop .source-video { opacity:0; position:absolute; top:0; left:0; width:960px; height:540px; pointer-events:none; }
+    .player-container.mobile .source-video { width:240px; height:135px; }
+    .player-container.mobile .display-canvas { display:none; }
 
     /* ------ CONTROLS & OVERLAYS ------ */
     .controls-container { position:relative; z-index:2; }
@@ -54,8 +53,10 @@
     /* Custom progress bar */
     .progress-bar { position:relative; flex:1 1 0; height:6px; background:#fff; border-radius:6px; overflow:visible; margin:0 5px; cursor:pointer; }
     .progress-bar .buffered,
-    .progress-bar .played { position:absolute; top:0; bottom:0; left:0; }
-    .progress-bar .buffered { background:#888; width:0%; border-radius:6px; }
+    .progress-bar .played {
+      position:absolute; top:0; bottom:0; left:0; border-radius:6px;
+    }
+    .progress-bar .buffered { background:#888; width:0%; }
     .progress-bar .played   { background:#4d90fe; width:0%; }
     .progress-bar .thumb {
       position:absolute; top:50%; left:0; width:12px; height:12px;
@@ -99,7 +100,8 @@
     window.addEventListener("keydown",e=>{
       if(e.code==="Space" && !["input","textarea","button"]
          .includes(document.activeElement.tagName.toLowerCase())){
-        e.preventDefault(); spaceHeld=true; }
+        e.preventDefault(); spaceHeld=true;
+      }
     });
     window.addEventListener("keyup",e=>{ if(e.code==="Space") spaceHeld=false; });
 
@@ -145,32 +147,27 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
   <script>
     function enterFullScreen(el){
-      const r=el.requestFullscreen||el.webkitRequestFullscreen||
-              el.mozRequestFullScreen||el.msRequestFullscreen;
+      const r=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
       if(r) return r.call(el);
     }
     function exitFullScreen(){
-      const e=document.exitFullscreen||document.webkitExitFullscreen||
-              document.mozCancelFullScreen||document.msExitFullscreen;
+      const e=document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen||document.msExitFullscreen;
       if(e) return e.call(document);
     }
 
     const PROXY_PREFIX="https://surfcam-alpha.vercel.app/api/proxy?url=";
     function loadPlayerSettings(u){
       try{ return JSON.parse(localStorage.playerSettings||"{}")[u]||{zoomScale:1,panX:0,panY:0}; }
-      catch{ return {zoomScale:1,panX:0,panY:0}; }
+      catch{ return{zoomScale:1,panX:0,panY:0}; }
     }
     function savePlayerSettings(u,d){
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
     function clampPan(c){
-      const Z=c.zoomScale,
-            w=c.querySelector(".canvas-wrapper").clientWidth,
-            h=c.querySelector(".canvas-wrapper").clientHeight,
-            mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
-      c.panX=Math.min(mx,Math.max(-mx,c.panX));
-      c.panY=Math.min(my,Math.max(-my,c.panY));
+      const Z=c.zoomScale, W=960, H=540, mx=(W*(Z-1))/2, my=(H*(Z-1))/2;
+      c.panX = Math.min(mx,Math.max(-mx,c.panX));
+      c.panY = Math.min(my,Math.max(-my,c.panY));
     }
 
     (function(){
@@ -217,8 +214,7 @@
       function reorderPlayers(){
         const main=document.getElementById("main-content"), cfg=getStreamList();
         Array.from(main.children).sort((a,b)=>
-          cfg.findIndex(x=>x.url===a.dataset.url)-
-          cfg.findIndex(x=>x.url===b.dataset.url)
+          cfg.findIndex(x=>x.url===a.dataset.url)-cfg.findIndex(x=>x.url===b.dataset.url)
         ).forEach(el=>main.appendChild(el));
       }
 
@@ -357,7 +353,6 @@
           const cc=document.createElement("div"); cc.className="controls-container overlay-controls";
           container.appendChild(cc);
           const bar=document.createElement("div"); bar.className="control-bar";
-
           const playBtn=document.createElement("button");
           playBtn.textContent="Play";
           video.addEventListener("play", ()=>playBtn.textContent="Pause");
@@ -446,7 +441,7 @@
             levelLoadingTimeOut:30000,
             loader: class extends Hls.DefaultConfig.loader {
               load(ctx,cfg,cb){
-                let u=ctx.url; while(u.startsWith(PROXY_PREFIX))u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
+                let u=ctx.url; while(u.startsWith(PROXY_PREFIX)) u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
                 ctx.url=PROXY_PREFIX+encodeURIComponent(u);
                 super.load(ctx,cfg,cb);
               }
@@ -470,7 +465,7 @@
           if(!isMobile) video.play().catch(()=>{});
         }
 
-        container.addEventListener("dblclick",()=>{
+        container.addEventListener("dblclick",()=>{ 
           if(!document.fullscreenElement) enterFullScreen(container);
           else exitFullScreen();
         });
