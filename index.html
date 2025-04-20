@@ -38,7 +38,7 @@
       box-sizing: border-box; display: flex;
       flex-wrap: wrap; gap: 20px; overflow: auto;
     }
-    /* Mobile: single column, centered */
+    /* Mobile: single column, centered, no wrap */
     html.mobile #main-content {
       flex-direction: column;
       align-items: center;
@@ -80,6 +80,8 @@
       background: rgba(0,0,0,0.75); padding: 5px 10px;
     }
     .control-bar button { padding: 4px 8px; cursor: pointer; }
+
+    /* Timeline styling */
     .control-bar input[type="range"] {
       -webkit-appearance: none; appearance: none;
       flex: 1 1 0; margin: 0;
@@ -87,7 +89,6 @@
       outline: none;
     }
     .control-bar input[type="range"]::-webkit-slider-runnable-track {
-      -webkit-appearance: none;
       height: 12px; background: #555; border-radius: 6px;
     }
     .control-bar input[type="range"]::-webkit-slider-thumb {
@@ -104,6 +105,7 @@
       width: 12px; height: 12px; background: #fff;
       border-radius: 50%; cursor: pointer;
     }
+
     .disable-btn { background: red; color: #fff; border: none; }
     .title-bar {
       text-align: center; background: rgba(0,0,0,0.75);
@@ -165,7 +167,8 @@
     let spaceHeld=false;
     window.addEventListener("keydown",e=>{
       if(e.code==="Space" &&
-         !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())){
+         !["input","textarea","button"]
+          .includes(document.activeElement.tagName.toLowerCase())){
         e.preventDefault(); spaceHeld=true;
       }
     });
@@ -249,9 +252,7 @@
       function getStreamList(){
         try{return JSON.parse(localStorage[storageKey]||"[]");}catch{return[];}
       }
-      function saveStreamList(l){
-        localStorage[storageKey]=JSON.stringify(l);
-      }
+      function saveStreamList(l){ localStorage[storageKey]=JSON.stringify(l); }
       function extractTitle(u){
         const m=u.match(/wc-([^\/]+)\/playlist/);
         return m?m[1]:u;
@@ -291,8 +292,8 @@
       }
       document.addEventListener("mouseup",()=>{
         activeLabels.forEach(lbl=>{
-          const url=lbl.dataset.url;
-          const cb=lbl.parentNode.querySelector("input");
+          const url=lbl.dataset.url,
+                cb=lbl.parentNode.querySelector("input");
           updateStreamEnabled(url,cb.checked);
         });
         activeLabels.clear();
@@ -355,18 +356,17 @@
         container.appendChild(video);
 
         if(isMobile){
-          /* mobile overlay + scrub + title */
+          // mobile overlay/scrub/title
           const overlay=document.createElement("div");
           overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start";
           container.appendChild(overlay);
           overlay.addEventListener("click",()=>{
             if(container.hls) container.hls.startLoad();
-            video.play().then(()=>overlay.style.display="none").catch(()=>{});
+            video.play().then(()=>overlay.style.display="none");
           });
-          video.addEventListener("play",()=>overlay.style.display="none");
+          video.addEventListener("play", ()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
-
           const mc=document.createElement("div"); mc.className="controls-container";
           container.appendChild(mc);
           const mb=document.createElement("div"); mb.className="control-bar";
@@ -374,15 +374,15 @@
 
           const mt=document.createElement("input");
           mt.type="range"; mt.min=0; mt.step=0.1; mt.value=0;
-          let seekingM=false;
-          mt.addEventListener("mousedown",()=>seekingM=true);
-          mt.addEventListener("mouseup", () => seekingM=false);
+          let seekM=false;
+          mt.addEventListener("mousedown",()=>seekM=true);
+          mt.addEventListener("mouseup",  ()=>seekM=false);
           mt.addEventListener("input",    ()=>video.currentTime=parseFloat(mt.value));
           video.addEventListener("loadedmetadata",()=>{
             mt.max=video.duration||0; mt.value=video.currentTime||0;
           });
           video.addEventListener("timeupdate",()=>{
-            if(!seekingM) mt.value=video.currentTime;
+            if(!seekM) mt.value=video.currentTime;
           });
           mb.appendChild(mt);
 
@@ -391,7 +391,7 @@
           mc.appendChild(tM);
 
         } else {
-          /* DESKTOP canvas & pan/zoom */
+          // desktop canvas & pan/zoom + render
           const canvas=document.createElement("canvas");
           canvas.className="display-canvas";
           container.appendChild(canvas);
@@ -418,7 +418,6 @@
             requestAnimationFrame(render);
           })();
 
-          // pan
           let sx, sy, dragging=false;
           canvas.addEventListener("mousedown",e=>{
             if(e.button!==0||(!spaceHeld&&document.fullscreenElement!==container))return;
@@ -440,13 +439,13 @@
             if(!spaceHeld&&document.fullscreenElement!==container)return;
             e.preventDefault();
             const rect=canvas.getBoundingClientRect();
-            const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+            const dx=e.clientX-rect.left, dy=e.clientY-rect.top;
             const oldZ=container.zoomScale;
             let z=oldZ+(e.deltaY<0?0.1:-0.1);
             z=Math.max(1,Math.min(3,z));
-            // center on cursor
-            container.panX+=(cx-rect.width/2)*(1/z-1/oldZ);
-            container.panY+=(cy-rect.height/2)*(1/z-1/oldZ);
+            // center zoom on cursor
+            container.panX+=(dx-rect.width/2)*(1/z-1/oldZ);
+            container.panY+=(dy-rect.height/2)*(1/z-1/oldZ);
             container.zoomScale=z;
             clampPan(container);
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
@@ -459,7 +458,7 @@
           });
           canvas.addEventListener("mouseup",e=>{
             const dt=Date.now()-ct;
-            if(dt<200 && Math.hypot(e.clientX-cx,e.clientY-cy)<5){
+            if(dt<200&&Math.hypot(e.clientX-cx,e.clientY-cy)<5){
               video.paused?video.play().catch(()=>{}):video.pause();
             }
           });
@@ -498,7 +497,8 @@
                     ?video.buffered.end(video.buffered.length-1)
                     :c;
             if(!seeking) timeline.value=c;
-            const pPct=(c/d)*100, bPct=(bufEnd/d)*100;
+            const pPct=(c/d)*100,
+                  bPct=(bufEnd/d)*100;
             timeline.style.backgroundImage=
               `linear-gradient(to right,
                 #4d90fe 0%, #4d90fe ${pPct}%,
