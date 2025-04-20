@@ -89,11 +89,13 @@
       border-radius: 3px; outline: none;
     }
     .control-bar input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none; appearance: none;
+      -webkit-appearance: none;
+      position: relative; top: 50%; transform: translateY(-50%);
       width: 12px; height: 12px; background: #fff;
-      border-radius: 50%; cursor: pointer; margin-top: -3px;
+      border-radius: 50%; cursor: pointer;
     }
     .control-bar input[type="range"]::-moz-range-thumb {
+      position: relative; top: 50%; transform: translateY(-50%);
       width: 12px; height: 12px; background: #fff;
       border: none; border-radius: 50%; cursor: pointer;
     }
@@ -156,24 +158,25 @@
     if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
       document.documentElement.classList.add("mobile");
     }
+
     // spacebar for pan/zoom
     let spaceHeld = false;
     window.addEventListener("keydown", e => {
-      if (e.code==="Space" && !["input","textarea","button"]
-        .includes(document.activeElement.tagName.toLowerCase())) {
-        e.preventDefault(); spaceHeld=true;
+      if (e.code==="Space" &&
+         !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) {
+        e.preventDefault(); spaceHeld = true;
       }
     });
     window.addEventListener("keyup", e => { if(e.code==="Space") spaceHeld=false; });
 
-    // cursor hide in fullscreen
+    // cursor hide in fullscreen after idle
     let cursorTimeout;
     function showCursor(){ document.body.style.cursor=""; }
     function hideCursor(){ document.body.style.cursor="none"; }
     document.addEventListener("fullscreenchange", ()=>{
       if(document.fullscreenElement){
         showCursor(); clearTimeout(cursorTimeout);
-        cursorTimeout=setTimeout(hideCursor,2000);
+        cursorTimeout = setTimeout(hideCursor,2000);
       } else {
         showCursor(); clearTimeout(cursorTimeout);
       }
@@ -181,7 +184,7 @@
     document.addEventListener("mousemove", ()=>{
       if(document.fullscreenElement){
         showCursor(); clearTimeout(cursorTimeout);
-        cursorTimeout=setTimeout(hideCursor,2000);
+        cursorTimeout = setTimeout(hideCursor,2000);
       }
     });
   </script>
@@ -210,7 +213,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
   <script>
-    function enterFullScreen(el) {
+    function enterFullScreen(el){
       const r=el.requestFullscreen||el.webkitRequestFullscreen||
               el.mozRequestFullScreen||el.msRequestFullscreen;
       if(r) return r.call(el);
@@ -227,8 +230,7 @@
       catch{return{zoomScale:1,panX:0,panY:0};}
     }
     function savePlayerSettings(u,d){
-      let o={};
-      try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
+      let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
     function clampPan(c,cv){
@@ -244,7 +246,9 @@
       function getStreamList(){
         try{return JSON.parse(localStorage[storageKey]||"[]");}catch{return[];}
       }
-      function saveStreamList(l){ localStorage[storageKey]=JSON.stringify(l); }
+      function saveStreamList(list){
+        localStorage[storageKey]=JSON.stringify(list);
+      }
       function extractTitle(u){
         const m=u.match(/wc-([^\/]+)\/playlist/);
         return m?m[1]:u;
@@ -293,11 +297,10 @@
 
       function reorderPlayers(){
         const main=document.getElementById("main-content"), cfg=getStreamList();
-        Array.from(main.children)
-          .sort((a,b)=>
-            cfg.findIndex(x=>x.url===a.dataset.url)
-            -cfg.findIndex(x=>x.url===b.dataset.url))
-          .forEach(el=>main.appendChild(el));
+        Array.from(main.children).sort((a,b)=>
+          cfg.findIndex(x=>x.url===a.dataset.url)
+          -cfg.findIndex(x=>x.url===b.dataset.url)
+        ).forEach(el=>main.appendChild(el));
       }
 
       function updateStreamEnabled(url,enabled){
@@ -349,6 +352,7 @@
         container.appendChild(video);
 
         if(isMobile){
+          // mobile overlay + scrub + title
           const overlay=document.createElement("div");
           overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start";
@@ -359,12 +363,10 @@
           });
           video.addEventListener("play", ()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
-
           const mc=document.createElement("div"); mc.className="controls-container";
           container.appendChild(mc);
           const mb=document.createElement("div"); mb.className="control-bar";
           mc.appendChild(mb);
-
           const mt=document.createElement("input");
           mt.type="range"; mt.min=0; mt.step=0.1; mt.value=0;
           let seekingM=false;
@@ -378,12 +380,12 @@
             if(!seekingM) mt.value=video.currentTime;
           });
           mb.appendChild(mt);
-
           const tM=document.createElement("div");
           tM.className="title-bar"; tM.textContent=extractTitle(url);
           mc.appendChild(tM);
 
         } else {
+          // desktop canvas & pan/zoom
           const canvas=document.createElement("canvas");
           canvas.className="display-canvas";
           canvas.width=960; canvas.height=540;
@@ -425,14 +427,12 @@
           canvas.addEventListener("wheel", e=>{
             if(!spaceHeld&&document.fullscreenElement!==container)return;
             e.preventDefault();
-            const oldZ=container.zoomScale;
-            let z=oldZ+(e.deltaY<0?0.1:-0.1);
+            let z=container.zoomScale+(e.deltaY<0?0.1:-0.1);
             z=Math.max(1,Math.min(3,z));
             container.zoomScale=z;
             clampPan(container,canvas);
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
           },{passive:false});
-
           let ct=0, cx=0, cy=0;
           canvas.addEventListener("mousedown", e=>{
             if(e.button!==0)return;
@@ -446,6 +446,7 @@
           });
         }
 
+        // desktop controls + timeline shading
         if(!isMobile){
           const cc=document.createElement("div");
           cc.className="controls-container overlay-controls";
@@ -465,9 +466,9 @@
           const timeline=document.createElement("input");
           timeline.type="range"; timeline.min=0; timeline.step=0.1; timeline.value=0;
           let seeking=false;
-          timeline.addEventListener("mousedown", ()=>seeking=true);
-          timeline.addEventListener("mouseup",   ()=>seeking=false);
-          timeline.addEventListener("input",     ()=>video.currentTime=parseFloat(timeline.value));
+          timeline.addEventListener("mousedown",()=>seeking=true);
+          timeline.addEventListener("mouseup",  ()=>seeking=false);
+          timeline.addEventListener("input",    ()=>video.currentTime=parseFloat(timeline.value));
           video.addEventListener("loadedmetadata",()=>{
             timeline.max=video.duration||0;
           });
@@ -535,16 +536,19 @@
           });
         }
 
+        // HLS vs native
         const canNative=video.canPlayType("application/vnd.apple.mpegurl");
         if(Hls.isSupported()&&!canNative){
           const hls=new Hls({
-            maxBufferLength:120, maxBufferSize:60*1024*1024,
-            liveSyncDurationCount:3, manifestLoadingTimeOut:30000,
+            maxBufferLength:120,
+            maxBufferSize:60*1024*1024,
+            liveSyncDurationCount:3,
+            manifestLoadingTimeOut:30000,
             levelLoadingTimeOut:30000,
             loader: class extends Hls.DefaultConfig.loader {
               load(ctx,cfg,cb){
                 let u=ctx.url;
-                while(u.startsWith(PROXY_PREFIX)) u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
+                while(u.startsWith(PROXY_PREFIX))u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
                 ctx.url=PROXY_PREFIX+encodeURIComponent(u);
                 super.load(ctx,cfg,cb);
               }
@@ -553,9 +557,9 @@
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(console.error));
           hls.loadSource(url);
-          hls.on(Hls.Events.ERROR,(_,data)=>{
-            if(data.fatal){
-              switch(data.type){
+          hls.on(Hls.Events.ERROR,(_,d)=>{
+            if(d.fatal){
+              switch(d.type){
                 case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
                 case Hls.ErrorTypes.MEDIA_ERROR:   hls.recoverMediaError(); break;
                 default:                            hls.destroy(); break;
@@ -572,15 +576,16 @@
           if(!document.fullscreenElement) enterFullScreen(container);
           else exitFullScreen();
         });
-
         return container;
       }
 
+      // show/hide all buttons
       document.getElementById("btn-show-all")
         .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,true)));
       document.getElementById("btn-hide-all")
         .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
 
+      // URL modal
       const modal=document.getElementById("urlModal"),
             backdrop=document.getElementById("modalBackdrop"),
             btnAdd=document.getElementById("btn-add-urls"),
@@ -611,6 +616,7 @@
         if(e.key==="Escape"&&backdrop.style.display==="block") backdrop.click();
       });
 
+      // mobile tap-out
       if(document.documentElement.classList.contains("mobile")){
         const sidebar=document.getElementById("sidebar"),
               toggle=document.getElementById("sidebarToggle"),
