@@ -36,7 +36,7 @@
     .player-container.mobile .source-video { width:240px; height:135px; }
     .player-container.mobile .display-canvas { display:none; }
 
-    /* ensure wrapper fills screen in fullscreen */
+    /* full‑screen wrapper */
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
       width:100%!important; height:100%!important;
@@ -54,10 +54,8 @@
     /* Custom progress bar */
     .progress-bar { position:relative; flex:1 1 0; height:6px; background:#fff; border-radius:6px; overflow:visible; margin:0 5px; cursor:pointer; }
     .progress-bar .buffered,
-    .progress-bar .played {
-      position:absolute; top:0; bottom:0; left:0; border-radius:6px 0 0 6px;
-    }
-    .progress-bar .buffered { background:#888; width:0%; }
+    .progress-bar .played { position:absolute; top:0; bottom:0; left:0; }
+    .progress-bar .buffered { background:#888; width:0%; border-radius:6px; }
     .progress-bar .played   { background:#4d90fe; width:0%; }
     .progress-bar .thumb {
       position:absolute; top:50%; left:0; width:12px; height:12px;
@@ -78,13 +76,12 @@
     #urlModal {
       display:none; position:fixed; z-index:10;
       left:50%; top:50%; transform:translate(-50%,-50%);
-      width:1200px; background:#555; border:2px solid #fff;
-      padding:15px; box-sizing:border-box;
+      width:1200px; background:#555; border:2px solid #fff; padding:15px; box-sizing:border-box;
     }
     #urlModal textarea { width:100%; height:600px; padding:10px; font-size:14px; box-sizing:border-box; }
 
     /* ----- MOBILE SIDEBAR ----- */
-    html.mobile #urlModal { width:300px; padding:4px; font-size:12px; }
+    html.mobile #urlModal   { width:300px; padding:4px; font-size:12px; }
     html.mobile #urlModal textarea { height:150px; padding:5px; font-size:12px; }
     html.mobile #sidebar { position:fixed; top:0; left:0; height:100%; z-index:1000; }
     #sidebarToggle { display:none; }
@@ -100,9 +97,9 @@
 
     let spaceHeld=false;
     window.addEventListener("keydown",e=>{
-      if(e.code==="Space"&& !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())){
-        e.preventDefault(); spaceHeld=true;
-      }
+      if(e.code==="Space" && !["input","textarea","button"]
+         .includes(document.activeElement.tagName.toLowerCase())){
+        e.preventDefault(); spaceHeld=true; }
     });
     window.addEventListener("keyup",e=>{ if(e.code==="Space") spaceHeld=false; });
 
@@ -148,11 +145,13 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
   <script>
     function enterFullScreen(el){
-      const r=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
+      const r=el.requestFullscreen||el.webkitRequestFullscreen||
+              el.mozRequestFullScreen||el.msRequestFullscreen;
       if(r) return r.call(el);
     }
     function exitFullScreen(){
-      const e=document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen||document.msExitFullscreen;
+      const e=document.exitFullscreen||document.webkitExitFullscreen||
+              document.mozCancelFullScreen||document.msExitFullscreen;
       if(e) return e.call(document);
     }
 
@@ -166,10 +165,12 @@
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
     function clampPan(c){
-      const Z=c.zoomScale, W=960, H=540,
-            mx=(W*(Z-1))/2, my=(H*(Z-1))/2;
-      c.panX = Math.min(mx, Math.max(-mx, c.panX));
-      c.panY = Math.min(my, Math.max(-my, c.panY));
+      const Z=c.zoomScale,
+            w=c.querySelector(".canvas-wrapper").clientWidth,
+            h=c.querySelector(".canvas-wrapper").clientHeight,
+            mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
+      c.panX=Math.min(mx,Math.max(-mx,c.panX));
+      c.panY=Math.min(my,Math.max(-my,c.panY));
     }
 
     (function(){
@@ -195,10 +196,10 @@
             item.appendChild(cb);
             const lbl=document.createElement("label"); lbl.textContent=extractTitle(s.url); lbl.dataset.url=s.url;
             lbl.addEventListener("mousedown",e=>{
-              if(e.button===0){ cb.checked=!cb.checked; activeLabels.add(lbl); e.preventDefault(); }
+              if(e.button===0){cb.checked=!cb.checked;activeLabels.add(lbl);e.preventDefault();}
             });
             lbl.addEventListener("mouseenter",e=>{
-              if(e.buttons&1 && !activeLabels.has(lbl)){ cb.checked=!cb.checked; activeLabels.add(lbl); }
+              if(e.buttons&1&&!activeLabels.has(lbl)){cb.checked=!cb.checked;activeLabels.add(lbl);}
             });
             item.appendChild(lbl);
             sb.appendChild(item);
@@ -216,7 +217,8 @@
       function reorderPlayers(){
         const main=document.getElementById("main-content"), cfg=getStreamList();
         Array.from(main.children).sort((a,b)=>
-          cfg.findIndex(x=>x.url===a.dataset.url)-cfg.findIndex(x=>x.url===b.dataset.url)
+          cfg.findIndex(x=>x.url===a.dataset.url)-
+          cfg.findIndex(x=>x.url===b.dataset.url)
         ).forEach(el=>main.appendChild(el));
       }
 
@@ -264,6 +266,7 @@
           });
           video.addEventListener("play", ()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
+
           const mc=document.createElement("div"); mc.className="controls-container"; container.appendChild(mc);
           const mb=document.createElement("div"); mb.className="control-bar"; mc.appendChild(mb);
           const mt=document.createElement("input"); mt.type="range"; mt.min=0; mt.step=0.1; mt.value=0;
@@ -354,25 +357,22 @@
           const cc=document.createElement("div"); cc.className="controls-container overlay-controls";
           container.appendChild(cc);
           const bar=document.createElement("div"); bar.className="control-bar";
+
           const playBtn=document.createElement("button");
           playBtn.textContent="Play";
           video.addEventListener("play", ()=>playBtn.textContent="Pause");
           video.addEventListener("pause",()=>playBtn.textContent="Play");
-          playBtn.addEventListener("click",()=>{
-            video.paused?video.play().catch(()=>{}):video.pause();
-          });
+          playBtn.addEventListener("click",()=>{ video.paused?video.play().catch(()=>{}):video.pause(); });
           bar.appendChild(playBtn);
 
           const prog=document.createElement("div"); prog.className="progress-bar";
           const bufBar=document.createElement("div"), playBar=document.createElement("div"), thumb=document.createElement("div");
           bufBar.className="buffered"; playBar.className="played"; thumb.className="thumb";
-          prog.appendChild(bufBar);
-          prog.appendChild(playBar);
-          prog.appendChild(thumb);
+          prog.appendChild(bufBar); prog.appendChild(playBar); prog.appendChild(thumb);
           bar.appendChild(prog);
 
           function updateProgress(){
-            const d=video.duration||0; if(!d) return;
+            const d=video.duration||0; if(!d)return;
             const c=video.currentTime, bufEnd=video.buffered.length?video.buffered.end(video.buffered.length-1):c;
             const pPct=(c/d)*100, bPct=(bufEnd/d)*100;
             playBar.style.width=pPct+"%";
@@ -387,14 +387,12 @@
           document.addEventListener("mousemove",e=>{
             if(!draggingThumb) return;
             const rect=prog.getBoundingClientRect();
-            let pct=(e.clientX-rect.left)/rect.width;
-            pct=Math.max(0,Math.min(1,pct));
+            let pct=(e.clientX-rect.left)/rect.width; pct=Math.max(0,Math.min(1,pct));
             video.currentTime=pct*(video.duration||0);
           });
           prog.addEventListener("click",e=>{
             const rect=prog.getBoundingClientRect();
-            let pct=(e.clientX-rect.left)/rect.width;
-            pct=Math.max(0,Math.min(1,pct));
+            let pct=(e.clientX-rect.left)/rect.width; pct=Math.max(0,Math.min(1,pct));
             video.currentTime=pct*(video.duration||0);
           });
 
@@ -416,9 +414,7 @@
 
           const disableBtn=document.createElement("button");
           disableBtn.className="disable-btn"; disableBtn.textContent="X";
-          disableBtn.addEventListener("click",e=>{
-            e.stopPropagation(); updateStreamEnabled(url,false);
-          });
+          disableBtn.addEventListener("click",e=>{ e.stopPropagation(); updateStreamEnabled(url,false); });
           bar.appendChild(disableBtn);
 
           cc.appendChild(bar);
@@ -450,7 +446,7 @@
             levelLoadingTimeOut:30000,
             loader: class extends Hls.DefaultConfig.loader {
               load(ctx,cfg,cb){
-                let u=ctx.url; while(u.startsWith(PROXY_PREFIX)) u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
+                let u=ctx.url; while(u.startsWith(PROXY_PREFIX))u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
                 ctx.url=PROXY_PREFIX+encodeURIComponent(u);
                 super.load(ctx,cfg,cb);
               }
@@ -509,12 +505,8 @@
         modal.style.display=backdrop.style.display="none";
         urlInput.value="";
       });
-      backdrop.addEventListener("click",()=>{
-        modal.style.display=backdrop.style.display="none";
-      });
-      window.addEventListener("keydown",e=>{
-        if(e.key==="Escape"&&backdrop.style.display==="block") backdrop.click();
-      });
+      backdrop.addEventListener("click",()=>{ modal.style.display=backdrop.style.display="none"; });
+      window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&backdrop.style.display==="block") backdrop.click(); });
 
       if(document.documentElement.classList.contains("mobile")){
         const sidebar=document.getElementById("sidebar"),
@@ -526,12 +518,8 @@
           ex=e.changedTouches[0].screenX;
           if(sx-ex>50){ sidebar.classList.add("hidden"); toggle.style.display="block"; }
         });
-        toggle.addEventListener("click",()=>{
-          sidebar.classList.remove("hidden"); toggle.style.display="none";
-        });
-        main.addEventListener("touchstart",()=>{
-          sidebar.classList.add("hidden"); toggle.style.display="block";
-        });
+        toggle.addEventListener("click",()=>{ sidebar.classList.remove("hidden"); toggle.style.display="none"; });
+        main.addEventListener("touchstart",()=>{ sidebar.classList.add("hidden"); toggle.style.display="block"; });
       }
 
       updateStreamSidebar();
