@@ -6,139 +6,121 @@
   <title>Live DVR – Desktop & Mobile</title>
   <style>
     /* ---------- GENERAL ---------- */
-    html, body { margin: 0; padding: 0; height: 100vh; font-family: Arial, sans-serif; background: #222; color: #fff; overflow: hidden; }
-    .container { display: flex; height: 100vh; }
+    html, body { margin:0; padding:0; height:100vh; font-family:Arial,sans-serif; background:#222; color:#fff; overflow:hidden; }
+    .container { display:flex; height:100vh; }
 
     /* ---------- SIDEBAR ---------- */
-    #sidebar { background: #444; width: 220px; padding: 20px; box-sizing: border-box; overflow-y: auto; transition: transform 0.3s ease; }
-    #sidebar.hidden { transform: translateX(-100%); }
-    #btn-add-urls, .sideBtn, #urlModal button { width: 100%; padding: 10px; margin-bottom: 10px; font-size: 16px; cursor: pointer; }
-    #sideButtons { display: flex; gap: 10px; }
-    .sideBtn { flex: 1; }
-    #streamList { margin-top: 10px; line-height: 1.2; }
-    .no-streams { font-style: italic; color: #bbb; }
-    .stream-item { display: flex; align-items: center; margin-bottom: 5px; }
-    .stream-item label { margin-left: 5px; cursor: pointer; user-select: none; }
+    #sidebar { background:#444; width:220px; padding:20px; box-sizing:border-box; overflow-y:auto; transition:transform .3s ease; }
+    #sidebar.hidden { transform:translateX(-100%); }
+    #btn-add-urls, .sideBtn, #urlModal button { width:100%; padding:10px; margin-bottom:10px; font-size:16px; cursor:pointer; }
+    #sideButtons { display:flex; gap:10px; }
+    .sideBtn { flex:1; }
+    #streamList { margin-top:10px; line-height:1.2; }
+    .no-streams { font-style:italic; color:#bbb; }
+    .stream-item { display:flex; align-items:center; margin-bottom:5px; }
+    .stream-item label { margin-left:5px; cursor:pointer; user-select:none; }
 
     /* ---------- MAIN CONTENT ---------- */
-    #main-content { flex: 1; background: #333; padding: 20px; box-sizing: border-box; display: flex; flex-wrap: wrap; gap: 20px; overflow: auto; }
-    html.mobile #main-content { flex-direction: column; align-items: center; flex-wrap: nowrap; margin-left: 0; }
+    #main-content { flex:1; background:#333; padding:20px; box-sizing:border-box; display:flex; flex-wrap:wrap; gap:20px; overflow:auto; }
+    html.mobile #main-content { flex-direction:column; align-items:center; flex-wrap:nowrap; margin-left:0; }
 
     /* ---------- PLAYER CONTAINERS ---------- */
-    .player-container { background: #222; display: flex; flex-direction: column; position: relative; box-sizing: border-box; }
-    .player-container.desktop { width: 960px; height: 600px; margin-bottom: 40px; }
-    .player-container.mobile { width: 240px; margin: 0 auto 20px; display: flex; flex-direction: column; background: #222; box-sizing: border-box; }
+    .player-container { background:#222; display:flex; flex-direction:column; position:relative; box-sizing:border-box; }
+    .player-container.desktop { width:960px; height:600px; margin-bottom:40px; }
+    .player-container.mobile { width:240px; margin:0 auto 20px; display:flex; flex-direction:column; background:#222; box-sizing:border-box; }
 
     /* --------- VIDEO & CANVAS --------- */
-    .canvas-wrapper { position: relative; width: 960px; height: 540px; overflow: hidden; }
-    .canvas-wrapper canvas { position: absolute; top: 0; left: 0; width: 960px; height: 540px; }
+    .canvas-wrapper { position:relative; width:960px; height:540px; overflow:hidden; }
+    .canvas-wrapper canvas { position:absolute; top:0; left:0; width:960px; height:540px; }
+    .player-container.desktop .source-video { opacity:0; position:absolute; top:0; left:0; width:960px; height:540px; pointer-events:none; }
+    .player-container.mobile .source-video { width:240px; height:135px; }
+    .player-container.mobile .display-canvas { display:none; }
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
-      width: 100% !important; height: 100% !important;
+      width:100%!important; height:100%!important;
     }
     .player-container:fullscreen .canvas-wrapper canvas,
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
-      width: 100% !important; height: 100% !important;
+      width:100%!important; height:100%!important;
     }
-    .player-container.desktop .source-video { opacity: 0; position: absolute; top: 0; left: 0; width: 960px; height: 540px; pointer-events: none; }
-    .player-container.mobile .source-video { width: 240px; height: 135px; }
-    .player-container.mobile .display-canvas { display: none; }
 
     /* ------ CONTROLS & OVERLAYS ------ */
-    .controls-container { position: relative; z-index: 2; }
-    .control-bar { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.75); padding: 5px 10px; }
-    .control-bar button { padding: 4px 8px; cursor: pointer; }
+    .controls-container { position:relative; z-index:2; }
+    .control-bar { display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.75); padding:5px 10px; }
+    .control-bar button { padding:4px 8px; cursor:pointer; }
 
     /* Custom progress bar */
-    .progress-bar { position: relative; flex: 1 1 0; height: 6px; background: #fff; border-radius: 3px; overflow: visible; margin: 0 5px; cursor: pointer; }
+    .progress-bar { position:relative; flex:1 1 0; height:6px; background:#fff; border-radius:3px; overflow:visible; margin:0 5px; cursor:pointer; }
     .progress-bar .buffered,
-    .progress-bar .played { position: absolute; top: 0; bottom: 0; left: 0; }
-    .progress-bar .buffered { background: #888; width: 0%; }
-    .progress-bar .played   { background: #4d90fe; width: 0%; }
-    .progress-bar input[type="range"] {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: transparent; -webkit-appearance: none; appearance: none;
+    .progress-bar .played {
+      position:absolute; top:0; bottom:0; left:0;
     }
-    .progress-bar input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 12px; height: 12px; background: #fff;
-      border-radius: 50%; cursor: pointer; transform: translateY(-3px);
-    }
-    .progress-bar input[type="range"]::-moz-range-thumb {
-      width: 12px; height: 12px; background: #fff; border-radius: 50%; cursor: pointer;
+    .progress-bar .buffered { background:#888; width:0%; }
+    .progress-bar .played   { background:#4d90fe; width:0%; }
+    .progress-bar .thumb {
+      position:absolute; top:50%; left:0; width:12px; height:12px;
+      background:#fff; border-radius:50%; transform:translate(-50%,-50%);
+      cursor:pointer;
     }
 
-    .disable-btn { background: red; color: #fff; border: none; }
-    .title-bar { text-align: center; background: rgba(0,0,0,0.75); padding: 2px 10px; font-size: 16px; }
-    .overlay-controls { position: absolute; bottom: 0; left: 0; right: 0; }
+    .disable-btn { background:red; color:#fff; border:none; }
+    .title-bar { text-align:center; background:rgba(0,0,0,0.75); padding:2px 10px; font-size:16px; }
+    .overlay-controls { position:absolute; bottom:0; left:0; right:0; }
     .mobile-play-overlay {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 24px; z-index: 10;
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:24px; z-index:10;
     }
 
     /* ------- URL MODAL & BACKDROP ------- */
-    #modalBackdrop {
-      display: none; position: fixed; z-index: 5;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-    }
+    #modalBackdrop { display:none; position:fixed; z-index:5; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
     #urlModal {
-      display: none; position: fixed; z-index: 10;
-      left: 50%; top: 50%; transform: translate(-50%, -50%);
-      width: 1200px; background: #555; border: 2px solid #fff;
-      padding: 15px; box-sizing: border-box;
+      display:none; position:fixed; z-index:10;
+      left:50%; top:50%; transform:translate(-50%,-50%);
+      width:1200px; background:#555; border:2px solid #fff;
+      padding:15px; box-sizing:border-box;
     }
-    #urlModal textarea {
-      width: 100%; height: 600px; padding: 10px;
-      font-size: 14px; box-sizing: border-box;
-    }
+    #urlModal textarea { width:100%; height:600px; padding:10px; font-size:14px; box-sizing:border-box; }
 
     /* ----- MOBILE SIDEBAR ----- */
-    html.mobile #urlModal   { width: 300px; padding: 4px; font-size: 12px; }
-    html.mobile #urlModal textarea {
-      height: 150px; padding: 5px; font-size: 12px;
-    }
-    html.mobile #sidebar {
-      position: fixed; top: 0; left: 0; height: 100%; z-index: 1000;
-    }
-    #sidebarToggle { display: none; }
+    html.mobile #urlModal { width:300px; padding:4px; font-size:12px; }
+    html.mobile #urlModal textarea { height:150px; padding:5px; font-size:12px; }
+    html.mobile #sidebar { position:fixed; top:0; left:0; height:100%; z-index:1000; }
+    #sidebarToggle { display:none; }
     html.mobile #sidebarToggle {
-      display: block; position: fixed; top: 50%; left: 0;
-      transform: translate(-50%, -50%); z-index: 1100;
-      background: #444; border: none; padding: 10px 12px;
-      font-size: 24px; color: #fff; cursor: pointer;
+      display:block; position:fixed; top:50%; left:0; transform:translate(-50%,-50%);
+      z-index:1100; background:#444; border:none; padding:10px 12px;
+      font-size:24px; color:#fff; cursor:pointer;
     }
   </style>
   <script>
-    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))
+    if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))
       document.documentElement.classList.add("mobile");
 
-    let spaceHeld = false;
-    window.addEventListener("keydown", e => {
-      if (e.code === "Space" &&
-         !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())){
-        e.preventDefault(); spaceHeld = true;
+    let spaceHeld=false;
+    window.addEventListener("keydown",e=>{
+      if(e.code==="Space" && !["input","textarea","button"]
+         .includes(document.activeElement.tagName.toLowerCase())){
+        e.preventDefault(); spaceHeld=true;
       }
     });
-    window.addEventListener("keyup", e => {
-      if (e.code === "Space") spaceHeld = false;
-    });
+    window.addEventListener("keyup",e=>{ if(e.code==="Space") spaceHeld=false; });
 
     let cursorTimeout;
-    function showCursor(){ document.body.style.cursor = ""; }
-    function hideCursor(){ document.body.style.cursor = "none"; }
-    document.addEventListener("fullscreenchange", ()=>{
-      if (document.fullscreenElement) {
+    function showCursor(){ document.body.style.cursor=""; }
+    function hideCursor(){ document.body.style.cursor="none"; }
+    document.addEventListener("fullscreenchange",()=>{
+      if(document.fullscreenElement){
         showCursor(); clearTimeout(cursorTimeout);
-        cursorTimeout = setTimeout(hideCursor, 2000);
+        cursorTimeout=setTimeout(hideCursor,2000);
       } else {
         showCursor(); clearTimeout(cursorTimeout);
       }
     });
-    document.addEventListener("mousemove", ()=>{
-      if (document.fullscreenElement) {
+    document.addEventListener("mousemove",()=>{
+      if(document.fullscreenElement){
         showCursor(); clearTimeout(cursorTimeout);
-        cursorTimeout = setTimeout(hideCursor, 2000);
+        cursorTimeout=setTimeout(hideCursor,2000);
       }
     });
   </script>
@@ -166,42 +148,42 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
   <script>
     function enterFullScreen(el){
-      const r = el.requestFullscreen||el.webkitRequestFullscreen||
-                el.mozRequestFullScreen||el.msRequestFullscreen;
-      if (r) return r.call(el);
+      const r=el.requestFullscreen||el.webkitRequestFullscreen||
+              el.mozRequestFullScreen||el.msRequestFullscreen;
+      if(r) return r.call(el);
     }
     function exitFullScreen(){
-      const e = document.exitFullscreen||document.webkitExitFullscreen||
-                document.mozCancelFullScreen||document.msExitFullscreen;
-      if (e) return e.call(document);
+      const e=document.exitFullscreen||document.webkitExitFullscreen||
+              document.mozCancelFullScreen||document.msExitFullscreen;
+      if(e) return e.call(document);
     }
 
-    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+    const PROXY_PREFIX="https://surfcam-alpha.vercel.app/api/proxy?url=";
     function loadPlayerSettings(u){
       try{ return JSON.parse(localStorage.playerSettings||"{}")[u]
-             || {zoomScale:1,panX:0,panY:0}; }
+             ||{zoomScale:1,panX:0,panY:0}; }
       catch{ return {zoomScale:1,panX:0,panY:0}; }
     }
     function savePlayerSettings(u,d){
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
-      o[u]=d; localStorage.playerSettings = JSON.stringify(o);
+      o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
     function clampPan(c){
-      const Z=c.zoomScale, w=960, h=540,
+      const Z=c.zoomScale,
+            w=c.clientWidth, h=c.clientHeight,
             mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
-      c.panX = Math.min(mx, Math.max(-mx, c.panX));
-      c.panY = Math.min(my, Math.max(-my, c.panY));
+      c.panX = Math.min(mx,Math.max(-mx,c.panX));
+      c.panY = Math.min(my,Math.max(-my,c.panY));
     }
 
     (function(){
       const storageKey="streamConfigs", activeLabels=new Set();
 
       function getStreamList(){
-        try{ return JSON.parse(localStorage[storageKey]||"[]"); }
-        catch{ return []; }
+        try{ return JSON.parse(localStorage[storageKey]||"[]"); }catch{ return []; }
       }
       function saveStreamList(l){
-        localStorage[storageKey] = JSON.stringify(l);
+        localStorage[storageKey]=JSON.stringify(l);
       }
       function extractTitle(u){
         const m=u.match(/wc-([^\/]+)\/playlist/);
@@ -307,7 +289,6 @@
         container.appendChild(video);
 
         if(isMobile){
-          /* mobile overlay + scrub + title */
           const overlay=document.createElement("div");
           overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start";
@@ -343,7 +324,7 @@
           mc.appendChild(tM);
 
         } else {
-          /* DESKTOP CANVAS & PAN/ZOOM */
+          // CANVAS
           const wrapper=document.createElement("div");
           wrapper.className="canvas-wrapper";
           container.appendChild(wrapper);
@@ -353,12 +334,17 @@
           const ctx=canvas.getContext("2d");
           (function render(){
             if(video.readyState>=2){
-              // always keep 960×540 internal resolution
-              canvas.width=960; canvas.height=540;
+              if(document.fullscreenElement===container){
+                wrapper.style.width="100%";
+                wrapper.style.height="100%";
+              } else {
+                wrapper.style.width="960px";
+                wrapper.style.height="540px";
+              }
               clampPan(container);
               ctx.save();
-              ctx.clearRect(0,0,960,540);
-              const cx=480, cy=270;
+              ctx.clearRect(0,0,canvas.width,canvas.height);
+              const cx=canvas.width/2, cy=canvas.height/2;
               ctx.translate(cx,cy);
               ctx.scale(container.zoomScale,container.zoomScale);
               ctx.translate(container.panX,container.panY);
@@ -431,41 +417,46 @@
           });
           bar.appendChild(playBtn);
 
+          // progress bar
           const prog=document.createElement("div");
           prog.className="progress-bar";
-          const bufBar=document.createElement("div"),
-                playBar=document.createElement("div");
-          bufBar.className="buffered"; playBar.className="played";
+          const bufBar=document.createElement("div"), playBar=document.createElement("div"), thumb=document.createElement("div");
+          bufBar.className="buffered"; playBar.className="played"; thumb.className="thumb";
           prog.appendChild(bufBar);
           prog.appendChild(playBar);
+          prog.appendChild(thumb);
           bar.appendChild(prog);
 
-          const inputRange=document.createElement("input");
-          inputRange.type="range";
-          prog.appendChild(inputRange);
-          inputRange.addEventListener("input",()=>{
-            video.currentTime=parseFloat(inputRange.value);
+          function updateProgress(){
+            const d=video.duration||0; if(!d)return;
+            const c=video.currentTime,
+                  bufEnd=video.buffered.length?video.buffered.end(video.buffered.length-1):c;
+            const pPct=(c/d)*100, bPct=(bufEnd/d)*100;
+            playBar.style.width=pPct+"%";
+            bufBar.style.width=bPct+"%";
+            thumb.style.left=pPct+"%";
+          }
+          ["loadedmetadata","timeupdate","progress"].forEach(evt=>
+            video.addEventListener(evt,updateProgress)
+          );
+
+          // scrubbing
+          let draggingThumb=false;
+          thumb.addEventListener("mousedown",()=>draggingThumb=true);
+          document.addEventListener("mouseup",()=>draggingThumb=false);
+          document.addEventListener("mousemove",e=>{
+            if(!draggingThumb) return;
+            const rect=prog.getBoundingClientRect();
+            let pct=(e.clientX-rect.left)/rect.width;
+            pct=Math.min(1,Math.max(0,pct));
+            video.currentTime=pct*(video.duration||0);
           });
           prog.addEventListener("click",e=>{
-            if(!video.duration) return;
             const rect=prog.getBoundingClientRect();
-            const pct=(e.clientX-rect.left)/rect.width;
-            video.currentTime=pct*video.duration;
+            let pct=(e.clientX-rect.left)/rect.width;
+            pct=Math.min(1,Math.max(0,pct));
+            video.currentTime=pct*(video.duration||0);
           });
-
-          function updateProgress(){
-            const d=video.duration||0; if(!d) return;
-            const c=video.currentTime,
-                  bufEnd=video.buffered.length
-                    ?video.buffered.end(video.buffered.length-1)
-                    :c;
-            inputRange.max=d; inputRange.value=c;
-            playBar.style.width   = (c   /d*100)+"%";
-            bufBar.style.width    = (bufEnd/d*100)+"%";
-          }
-          video.addEventListener("loadedmetadata",updateProgress);
-          video.addEventListener("timeupdate",   updateProgress);
-          video.addEventListener("progress",     updateProgress);
 
           const fsBtn=document.createElement("button");
           fsBtn.textContent="⛶";
@@ -511,8 +502,8 @@
           });
         }
 
-        /* HLS or Native */
-        const canNative=video.canPlayType("application/vnd.apple.mpegurl");
+        /* HLS vs Native */
+        const canNative = video.canPlayType("application/vnd.apple.mpegurl");
         if(Hls.isSupported()&&!canNative){
           const hls=new Hls({
             maxBufferLength:120, maxBufferSize:60*1024*1024,
@@ -595,13 +586,18 @@
         sidebar.addEventListener("touchstart",e=>sx=e.changedTouches[0].screenX);
         sidebar.addEventListener("touchend",e=>{
           ex=e.changedTouches[0].screenX;
-          if(sx-ex>50){ sidebar.classList.add("hidden"); toggle.style.display="block"; }
+          if(sx-ex>50){
+            sidebar.classList.add("hidden");
+            toggle.style.display="block";
+          }
         });
         toggle.addEventListener("click",()=>{
-          sidebar.classList.remove("hidden"); toggle.style.display="none";
+          sidebar.classList.remove("hidden");
+          toggle.style.display="none";
         });
         main.addEventListener("touchstart",()=>{
-          sidebar.classList.add("hidden"); toggle.style.display="block";
+          sidebar.classList.add("hidden");
+          toggle.style.display="block";
         });
       }
 
