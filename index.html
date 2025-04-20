@@ -82,16 +82,15 @@
       background: rgba(0,0,0,0.75); padding: 5px 10px;
     }
     .control-bar button { padding: 4px 8px; cursor: pointer; }
-    /* Customized range styling + default track color */
     .control-bar input[type="range"] {
       -webkit-appearance: none; appearance: none;
-      height: 4px; background: #555; border-radius: 2px;
-      outline: none; margin: 0 5px;
+      width: 100%; height: 6px; background: #555;
+      border-radius: 3px; outline: none; margin: 0 5px;
     }
     .control-bar input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none; appearance: none;
       width: 12px; height: 12px; background: #fff;
-      border-radius: 50%; cursor: pointer; margin-top: -4px;
+      border-radius: 50%; cursor: pointer; margin-top: -3px;
     }
     .control-bar input[type="range"]::-moz-range-thumb {
       width: 12px; height: 12px; background: #fff;
@@ -151,7 +150,6 @@
       width: 100% !important; height: 100% !important;
     }
   </style>
-
   <script>
     // detect mobile UA
     if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
@@ -179,7 +177,7 @@
         showCursor(); clearTimeout(cursorTimeout);
       }
     });
-    document.addEventListener("mousemove", e=>{
+    document.addEventListener("mousemove", ()=>{
       if (document.fullscreenElement) {
         showCursor(); clearTimeout(cursorTimeout);
         cursorTimeout = setTimeout(hideCursor,2000);
@@ -211,7 +209,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
   <script>
-    // fullscreen helpers
+    // Fullscreen helpers
     function enterFullScreen(el) {
       const r = el.requestFullscreen||el.webkitRequestFullscreen||
                 el.mozRequestFullScreen||el.msRequestFullscreen;
@@ -232,15 +230,14 @@
     function savePlayerSettings(url,data){
       let o={};
       try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
-      o[url]=data;
-      localStorage.playerSettings=JSON.stringify(o);
+      o[url]=data; localStorage.playerSettings=JSON.stringify(o);
     }
-    // clamp pan within canvas bounds
+    // clamp pan XY within zoom bounds
     function clampPan(container,canvas){
-      const halfW=canvas.width/2, halfH=canvas.height/2, Z=container.zoomScale;
-      const maxX=halfW*(Z-1), maxY=halfH*(Z-1);
-      container.panX=Math.min(maxX,Math.max(-maxX,container.panX));
-      container.panY=Math.min(maxY,Math.max(-maxY,container.panY));
+      const hw=canvas.width/2, hh=canvas.height/2, Z=container.zoomScale;
+      const maxX=hw*(Z-1), maxY=hh*(Z-1);
+      container.panX = Math.min(maxX, Math.max(-maxX, container.panX));
+      container.panY = Math.min(maxY, Math.max(-maxY, container.panY));
     }
 
     (function(){
@@ -266,7 +263,7 @@
           p.className="no-streams";
           p.textContent="No streams added. Click 'Add URLs'.";
           sb.appendChild(p);
-        }else{
+        } else {
           streams.forEach(s=>{
             const item=document.createElement("div");
             item.className="stream-item";
@@ -282,7 +279,7 @@
               if(e.button===0){cb.checked=!cb.checked;activeLabels.add(lbl);e.preventDefault();}
             });
             lbl.addEventListener("mouseenter",e=>{
-              if(e.buttons&1&&!activeLabels.has(lbl)){cb.checked=!cb.checked;activeLabels.add(lbl);}
+              if(e.buttons&1 && !activeLabels.has(lbl)){cb.checked=!cb.checked;activeLabels.add(lbl);}
             });
             item.appendChild(lbl);
             sb.appendChild(item);
@@ -340,6 +337,7 @@
         container.panX=saved.panX;
         container.panY=saved.panY;
 
+        // VIDEO
         const video=document.createElement("video");
         video.className="source-video";
         video.setAttribute("playsinline","true");
@@ -355,6 +353,7 @@
         container.appendChild(video);
 
         if(isMobile){
+          // overlay
           const overlay=document.createElement("div");
           overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start";
@@ -365,12 +364,11 @@
           });
           video.addEventListener("play", ()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
-
+          // custom scrub
           const mc=document.createElement("div"); mc.className="controls-container";
           container.appendChild(mc);
           const mb=document.createElement("div"); mb.className="control-bar";
           mc.appendChild(mb);
-
           const mt=document.createElement("input");
           mt.type="range"; mt.min=0; mt.step=0.1; mt.value=0;
           let seekingM=false;
@@ -384,14 +382,13 @@
             if(!seekingM) mt.value=video.currentTime;
           });
           mb.appendChild(mt);
-
-          const titleM=document.createElement("div");
-          titleM.className="title-bar";
-          titleM.textContent=extractTitle(url);
-          mc.appendChild(titleM);
+          // mobile title
+          const tM=document.createElement("div");
+          tM.className="title-bar"; tM.textContent=extractTitle(url);
+          mc.appendChild(tM);
 
         } else {
-          // DESKTOP CANVAS
+          // CANVAS & RENDER
           const canvas=document.createElement("canvas");
           canvas.className="display-canvas";
           canvas.width=960; canvas.height=540;
@@ -399,9 +396,9 @@
           const ctx=canvas.getContext("2d");
           (function render(){
             if(video.readyState>=2){
-              canvas.width=960; canvas.height=540;
               ctx.save();
               ctx.clearRect(0,0,960,540);
+              clampPan(container,canvas);
               const cx=480, cy=270;
               ctx.translate(cx,cy);
               ctx.scale(container.zoomScale,container.zoomScale);
@@ -442,10 +439,10 @@
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
           },{passive:false});
 
-          // click vs pan
+          // CLICK vs PAN
           let ct=0, cx=0, cy=0;
           canvas.addEventListener("mousedown", e=>{
-            if(e.button!==0) return;
+            if(e.button!==0)return;
             ct=Date.now(); cx=e.clientX; cy=e.clientY;
           });
           canvas.addEventListener("mouseup", e=>{
@@ -464,82 +461,90 @@
           const bar=document.createElement("div");
           bar.className="control-bar";
 
+          // Play/Pause
           const playBtn=document.createElement("button");
           playBtn.textContent="Play";
-          video.addEventListener("play",()=>playBtn.textContent="Pause");
+          video.addEventListener("play", ()=>playBtn.textContent="Pause");
           video.addEventListener("pause",()=>playBtn.textContent="Play");
           playBtn.addEventListener("click",()=>{
             video.paused?video.play().catch(console.error):video.pause();
           });
           bar.appendChild(playBtn);
 
+          // TIMELINE FULL DURATION + SHADING
           const timeline=document.createElement("input");
           timeline.type="range"; timeline.min=0; timeline.step=0.1; timeline.value=0;
           let seeking=false;
           timeline.addEventListener("mousedown",()=>seeking=true);
           timeline.addEventListener("mouseup",  ()=>seeking=false);
-          timeline.addEventListener("input",    ()=>{
-            const base=parseFloat(timeline.dataset.base)||0;
-            video.currentTime=base+parseFloat(timeline.value);
+          timeline.addEventListener("input",    ()=>video.currentTime=parseFloat(timeline.value));
+          video.addEventListener("loadedmetadata", ()=>{
+            timeline.max=video.duration||0;
           });
           function updateBuffer(){
+            const dur=video.duration||0;
+            if(!dur) return;
+            const cur=video.currentTime;
+            timeline.value=cur;
+            // shading: played=blue, buffered region gray, future white
+            let bufEnd=cur;
             if(video.buffered.length){
-              const start=video.buffered.start(0),
-                    end  =video.buffered.end(0),
-                    cur  =video.currentTime,
-                    win  =end-start;
-              timeline.dataset.base=start;
-              timeline.max=win;
-              if(!seeking) timeline.value=cur-start;
-              const pct=((cur-start)/win)*100;
-              timeline.style.background=
-                `linear-gradient(to right,#4d90fe 0%,#4d90fe ${pct}%,#888 ${pct}%,#888 100%)`;
+              bufEnd=video.buffered.end(video.buffered.length-1);
             }
+            const pPct = (cur/dur)*100;
+            const bPct = (bufEnd/dur)*100;
+            timeline.style.background=
+              `linear-gradient(to right,
+                #4d90fe 0%, #4d90fe ${pPct}%,
+                #888 ${pPct}%, #888 ${bPct}%,
+                #fff ${bPct}%, #fff 100%)`;
           }
-          video.addEventListener("timeupdate",updateBuffer);
-          video.addEventListener("progress",  updateBuffer);
+          video.addEventListener("timeupdate", updateBuffer);
+          video.addEventListener("progress",   updateBuffer);
           bar.appendChild(timeline);
 
+          // Fullscreen
           const fsBtn=document.createElement("button");
           fsBtn.textContent="⛶";
-          fsBtn.addEventListener("click",()=>{
+          fsBtn.addEventListener("click", ()=>{
             if(!document.fullscreenElement) enterFullScreen(container);
             else exitFullScreen();
           });
           bar.appendChild(fsBtn);
 
+          // Reset
           const resetBtn=document.createElement("button");
           resetBtn.textContent="Reset";
-          resetBtn.addEventListener("click",()=>{
+          resetBtn.addEventListener("click", ()=>{
             container.zoomScale=1; container.panX=0; container.panY=0;
             savePlayerSettings(url,{zoomScale:1,panX:0,panY:0});
           });
           bar.appendChild(resetBtn);
 
+          // Disable
           const disableBtn=document.createElement("button");
-          disableBtn.className="disable-btn";
-          disableBtn.textContent="X";
-          disableBtn.addEventListener("click",e=>{
+          disableBtn.className="disable-btn"; disableBtn.textContent="X";
+          disableBtn.addEventListener("click", e=>{
             e.stopPropagation(); updateStreamEnabled(url,false);
           });
           bar.appendChild(disableBtn);
 
           cc.appendChild(bar);
           const titleBar=document.createElement("div");
-          titleBar.className="title-bar";
-          titleBar.textContent=extractTitle(url);
+          titleBar.className="title-bar"; titleBar.textContent=extractTitle(url);
           cc.appendChild(titleBar);
 
+          // fade only in full-screen
           let hideTO;
           function scheduleHide(){ hideTO=setTimeout(()=>cc.style.opacity=0,3000); }
-          document.addEventListener("fullscreenchange",()=>{
+          document.addEventListener("fullscreenchange", ()=>{
             if(document.fullscreenElement===container){
               cc.style.opacity=1; scheduleHide();
             } else {
               cc.style.opacity=1; clearTimeout(hideTO);
             }
           });
-          document.addEventListener("mousemove",e=>{
+          document.addEventListener("mousemove", e=>{
             if(document.fullscreenElement===container && e.clientY>window.innerHeight-100){
               cc.style.opacity=1; clearTimeout(hideTO); scheduleHide();
             }
@@ -547,27 +552,23 @@
         }
 
         // HLS vs Native
-        const canNative=video.canPlayType("application/vnd.apple.mpegurl");
-        if(Hls.isSupported()&&!canNative){
+        const canNative = video.canPlayType("application/vnd.apple.mpegurl");
+        if(Hls.isSupported() && !canNative){
           const hls=new Hls({
-            maxBufferLength:120,
-            maxBufferSize:60*1024*1024,
-            liveSyncDurationCount:3,
-            manifestLoadingTimeOut:30000,
+            maxBufferLength:120, maxBufferSize:60*1024*1024,
+            liveSyncDurationCount:3, manifestLoadingTimeOut:30000,
             levelLoadingTimeOut:30000,
             loader: class extends Hls.DefaultConfig.loader {
               load(ctx,cfg,cb){
                 let u=ctx.url;
-                while(u.startsWith(PROXY_PREFIX)){
-                  u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
-                }
+                while(u.startsWith(PROXY_PREFIX)) u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
                 ctx.url=PROXY_PREFIX+encodeURIComponent(u);
                 super.load(ctx,cfg,cb);
               }
             }
           });
           hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(console.error));
+          hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play().catch(console.error));
           hls.loadSource(url);
           hls.on(Hls.Events.ERROR,(_,data)=>{
             if(data.fatal){
@@ -581,26 +582,23 @@
           container.hls=hls;
         } else if(canNative){
           video.src=PROXY_PREFIX+encodeURIComponent(url);
-          if(!document.documentElement.classList.contains("mobile")) {
-            video.play().catch(console.error);
-          }
+          if(!isMobile) video.play().catch(console.error);
         }
 
-        container.addEventListener("dblclick",()=>{
-          if(!document.fullscreenElement){
-            if(isMobile) enterFullScreen(video);
-            else enterFullScreen(container);
-          } else exitFullScreen();
+        // dblclick fullscreen
+        container.addEventListener("dblclick", ()=>{
+          if(!document.fullscreenElement) enterFullScreen(container);
+          else exitFullScreen();
         });
 
         return container;
       }
 
-      // show/hide all
+      // controls
       document.getElementById("btn-show-all")
-        .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,true)));
+        .addEventListener("click", ()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,true)));
       document.getElementById("btn-hide-all")
-        .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
+        .addEventListener("click", ()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
 
       // URL modal
       const modal=document.getElementById("urlModal"),
@@ -633,39 +631,29 @@
         if(e.key==="Escape"&&backdrop.style.display==="block") backdrop.click();
       });
 
-      // Mobile: hide sidebar when tapping outside
+      // Mobile tap-out sidebar
       if(document.documentElement.classList.contains("mobile")){
         const sidebar=document.getElementById("sidebar"),
-              toggle =document.getElementById("sidebarToggle"),
-              main   =document.getElementById("main-content");
+              toggle=document.getElementById("sidebarToggle"),
+              main=document.getElementById("main-content");
         let sx,ex;
         sidebar.addEventListener("touchstart",e=>sx=e.changedTouches[0].screenX);
-        sidebar.addEventListener("touchend",  e=>{
+        sidebar.addEventListener("touchend",e=>{
           ex=e.changedTouches[0].screenX;
-          if(sx-ex>50){
-            sidebar.classList.add("hidden");
-            toggle.style.display="block";
-          }
+          if(sx-ex>50){ sidebar.classList.add("hidden"); toggle.style.display="block"; }
         });
         toggle.addEventListener("click",()=>{
-          sidebar.classList.remove("hidden");
-          toggle.style.display="none";
+          sidebar.classList.remove("hidden"); toggle.style.display="none";
         });
         main.addEventListener("touchstart",()=>{
-          sidebar.classList.add("hidden");
-          toggle.style.display="block";
+          sidebar.classList.add("hidden"); toggle.style.display="block";
         });
       }
 
-      // initial
+      // initial load
       updateStreamSidebar();
       getStreamList().forEach(s=>{ if(s.enabled) updateStreamEnabled(s.url,true); });
     })();
-
-    // debug
-    document.addEventListener("fullscreenchange",()=>{
-      console.log("Fullscreen:",!!document.fullscreenElement);
-    });
   </script>
 </body>
 </html>
