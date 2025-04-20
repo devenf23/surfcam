@@ -7,165 +7,170 @@
   <style>
     /* ---------- GENERAL ---------- */
     html, body {
-      margin:0; padding:0; height:100vh;
-      font-family:Arial,sans-serif;
-      background:#222; color:#fff;
-      overflow:hidden;
+      margin: 0; padding: 0; height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #222; color: #fff;
+      overflow: hidden;
     }
-    .container { display:flex; height:100vh; }
+    .container { display: flex; height: 100vh; }
 
     /* ---------- SIDEBAR ---------- */
     #sidebar {
-      background:#444; width:220px; padding:20px;
-      box-sizing:border-box; overflow-y:auto;
-      transition:transform .3s ease;
+      background: #444; width: 220px; padding: 20px;
+      box-sizing: border-box; overflow-y: auto;
+      transition: transform 0.3s ease;
     }
-    #sidebar.hidden { transform:translateX(-100%); }
+    #sidebar.hidden { transform: translateX(-100%); }
     #btn-add-urls, .sideBtn, #urlModal button {
-      width:100%; padding:10px; margin-bottom:10px;
-      font-size:16px; cursor:pointer;
+      width: 100%; padding: 10px; margin-bottom: 10px;
+      font-size: 16px; cursor: pointer;
     }
-    #sideButtons { display:flex; gap:10px; }
-    .sideBtn { flex:1; }
-    #streamList { margin-top:10px; line-height:1.2; }
-    .no-streams { font-style:italic; color:#bbb; }
-    .stream-item { display:flex; align-items:center; margin-bottom:5px; }
-    .stream-item label { margin-left:5px; cursor:pointer; user-select:none; }
+    #sideButtons { display: flex; gap: 10px; }
+    .sideBtn { flex: 1; }
+    #streamList { margin-top: 10px; line-height: 1.2; }
+    .no-streams { font-style: italic; color: #bbb; }
+    .stream-item { display: flex; align-items: center; margin-bottom: 5px; }
+    .stream-item label { margin-left: 5px; cursor: pointer; user-select: none; }
 
     /* ---------- MAIN CONTENT ---------- */
     #main-content {
-      flex:1; background:#333; padding:20px;
-      box-sizing:border-box; display:flex;
-      flex-wrap:wrap; gap:20px; overflow:auto;
+      flex: 1; background: #333; padding: 20px;
+      box-sizing: border-box; display: flex;
+      flex-wrap: wrap; gap: 20px; overflow: auto;
     }
     /* Mobile: single column, centered */
     html.mobile #main-content {
-      flex-direction:column;
-      align-items:center;
-      flex-wrap:nowrap;
-      margin-left:0;
+      flex-direction: column;
+      align-items: center;
+      flex-wrap: nowrap;
+      margin-left: 0;
     }
 
     /* ---------- PLAYER CONTAINERS ---------- */
     .player-container {
-      background:#222; display:flex; flex-direction:column;
-      position:relative; box-sizing:border-box;
+      background: #222; display: flex; flex-direction: column;
+      position: relative; box-sizing: border-box;
     }
     .player-container.desktop {
-      width:960px; height:600px; margin-bottom:40px;
+      width: 960px; height: 600px; margin-bottom: 40px;
     }
     .player-container.mobile {
-      width:240px; margin:0 auto 20px;
-      display:flex; flex-direction:column;
-      background:#222; box-sizing:border-box;
+      width: 240px; margin: 0 auto 20px;
+      display: flex; flex-direction: column;
+      background: #222; box-sizing: border-box;
     }
 
     /* --------- VIDEO & CANVAS --------- */
     .player-container.desktop .source-video {
-      opacity:0; position:absolute; top:0; left:0;
-      width:960px; height:540px; pointer-events:none;
+      opacity: 0; position: absolute; top: 0; left: 0;
+      width: 960px; height: 540px; pointer-events: none;
     }
     .player-container.desktop .display-canvas {
-      background:black; width:960px; height:540px;
+      background: black; width: 960px; height: 540px;
     }
     .player-container.mobile .source-video {
-      width:240px; height:135px;
+      width: 240px; height: 135px;
     }
-    .player-container.mobile .display-canvas { display:none; }
+    .player-container.mobile .display-canvas { display: none; }
 
     /* ------ CONTROLS & OVERLAYS ------ */
-    .controls-container { position:relative; z-index:2; }
+    .controls-container { position: relative; z-index: 2; }
     .control-bar {
-      display:flex; align-items:center; gap:10px;
-      background:rgba(0,0,0,0.75); padding:5px 10px;
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(0,0,0,0.75); padding: 5px 10px;
     }
-    .control-bar button { padding:4px 8px; cursor:pointer; }
+    .control-bar button { padding: 4px 8px; cursor: pointer; }
     .control-bar input[type="range"] {
-      -webkit-appearance:none; appearance:none;
-      flex:1 1 0; margin:0;
-      height:12px; background:#555; border-radius:6px;
-      outline:none;
+      -webkit-appearance: none; appearance: none;
+      flex: 1 1 0; margin: 0;
+      height: 12px; background: #555; border-radius: 6px;
+      outline: none;
+    }
+    .control-bar input[type="range"]::-webkit-slider-runnable-track {
+      -webkit-appearance: none;
+      height: 12px; background: #555; border-radius: 6px;
     }
     .control-bar input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance:none;
-      width:12px; height:12px; background:#fff;
-      border-radius:50%; cursor:pointer;
-      margin:0; position:relative; top:0; transform:translateY(-1px);
+      -webkit-appearance: none;
+      width: 12px; height: 12px; background: #fff;
+      border-radius: 50%; cursor: pointer;
+      margin: 0; transform: translateY(-1px);
+    }
+    .control-bar input[type="range"]::-moz-range-track {
+      height: 12px; background: #555; border-radius: 6px;
+      border: none;
     }
     .control-bar input[type="range"]::-moz-range-thumb {
-      width:12px; height:12px; background:#fff;
-      border:none; border-radius:50%; cursor:pointer;
+      width: 12px; height: 12px; background: #fff;
+      border-radius: 50%; cursor: pointer;
     }
-    .disable-btn { background:red; color:#fff; border:none; }
+    .disable-btn { background: red; color: #fff; border: none; }
     .title-bar {
-      text-align:center; background:rgba(0,0,0,0.75);
-      padding:2px 10px; font-size:16px;
+      text-align: center; background: rgba(0,0,0,0.75);
+      padding: 2px 10px; font-size: 16px;
     }
     .overlay-controls {
-      position:absolute; bottom:0; left:0; right:0;
+      position: absolute; bottom: 0; left: 0; right: 0;
     }
     .mobile-play-overlay {
-      position:absolute; top:0; left:0; width:100%; height:100%;
-      background:rgba(0,0,0,0.6); display:flex;
-      align-items:center; justify-content:center;
-      color:#fff; font-size:24px; z-index:10;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); display: flex;
+      align-items: center; justify-content: center;
+      color: #fff; font-size: 24px; z-index: 10;
     }
 
     /* ------- URL MODAL & BACKDROP ------- */
     #modalBackdrop {
-      display:none; position:fixed; z-index:5;
-      top:0; left:0; width:100%; height:100%;
-      background:rgba(0,0,0,0.5);
+      display: none; position: fixed; z-index: 5;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
     }
     #urlModal {
-      display:none; position:fixed; z-index:10;
-      left:50%; top:50%; transform:translate(-50%,-50%);
-      width:1200px; background:#555; border:2px solid #fff;
-      padding:15px; box-sizing:border-box;
+      display: none; position: fixed; z-index: 10;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 1200px; background: #555; border: 2px solid #fff;
+      padding: 15px; box-sizing: border-box;
     }
     #urlModal textarea {
-      width:100%; height:600px; padding:10px;
-      font-size:14px; box-sizing:border-box;
+      width: 100%; height: 600px; padding: 10px;
+      font-size: 14px; box-sizing: border-box;
     }
 
     /* ----- MOBILE SIDEBAR ----- */
-    html.mobile #urlModal { width:300px; padding:4px; font-size:12px; }
+    html.mobile #urlModal   { width: 300px; padding: 4px; font-size: 12px; }
     html.mobile #urlModal textarea {
-      height:150px; padding:5px; font-size:12px;
+      height: 150px; padding: 5px; font-size: 12px;
     }
     html.mobile #sidebar {
-      position:fixed; top:0; left:0; height:100%; z-index:1000;
+      position: fixed; top: 0; left: 0; height: 100%; z-index: 1000;
     }
-    #sidebarToggle { display:none; }
+    #sidebarToggle { display: none; }
     html.mobile #sidebarToggle {
-      display:block; position:fixed; top:50%; left:0;
-      transform:translate(-50%, -50%); z-index:1100;
-      background:#444; border:none; padding:10px 12px;
-      font-size:24px; color:#fff; cursor:pointer;
+      display: block; position: fixed; top: 50%; left: 0;
+      transform: translate(-50%, -50%); z-index: 1100;
+      background: #444; border: none; padding: 10px 12px;
+      font-size: 24px; color: #fff; cursor: pointer;
     }
 
     /* -- Stretch canvas full-screen -- */
     .player-container:fullscreen .display-canvas,
     .player-container:-webkit-full-screen .display-canvas {
-      width:100%!important; height:100%!important;
+      width: 100% !important; height: 100% !important;
     }
   </style>
   <script>
-    // detect mobile UA
     if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))
       document.documentElement.classList.add("mobile");
 
-    // spacebar for pan/zoom
     let spaceHeld=false;
     window.addEventListener("keydown",e=>{
-      if(e.code==="Space" && !["input","textarea","button"]
-         .includes(document.activeElement.tagName.toLowerCase())){
+      if(e.code==="Space" &&
+         !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())){
         e.preventDefault(); spaceHeld=true;
       }
     });
     window.addEventListener("keyup",e=>{ if(e.code==="Space") spaceHeld=false; });
 
-    // cursor hide in fullscreen
     let cursorTimeout;
     function showCursor(){ document.body.style.cursor=""; }
     function hideCursor(){ document.body.style.cursor="none"; }
@@ -230,11 +235,12 @@
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
-    function clampPan(c,cv){
-      const hw=cv.width/2, hh=cv.height/2, Z=c.zoomScale;
-      const mx=hw*(Z-1), my=hh*(Z-1);
-      c.panX=Math.min(mx,Math.max(-mx,c.panX));
-      c.panY=Math.min(my,Math.max(-my,c.panY));
+    function clampPan(container){
+      const Z=container.zoomScale;
+      const w=container.clientWidth, h=container.clientHeight;
+      const mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
+      container.panX = Math.min(mx,Math.max(-mx,container.panX));
+      container.panY = Math.min(my,Math.max(-my,container.panY));
     }
 
     (function(){
@@ -349,40 +355,43 @@
         container.appendChild(video);
 
         if(isMobile){
-          /* mobile overlay/scrub/title */
+          /* mobile overlay + scrub + title */
           const overlay=document.createElement("div");
           overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start";
           container.appendChild(overlay);
           overlay.addEventListener("click",()=>{
             if(container.hls) container.hls.startLoad();
-            video.play().then(()=>overlay.style.display="none");
+            video.play().then(()=>overlay.style.display="none").catch(()=>{});
           });
-          video.addEventListener("play", ()=>overlay.style.display="none");
+          video.addEventListener("play",()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
+
           const mc=document.createElement("div"); mc.className="controls-container";
           container.appendChild(mc);
           const mb=document.createElement("div"); mb.className="control-bar";
           mc.appendChild(mb);
+
           const mt=document.createElement("input");
           mt.type="range"; mt.min=0; mt.step=0.1; mt.value=0;
-          let seekM=false;
-          mt.addEventListener("mousedown",()=>seekM=true);
-          mt.addEventListener("mouseup",  ()=>seekM=false);
+          let seekingM=false;
+          mt.addEventListener("mousedown",()=>seekingM=true);
+          mt.addEventListener("mouseup", () => seekingM=false);
           mt.addEventListener("input",    ()=>video.currentTime=parseFloat(mt.value));
           video.addEventListener("loadedmetadata",()=>{
             mt.max=video.duration||0; mt.value=video.currentTime||0;
           });
           video.addEventListener("timeupdate",()=>{
-            if(!seekM) mt.value=video.currentTime;
+            if(!seekingM) mt.value=video.currentTime;
           });
           mb.appendChild(mt);
+
           const tM=document.createElement("div");
           tM.className="title-bar"; tM.textContent=extractTitle(url);
           mc.appendChild(tM);
 
         } else {
-          /* desktop canvas & pan/zoom */
+          /* DESKTOP canvas & pan/zoom */
           const canvas=document.createElement("canvas");
           canvas.className="display-canvas";
           container.appendChild(canvas);
@@ -395,7 +404,7 @@
               } else {
                 canvas.width=960; canvas.height=540;
               }
-              clampPan(container,canvas);
+              clampPan(container);
               ctx.save();
               ctx.clearRect(0,0,canvas.width,canvas.height);
               const cx=canvas.width/2, cy=canvas.height/2;
@@ -409,48 +418,49 @@
             requestAnimationFrame(render);
           })();
 
+          // pan
           let sx, sy, dragging=false;
-          canvas.addEventListener("mousedown", e=>{
+          canvas.addEventListener("mousedown",e=>{
             if(e.button!==0||(!spaceHeld&&document.fullscreenElement!==container))return;
             sx=e.clientX; sy=e.clientY; dragging=false;
           });
-          canvas.addEventListener("mousemove", e=>{
+          canvas.addEventListener("mousemove",e=>{
             if(!(e.buttons&1)||(!spaceHeld&&document.fullscreenElement!==container))return;
             const dx=e.clientX-sx, dy=e.clientY-sy;
             if(!dragging&&Math.hypot(dx,dy)>5) dragging=true;
             if(dragging){
               container.panX+=dx/container.zoomScale;
               container.panY+=dy/container.zoomScale;
-              clampPan(container,canvas);
+              clampPan(container);
               savePlayerSettings(url,{zoomScale:container.zoomScale,panX:container.panX,panY:container.panY});
               sx=e.clientX; sy=e.clientY;
             }
           });
-          canvas.addEventListener("wheel", e=>{
+          canvas.addEventListener("wheel",e=>{
             if(!spaceHeld&&document.fullscreenElement!==container)return;
             e.preventDefault();
             const rect=canvas.getBoundingClientRect();
-            const dx=e.clientX-rect.left, dy=e.clientY-rect.top;
+            const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
             const oldZ=container.zoomScale;
-            let z=oldZ + (e.deltaY<0?0.1:-0.1);
+            let z=oldZ+(e.deltaY<0?0.1:-0.1);
             z=Math.max(1,Math.min(3,z));
-            // center zoom on cursor
-            container.panX += (dx - canvas.width/2)*(1/z - 1/oldZ);
-            container.panY += (dy - canvas.height/2)*(1/z - 1/oldZ);
+            // center on cursor
+            container.panX+=(cx-rect.width/2)*(1/z-1/oldZ);
+            container.panY+=(cy-rect.height/2)*(1/z-1/oldZ);
             container.zoomScale=z;
-            clampPan(container,canvas);
+            clampPan(container);
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
           },{passive:false});
 
           let ct=0, cx=0, cy=0;
-          canvas.addEventListener("mousedown", e=>{
+          canvas.addEventListener("mousedown",e=>{
             if(e.button!==0)return;
             ct=Date.now(); cx=e.clientX; cy=e.clientY;
           });
-          canvas.addEventListener("mouseup", e=>{
+          canvas.addEventListener("mouseup",e=>{
             const dt=Date.now()-ct;
             if(dt<200 && Math.hypot(e.clientX-cx,e.clientY-cy)<5){
-              video.paused?video.play().catch(console.error):video.pause();
+              video.paused?video.play().catch(()=>{}):video.pause();
             }
           });
         }
@@ -468,16 +478,16 @@
           video.addEventListener("play", ()=>playBtn.textContent="Pause");
           video.addEventListener("pause",()=>playBtn.textContent="Play");
           playBtn.addEventListener("click",()=>{
-            video.paused?video.play().catch(console.error):video.pause();
+            video.paused?video.play().catch(()=>{}):video.pause();
           });
           bar.appendChild(playBtn);
 
           const timeline=document.createElement("input");
           timeline.type="range"; timeline.min=0; timeline.step=0.1; timeline.value=0;
-          timeline.addEventListener("input",()=>video.currentTime=parseFloat(timeline.value));
-          let isSeeking=false;
-          timeline.addEventListener("mousedown",()=>isSeeking=true);
-          timeline.addEventListener("mouseup",  ()=>isSeeking=false);
+          let seeking=false;
+          timeline.addEventListener("mousedown",()=>seeking=true);
+          timeline.addEventListener("mouseup",  ()=>seeking=false);
+          timeline.addEventListener("input",    ()=>video.currentTime=parseFloat(timeline.value));
           video.addEventListener("loadedmetadata",()=>{
             timeline.max=video.duration||0; updateBuffer();
           });
@@ -487,17 +497,16 @@
                   bufEnd=video.buffered.length
                     ?video.buffered.end(video.buffered.length-1)
                     :c;
-            if(!isSeeking) timeline.value=c;
-            const pPct=(c/d)*100,
-                  bPct=(bufEnd/d)*100;
+            if(!seeking) timeline.value=c;
+            const pPct=(c/d)*100, bPct=(bufEnd/d)*100;
             timeline.style.backgroundImage=
               `linear-gradient(to right,
-                 #4d90fe 0%, #4d90fe ${pPct}%,
-                 #888 ${pPct}%, #888 ${bPct}%,
-                 #fff ${bPct}%, #fff 100%)`;
+                #4d90fe 0%, #4d90fe ${pPct}%,
+                #888 ${pPct}%, #888 ${bPct}%,
+                #fff ${bPct}% , #fff 100%)`;
           }
           video.addEventListener("timeupdate",updateBuffer);
-          video.addEventListener("progress",updateBuffer);
+          video.addEventListener("progress",  updateBuffer);
           bar.appendChild(timeline);
 
           const fsBtn=document.createElement("button");
@@ -544,7 +553,7 @@
           });
         }
 
-        /* HLS or Native */
+        /* HLS vs Native */
         const canNative=video.canPlayType("application/vnd.apple.mpegurl");
         if(Hls.isSupported()&&!canNative){
           const hls=new Hls({
@@ -561,7 +570,7 @@
             }
           });
           hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(console.error));
+          hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>{}));
           hls.loadSource(url);
           hls.on(Hls.Events.ERROR,(_,d)=>{
             if(d.fatal){
@@ -575,13 +584,14 @@
           container.hls=hls;
         } else if(canNative){
           video.src=PROXY_PREFIX+encodeURIComponent(url);
-          if(!isMobile) video.play().catch(console.error);
+          if(!isMobile) video.play().catch(()=>{});
         }
 
         container.addEventListener("dblclick",()=>{
           if(!document.fullscreenElement) enterFullScreen(container);
           else exitFullScreen();
         });
+
         return container;
       }
 
