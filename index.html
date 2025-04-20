@@ -61,12 +61,16 @@
     }
 
     /* --------- VIDEO & CANVAS --------- */
+    .canvas-wrapper {
+      position: relative; width: 960px; height: 540px;
+      overflow: hidden;
+    }
+    .canvas-wrapper canvas {
+      position: absolute; top: 0; left: 0;
+    }
     .player-container.desktop .source-video {
       opacity: 0; position: absolute; top: 0; left: 0;
       width: 960px; height: 540px; pointer-events: none;
-    }
-    .player-container.desktop .display-canvas {
-      background: black; width: 960px; height: 540px;
     }
     .player-container.mobile .source-video {
       width: 240px; height: 135px;
@@ -81,30 +85,18 @@
     }
     .control-bar button { padding: 4px 8px; cursor: pointer; }
 
-    /* Timeline styling */
-    .control-bar input[type="range"] {
-      -webkit-appearance: none; appearance: none;
-      flex: 1 1 0; margin: 0;
-      height: 12px; background: #555; border-radius: 6px;
-      outline: none;
+    /* Progress bar */
+    .progress-bar {
+      position: relative; flex: 1 1 0; height: 6px;
+      background: #fff; border-radius: 3px; overflow: hidden;
+      cursor: pointer; margin: 0 5px;
     }
-    .control-bar input[type="range"]::-webkit-slider-runnable-track {
-      height: 12px; background: #555; border-radius: 6px;
+    .progress-bar .buffered,
+    .progress-bar .played {
+      position: absolute; top: 0; bottom: 0; left: 0;
     }
-    .control-bar input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 12px; height: 12px; background: #fff;
-      border-radius: 50%; cursor: pointer;
-      margin: 0; transform: translateY(-1px);
-    }
-    .control-bar input[type="range"]::-moz-range-track {
-      height: 12px; background: #555; border-radius: 6px;
-      border: none;
-    }
-    .control-bar input[type="range"]::-moz-range-thumb {
-      width: 12px; height: 12px; background: #fff;
-      border-radius: 50%; cursor: pointer;
-    }
+    .progress-bar .played { background: #4d90fe; width: 0%; }
+    .progress-bar .buffered { background: #888; width: 0%; }
 
     .disable-btn { background: red; color: #fff; border: none; }
     .title-bar {
@@ -164,31 +156,30 @@
     if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))
       document.documentElement.classList.add("mobile");
 
-    let spaceHeld=false;
-    window.addEventListener("keydown",e=>{
-      if(e.code==="Space" &&
-         !["input","textarea","button"]
-          .includes(document.activeElement.tagName.toLowerCase())){
-        e.preventDefault(); spaceHeld=true;
+    let spaceHeld = false;
+    window.addEventListener("keydown", e => {
+      if (e.code==="Space" && !["input","textarea","button"]
+        .includes(document.activeElement.tagName.toLowerCase())) {
+        e.preventDefault(); spaceHeld = true;
       }
     });
-    window.addEventListener("keyup",e=>{ if(e.code==="Space") spaceHeld=false; });
+    window.addEventListener("keyup", e => { if (e.code==="Space") spaceHeld=false; });
 
     let cursorTimeout;
     function showCursor(){ document.body.style.cursor=""; }
     function hideCursor(){ document.body.style.cursor="none"; }
-    document.addEventListener("fullscreenchange",()=>{
-      if(document.fullscreenElement){
+    document.addEventListener("fullscreenchange", ()=>{
+      if (document.fullscreenElement) {
         showCursor(); clearTimeout(cursorTimeout);
-        cursorTimeout=setTimeout(hideCursor,2000);
+        cursorTimeout = setTimeout(hideCursor,2000);
       } else {
         showCursor(); clearTimeout(cursorTimeout);
       }
     });
-    document.addEventListener("mousemove",()=>{
-      if(document.fullscreenElement){
+    document.addEventListener("mousemove", ()=>{
+      if (document.fullscreenElement) {
         showCursor(); clearTimeout(cursorTimeout);
-        cursorTimeout=setTimeout(hideCursor,2000);
+        cursorTimeout = setTimeout(hideCursor,2000);
       }
     });
   </script>
@@ -208,9 +199,7 @@
   </div>
   <div id="modalBackdrop"></div>
   <div id="urlModal">
-    <h3 style="margin-top:0; text-align:center;">
-      Paste Playlist URLs (one per line)
-    </h3>
+    <h3 style="margin-top:0; text-align:center;">Paste Playlist URLs (one per line)</h3>
     <textarea id="urlInput" placeholder="https://…/playlist.m3u8"></textarea>
     <button id="saveUrls">Save and Close</button>
   </div>
@@ -218,19 +207,19 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
   <script>
     function enterFullScreen(el){
-      const r=el.requestFullscreen||el.webkitRequestFullscreen||
-              el.mozRequestFullScreen||el.msRequestFullscreen;
+      const r = el.requestFullscreen||el.webkitRequestFullscreen||
+                el.mozRequestFullScreen||el.msRequestFullscreen;
       if(r) return r.call(el);
     }
     function exitFullScreen(){
-      const e=document.exitFullscreen||document.webkitExitFullscreen||
-              document.mozCancelFullScreen||document.msExitFullscreen;
+      const e = document.exitFullscreen||document.webkitExitFullscreen||
+                document.mozCancelFullScreen||document.msExitFullscreen;
       if(e) return e.call(document);
     }
 
-    const PROXY_PREFIX="https://surfcam-alpha.vercel.app/api/proxy?url=";
+    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
     function loadPlayerSettings(u){
-      try{return JSON.parse(localStorage.playerSettings||"{}")[u]
+      try{ return JSON.parse(localStorage.playerSettings||"{}")[u]
              ||{zoomScale:1,panX:0,panY:0};}
       catch{return{zoomScale:1,panX:0,panY:0};}
     }
@@ -238,12 +227,12 @@
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
-    function clampPan(container){
-      const Z=container.zoomScale;
-      const w=container.clientWidth, h=container.clientHeight;
-      const mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
-      container.panX = Math.min(mx,Math.max(-mx,container.panX));
-      container.panY = Math.min(my,Math.max(-my,container.panY));
+    function clampPan(c){
+      const Z=c.zoomScale,
+            w=c.clientWidth, h=c.clientHeight,
+            mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
+      c.panX = Math.min(mx,Math.max(-mx,c.panX));
+      c.panY = Math.min(my,Math.max(-my,c.panY));
     }
 
     (function(){
@@ -356,14 +345,13 @@
         container.appendChild(video);
 
         if(isMobile){
-          // mobile overlay/scrub/title
           const overlay=document.createElement("div");
           overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start";
           container.appendChild(overlay);
           overlay.addEventListener("click",()=>{
             if(container.hls) container.hls.startLoad();
-            video.play().then(()=>overlay.style.display="none");
+            video.play().catch(()=>{}).then(()=>overlay.style.display="none");
           });
           video.addEventListener("play", ()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
@@ -391,18 +379,22 @@
           mc.appendChild(tM);
 
         } else {
-          // desktop canvas & pan/zoom + render
+          // CANVAS WRAPPER & RENDER
+          const wrapper=document.createElement("div");
+          wrapper.className="canvas-wrapper";
+          container.appendChild(wrapper);
           const canvas=document.createElement("canvas");
           canvas.className="display-canvas";
-          container.appendChild(canvas);
+          wrapper.appendChild(canvas);
           const ctx=canvas.getContext("2d");
           (function render(){
             if(video.readyState>=2){
               if(document.fullscreenElement===container){
-                canvas.width=container.clientWidth;
-                canvas.height=container.clientHeight;
+                canvas.width = container.clientWidth;
+                canvas.height= container.clientHeight;
               } else {
-                canvas.width=960; canvas.height=540;
+                canvas.width = 960;
+                canvas.height=540;
               }
               clampPan(container);
               ctx.save();
@@ -419,11 +411,11 @@
           })();
 
           let sx, sy, dragging=false;
-          canvas.addEventListener("mousedown",e=>{
+          wrapper.addEventListener("mousedown",e=>{
             if(e.button!==0||(!spaceHeld&&document.fullscreenElement!==container))return;
             sx=e.clientX; sy=e.clientY; dragging=false;
           });
-          canvas.addEventListener("mousemove",e=>{
+          wrapper.addEventListener("mousemove",e=>{
             if(!(e.buttons&1)||(!spaceHeld&&document.fullscreenElement!==container))return;
             const dx=e.clientX-sx, dy=e.clientY-sy;
             if(!dragging&&Math.hypot(dx,dy)>5) dragging=true;
@@ -435,36 +427,35 @@
               sx=e.clientX; sy=e.clientY;
             }
           });
-          canvas.addEventListener("wheel",e=>{
+          wrapper.addEventListener("wheel",e=>{
             if(!spaceHeld&&document.fullscreenElement!==container)return;
             e.preventDefault();
-            const rect=canvas.getBoundingClientRect();
+            const rect=wrapper.getBoundingClientRect();
             const dx=e.clientX-rect.left, dy=e.clientY-rect.top;
             const oldZ=container.zoomScale;
-            let z=oldZ+(e.deltaY<0?0.1:-0.1);
+            let z=oldZ + (e.deltaY<0?0.1:-0.1);
             z=Math.max(1,Math.min(3,z));
-            // center zoom on cursor
-            container.panX+=(dx-rect.width/2)*(1/z-1/oldZ);
-            container.panY+=(dy-rect.height/2)*(1/z-1/oldZ);
+            container.panX += (dx - rect.width/2)*(1/z - 1/oldZ);
+            container.panY += (dy - rect.height/2)*(1/z - 1/oldZ);
             container.zoomScale=z;
             clampPan(container);
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
           },{passive:false});
 
           let ct=0, cx=0, cy=0;
-          canvas.addEventListener("mousedown",e=>{
+          wrapper.addEventListener("mousedown",e=>{
             if(e.button!==0)return;
             ct=Date.now(); cx=e.clientX; cy=e.clientY;
           });
-          canvas.addEventListener("mouseup",e=>{
+          wrapper.addEventListener("mouseup",e=>{
             const dt=Date.now()-ct;
-            if(dt<200&&Math.hypot(e.clientX-cx,e.clientY-cy)<5){
+            if(dt<200 && Math.hypot(e.clientX-cx,e.clientY-cy)<5){
               video.paused?video.play().catch(()=>{}):video.pause();
             }
           });
         }
 
-        /* DESKTOP CONTROLS & TIMELINE */
+        /* DESKTOP CONTROLS & PROGRESS BAR */
         if(!isMobile){
           const cc=document.createElement("div");
           cc.className="controls-container overlay-controls";
@@ -472,6 +463,7 @@
           const bar=document.createElement("div");
           bar.className="control-bar";
 
+          // play/pause
           const playBtn=document.createElement("button");
           playBtn.textContent="Play";
           video.addEventListener("play", ()=>playBtn.textContent="Pause");
@@ -481,34 +473,38 @@
           });
           bar.appendChild(playBtn);
 
-          const timeline=document.createElement("input");
-          timeline.type="range"; timeline.min=0; timeline.step=0.1; timeline.value=0;
-          let seeking=false;
-          timeline.addEventListener("mousedown",()=>seeking=true);
-          timeline.addEventListener("mouseup",  ()=>seeking=false);
-          timeline.addEventListener("input",    ()=>video.currentTime=parseFloat(timeline.value));
-          video.addEventListener("loadedmetadata",()=>{
-            timeline.max=video.duration||0; updateBuffer();
+          // progress bar
+          const prog=document.createElement("div");
+          prog.className="progress-bar";
+          const playedBar=document.createElement("div");
+          playedBar.className="played";
+          const bufferedBar=document.createElement("div");
+          bufferedBar.className="buffered";
+          prog.appendChild(bufferedBar);
+          prog.appendChild(playedBar);
+          bar.appendChild(prog);
+
+          prog.addEventListener("click",e=>{
+            if(!video.duration) return;
+            const rect=prog.getBoundingClientRect();
+            const pct=(e.clientX-rect.left)/rect.width;
+            video.currentTime = pct*video.duration;
           });
-          function updateBuffer(){
+
+          function updateProgress(){
             const d=video.duration||0; if(!d)return;
             const c=video.currentTime,
                   bufEnd=video.buffered.length
                     ?video.buffered.end(video.buffered.length-1)
                     :c;
-            if(!seeking) timeline.value=c;
-            const pPct=(c/d)*100,
-                  bPct=(bufEnd/d)*100;
-            timeline.style.backgroundImage=
-              `linear-gradient(to right,
-                #4d90fe 0%, #4d90fe ${pPct}%,
-                #888 ${pPct}%, #888 ${bPct}%,
-                #fff ${bPct}% , #fff 100%)`;
+            playedBar.style.width   = (c/d*100)+"%";
+            bufferedBar.style.width = (bufEnd/d*100)+"%";
           }
-          video.addEventListener("timeupdate",updateBuffer);
-          video.addEventListener("progress",  updateBuffer);
-          bar.appendChild(timeline);
+          video.addEventListener("loadedmetadata",updateProgress);
+          video.addEventListener("timeupdate",updateProgress);
+          video.addEventListener("progress",updateProgress);
 
+          // fullscreen
           const fsBtn=document.createElement("button");
           fsBtn.textContent="⛶";
           fsBtn.addEventListener("click",()=>{
@@ -517,6 +513,7 @@
           });
           bar.appendChild(fsBtn);
 
+          // reset
           const resetBtn=document.createElement("button");
           resetBtn.textContent="Reset";
           resetBtn.addEventListener("click",()=>{
@@ -525,6 +522,7 @@
           });
           bar.appendChild(resetBtn);
 
+          // disable
           const disableBtn=document.createElement("button");
           disableBtn.className="disable-btn"; disableBtn.textContent="X";
           disableBtn.addEventListener("click",e=>{
@@ -553,7 +551,7 @@
           });
         }
 
-        /* HLS vs Native */
+        /* HLS or native */
         const canNative=video.canPlayType("application/vnd.apple.mpegurl");
         if(Hls.isSupported()&&!canNative){
           const hls=new Hls({
@@ -600,6 +598,7 @@
       document.getElementById("btn-hide-all")
         .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,false)));
 
+      // URL modal logic
       const modal=document.getElementById("urlModal"),
             backdrop=document.getElementById("modalBackdrop"),
             btnAdd=document.getElementById("btn-add-urls"),
@@ -611,7 +610,7 @@
       });
       btnSave.addEventListener("click",()=>{
         const lines=urlInput.value.split("\n").map(u=>u.trim()).filter(Boolean),
-              old=getStreamList(), newCfg=[];
+              old=getStreamList(), newCfg=[]; 
         lines.forEach(u=>{
           const ex=old.find(s=>s.url===u);
           newCfg.push(ex?ex:{url:u,enabled:true});
@@ -648,6 +647,7 @@
         });
       }
 
+      // initial render
       updateStreamSidebar();
       getStreamList().forEach(s=>{ if(s.enabled) updateStreamEnabled(s.url,true); });
     })();
