@@ -32,9 +32,6 @@
     /* --------- VIDEO & CANVAS --------- */
     .canvas-wrapper { position:relative; width:960px; height:540px; overflow:hidden; }
     .canvas-wrapper canvas { position:absolute; top:0; left:0; width:960px; height:540px; }
-    .player-container.desktop .source-video { opacity:0; position:absolute; top:0; left:0; width:960px; height:540px; pointer-events:none; }
-    .player-container.mobile .source-video { width:240px; height:135px; }
-    .player-container.mobile .display-canvas { display:none; }
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
       width:100%!important; height:100%!important;
@@ -43,6 +40,9 @@
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
       width:100%!important; height:100%!important;
     }
+    .player-container.desktop .source-video { opacity:0; position:absolute; top:0; left:0; width:960px; height:540px; pointer-events:none; }
+    .player-container.mobile .source-video { width:240px; height:135px; }
+    .player-container.mobile .display-canvas { display:none; }
 
     /* ------ CONTROLS & OVERLAYS ------ */
     .controls-container { position:relative; z-index:2; }
@@ -50,17 +50,14 @@
     .control-bar button { padding:4px 8px; cursor:pointer; }
 
     /* Custom progress bar */
-    .progress-bar { position:relative; flex:1 1 0; height:6px; background:#fff; border-radius:3px; overflow:visible; margin:0 5px; cursor:pointer; }
+    .progress-bar { position:relative; flex:1 1 0; height:6px; background:#fff; border-radius:6px; overflow:visible; margin:0 5px; cursor:pointer; }
     .progress-bar .buffered,
-    .progress-bar .played {
-      position:absolute; top:0; bottom:0; left:0;
-    }
-    .progress-bar .buffered { background:#888; width:0%; }
+    .progress-bar .played { position:absolute; top:0; bottom:0; left:0; border-top-left-radius:6px; border-bottom-left-radius:6px; }
+    .progress-bar .buffered { background:#888; width:0%; border-radius:6px; }
     .progress-bar .played   { background:#4d90fe; width:0%; }
     .progress-bar .thumb {
       position:absolute; top:50%; left:0; width:12px; height:12px;
-      background:#fff; border-radius:50%; transform:translate(-50%,-50%);
-      cursor:pointer;
+      background:#fff; border-radius:50%; transform:translate(-50%,-50%); cursor:pointer;
     }
 
     .disable-btn { background:red; color:#fff; border:none; }
@@ -83,13 +80,14 @@
     #urlModal textarea { width:100%; height:600px; padding:10px; font-size:14px; box-sizing:border-box; }
 
     /* ----- MOBILE SIDEBAR ----- */
-    html.mobile #urlModal { width:300px; padding:4px; font-size:12px; }
+    html.mobile #urlModal   { width:300px; padding:4px; font-size:12px; }
     html.mobile #urlModal textarea { height:150px; padding:5px; font-size:12px; }
     html.mobile #sidebar { position:fixed; top:0; left:0; height:100%; z-index:1000; }
     #sidebarToggle { display:none; }
     html.mobile #sidebarToggle {
-      display:block; position:fixed; top:50%; left:0; transform:translate(-50%,-50%);
-      z-index:1100; background:#444; border:none; padding:10px 12px;
+      display:block; position:fixed; top:50%; left:0;
+      transform:translate(-50%,-50%); z-index:1100;
+      background:#444; border:none; padding:10px 12px;
       font-size:24px; color:#fff; cursor:pointer;
     }
   </style>
@@ -160,18 +158,15 @@
 
     const PROXY_PREFIX="https://surfcam-alpha.vercel.app/api/proxy?url=";
     function loadPlayerSettings(u){
-      try{ return JSON.parse(localStorage.playerSettings||"{}")[u]
-             ||{zoomScale:1,panX:0,panY:0}; }
-      catch{ return {zoomScale:1,panX:0,panY:0}; }
+      try{ return JSON.parse(localStorage.playerSettings||"{}")[u]||{zoomScale:1,panX:0,panY:0}; }
+      catch{ return{zoomScale:1,panX:0,panY:0}; }
     }
     function savePlayerSettings(u,d){
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
-    function clampPan(c){
-      const Z=c.zoomScale,
-            w=c.clientWidth, h=c.clientHeight,
-            mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
+    function clampPan(c,w=960,h=540){
+      const Z=c.zoomScale, mx=(w*(Z-1))/2, my=(h*(Z-1))/2;
       c.panX = Math.min(mx,Math.max(-mx,c.panX));
       c.panY = Math.min(my,Math.max(-my,c.panY));
     }
@@ -180,37 +175,29 @@
       const storageKey="streamConfigs", activeLabels=new Set();
 
       function getStreamList(){
-        try{ return JSON.parse(localStorage[storageKey]||"[]"); }catch{ return []; }
+        try{ return JSON.parse(localStorage[storageKey]||"[]"); }catch{return[];}
       }
-      function saveStreamList(l){
-        localStorage[storageKey]=JSON.stringify(l);
-      }
+      function saveStreamList(l){ localStorage[storageKey]=JSON.stringify(l); }
       function extractTitle(u){
-        const m=u.match(/wc-([^\/]+)\/playlist/);
-        return m?m[1]:u;
+        const m=u.match(/wc-([^\/]+)\/playlist/); return m?m[1]:u;
       }
 
       function updateStreamSidebar(){
-        const sb=document.getElementById("streamList");
-        sb.innerHTML="";
+        const sb=document.getElementById("streamList"); sb.innerHTML="";
         const streams=getStreamList();
         if(!streams.length){
           const p=document.createElement("p");
-          p.className="no-streams";
-          p.textContent="No streams added. Click 'Add URLs'.";
+          p.className="no-streams"; p.textContent="No streams added. Click 'Add URLs'.";
           sb.appendChild(p);
         } else {
           streams.forEach(s=>{
-            const item=document.createElement("div");
-            item.className="stream-item";
+            const item=document.createElement("div"); item.className="stream-item";
             const cb=document.createElement("input");
-            cb.type="checkbox"; cb.checked=s.enabled;
-            cb.dataset.url=s.url;
+            cb.type="checkbox"; cb.checked=s.enabled; cb.dataset.url=s.url;
             cb.addEventListener("change",e=>updateStreamEnabled(s.url,e.target.checked));
             item.appendChild(cb);
             const lbl=document.createElement("label");
-            lbl.textContent=extractTitle(s.url);
-            lbl.dataset.url=s.url;
+            lbl.textContent=extractTitle(s.url); lbl.dataset.url=s.url;
             lbl.addEventListener("mousedown",e=>{
               if(e.button===0){cb.checked=!cb.checked;activeLabels.add(lbl);e.preventDefault();}
             });
@@ -224,28 +211,23 @@
       }
       document.addEventListener("mouseup",()=>{
         activeLabels.forEach(lbl=>{
-          const url=lbl.dataset.url,
-                cb=lbl.parentNode.querySelector("input");
+          const url=lbl.dataset.url, cb=lbl.parentNode.querySelector("input");
           updateStreamEnabled(url,cb.checked);
         });
         activeLabels.clear();
       });
 
       function reorderPlayers(){
-        const main=document.getElementById("main-content"),
-              cfg=getStreamList();
+        const main=document.getElementById("main-content"), cfg=getStreamList();
         Array.from(main.children).sort((a,b)=>
-          cfg.findIndex(x=>x.url===a.dataset.url)-
-          cfg.findIndex(x=>x.url===b.dataset.url)
+          cfg.findIndex(x=>x.url===a.dataset.url)-cfg.findIndex(x=>x.url===b.dataset.url)
         ).forEach(el=>main.appendChild(el));
       }
 
       function updateStreamEnabled(url,enabled){
         let streams=getStreamList();
-        const idx=streams.findIndex(s=>s.url===url);
-        if(idx===-1) return;
-        streams[idx].enabled=enabled;
-        saveStreamList(streams);
+        const idx=streams.findIndex(s=>s.url===url); if(idx===-1) return;
+        streams[idx].enabled=enabled; saveStreamList(streams);
         const main=document.getElementById("main-content");
         let player=main.querySelector(`.player-container[data-url="${url}"]`);
         if(enabled){
@@ -254,11 +236,9 @@
             if(player) main.appendChild(player);
           } else player.style.display="flex";
         } else if(player){
-          if(player.hls) player.hls.destroy();
-          player.remove();
+          if(player.hls) player.hls.destroy(); player.remove();
         }
-        reorderPlayers();
-        updateStreamSidebar();
+        reorderPlayers(); updateStreamSidebar();
       }
 
       function createPlayerContainer(stream){
@@ -270,41 +250,30 @@
         const container=document.createElement("div");
         container.className="player-container "+(isMobile?"mobile":"desktop");
         container.dataset.url=url;
-        container.zoomScale=saved.zoomScale;
-        container.panX=saved.panX;
-        container.panY=saved.panY;
+        container.zoomScale=saved.zoomScale; container.panX=saved.panX; container.panY=saved.panY;
 
         const video=document.createElement("video");
         video.className="source-video";
-        video.setAttribute("playsinline","true");
-        video.setAttribute("webkit-playsinline","true");
-        video.setAttribute("crossorigin","anonymous");
+        ["playsinline","webkit-playsinline","crossorigin"].forEach(a=>video.setAttribute(a,""));
         video.muted=true; video.preload="auto";
         if(isMobile){
-          video.controls=true;
-          video.src=PROXY_PREFIX+encodeURIComponent(url);
+          video.controls=true; video.src=PROXY_PREFIX+encodeURIComponent(url);
         } else {
           video.autoplay=true;
         }
         container.appendChild(video);
 
         if(isMobile){
-          const overlay=document.createElement("div");
-          overlay.className="mobile-play-overlay";
-          overlay.innerText="Tap to Start";
-          container.appendChild(overlay);
+          const overlay=document.createElement("div"); overlay.className="mobile-play-overlay";
+          overlay.innerText="Tap to Start"; container.appendChild(overlay);
           overlay.addEventListener("click",()=>{
             if(container.hls) container.hls.startLoad();
             video.play().catch(()=>{}).then(()=>overlay.style.display="none");
           });
           video.addEventListener("play", ()=>overlay.style.display="none");
           video.addEventListener("pause",()=>overlay.style.display="flex");
-
-          const mc=document.createElement("div"); mc.className="controls-container";
-          container.appendChild(mc);
-          const mb=document.createElement("div"); mb.className="control-bar";
-          mc.appendChild(mb);
-
+          const mc=document.createElement("div"); mc.className="controls-container"; container.appendChild(mc);
+          const mb=document.createElement("div"); mb.className="control-bar"; mc.appendChild(mb);
           const mt=document.createElement("input");
           mt.type="range"; mt.min=0; mt.step=0.1; mt.value=0;
           let seekM=false;
@@ -318,33 +287,24 @@
             if(!seekM) mt.value=video.currentTime;
           });
           mb.appendChild(mt);
-
-          const tM=document.createElement("div");
-          tM.className="title-bar"; tM.textContent=extractTitle(url);
-          mc.appendChild(tM);
+          const tM=document.createElement("div"); tM.className="title-bar";
+          tM.textContent=extractTitle(url); mc.appendChild(tM);
 
         } else {
-          // CANVAS
-          const wrapper=document.createElement("div");
-          wrapper.className="canvas-wrapper";
+          const wrapper=document.createElement("div"); wrapper.className="canvas-wrapper";
           container.appendChild(wrapper);
-          const canvas=document.createElement("canvas");
-          canvas.className="display-canvas";
+          const canvas=document.createElement("canvas"); canvas.className="display-canvas";
           wrapper.appendChild(canvas);
           const ctx=canvas.getContext("2d");
           (function render(){
             if(video.readyState>=2){
-              if(document.fullscreenElement===container){
-                wrapper.style.width="100%";
-                wrapper.style.height="100%";
-              } else {
-                wrapper.style.width="960px";
-                wrapper.style.height="540px";
-              }
-              clampPan(container);
+              // keep internal res 960×540
+              canvas.width=960; canvas.height=540;
+              const w=wrapper.clientWidth, h=wrapper.clientHeight;
+              clampPan(container, w, h);
               ctx.save();
-              ctx.clearRect(0,0,canvas.width,canvas.height);
-              const cx=canvas.width/2, cy=canvas.height/2;
+              ctx.clearRect(0,0,960,540);
+              const cx=480, cy=270;
               ctx.translate(cx,cy);
               ctx.scale(container.zoomScale,container.zoomScale);
               ctx.translate(container.panX,container.panY);
@@ -367,7 +327,7 @@
             if(dragging){
               container.panX+=dx/container.zoomScale;
               container.panY+=dy/container.zoomScale;
-              clampPan(container);
+              clampPan(container, wrapper.clientWidth, wrapper.clientHeight);
               savePlayerSettings(url,{zoomScale:container.zoomScale,panX:container.panX,panY:container.panY});
               sx=e.clientX; sy=e.clientY;
             }
@@ -383,7 +343,7 @@
             container.panX+=(dx-rect.width/2)*(1/z-1/oldZ);
             container.panY+=(dy-rect.height/2)*(1/z-1/oldZ);
             container.zoomScale=z;
-            clampPan(container);
+            clampPan(container, rect.width, rect.height);
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
           },{passive:false});
 
@@ -394,20 +354,17 @@
           });
           wrapper.addEventListener("mouseup",e=>{
             const dt=Date.now()-ct;
-            if(dt<200 && Math.hypot(e.clientX-cx,e.clientY-cy)<5){
+            if(dt<200&&Math.hypot(e.clientX-cx,e.clientY-cy)<5){
               video.paused?video.play().catch(()=>{}):video.pause();
             }
           });
         }
 
-        /* DESKTOP CONTROLS & PROGRESS */
         if(!isMobile){
           const cc=document.createElement("div");
           cc.className="controls-container overlay-controls";
           container.appendChild(cc);
-          const bar=document.createElement("div");
-          bar.className="control-bar";
-
+          const bar=document.createElement("div"); bar.className="control-bar";
           const playBtn=document.createElement("button");
           playBtn.textContent="Play";
           video.addEventListener("play", ()=>playBtn.textContent="Pause");
@@ -417,9 +374,8 @@
           });
           bar.appendChild(playBtn);
 
-          // progress bar
-          const prog=document.createElement("div");
-          prog.className="progress-bar";
+          // custom progress
+          const prog=document.createElement("div"); prog.className="progress-bar";
           const bufBar=document.createElement("div"), playBar=document.createElement("div"), thumb=document.createElement("div");
           bufBar.className="buffered"; playBar.className="played"; thumb.className="thumb";
           prog.appendChild(bufBar);
@@ -429,18 +385,14 @@
 
           function updateProgress(){
             const d=video.duration||0; if(!d)return;
-            const c=video.currentTime,
-                  bufEnd=video.buffered.length?video.buffered.end(video.buffered.length-1):c;
+            const c=video.currentTime, bufEnd=video.buffered.length?video.buffered.end(video.buffered.length-1):c;
             const pPct=(c/d)*100, bPct=(bufEnd/d)*100;
             playBar.style.width=pPct+"%";
             bufBar.style.width=bPct+"%";
             thumb.style.left=pPct+"%";
           }
-          ["loadedmetadata","timeupdate","progress"].forEach(evt=>
-            video.addEventListener(evt,updateProgress)
-          );
+          ["loadedmetadata","timeupdate","progress"].forEach(evt=>video.addEventListener(evt,updateProgress));
 
-          // scrubbing
           let draggingThumb=false;
           thumb.addEventListener("mousedown",()=>draggingThumb=true);
           document.addEventListener("mouseup",()=>draggingThumb=false);
@@ -502,8 +454,7 @@
           });
         }
 
-        /* HLS vs Native */
-        const canNative = video.canPlayType("application/vnd.apple.mpegurl");
+        const canNative=video.canPlayType("application/vnd.apple.mpegurl");
         if(Hls.isSupported()&&!canNative){
           const hls=new Hls({
             maxBufferLength:120, maxBufferSize:60*1024*1024,
