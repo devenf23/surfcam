@@ -59,7 +59,7 @@
       background: #222;
       display: flex; flex-direction: column;
       position: relative;
-      margin: 0 auto 20px; /* center, no gray gap */
+      margin: 0 auto 20px; /* center */
       box-sizing: border-box;
     }
 
@@ -85,17 +85,17 @@
     .control-bar button { padding: 4px 8px; cursor: pointer; }
     .control-bar input[type="range"] {
       -webkit-appearance: none; appearance: none;
-      flex: 1; height: 6px; background: #555;
-      border-radius: 3px; outline: none;
+      flex: 1 1 0; margin: 0;
+      height: 12px; background: #555; border-radius: 6px;
+      outline: none;
     }
     .control-bar input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      position: relative; top: 50%; transform: translateY(-50%);
       width: 12px; height: 12px; background: #fff;
       border-radius: 50%; cursor: pointer;
+      margin: 0; /* centers the thumb */
     }
     .control-bar input[type="range"]::-moz-range-thumb {
-      position: relative; top: 50%; transform: translateY(-50%);
       width: 12px; height: 12px; background: #fff;
       border: none; border-radius: 50%; cursor: pointer;
     }
@@ -132,7 +132,7 @@
     }
 
     /* ----- MOBILE SIDEBAR ----- */
-    html.mobile #urlModal { width: 300px; padding: 4px; font-size: 12px; }
+    html.mobile #urlModal   { width: 300px; padding: 4px; font-size: 12px; }
     html.mobile #urlModal textarea {
       height: 150px; padding: 5px; font-size: 12px;
     }
@@ -154,27 +154,23 @@
     }
   </style>
   <script>
-    // detect mobile UA
-    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))
       document.documentElement.classList.add("mobile");
-    }
 
-    // spacebar for pan/zoom
     let spaceHeld = false;
     window.addEventListener("keydown", e => {
-      if (e.code==="Space" &&
-         !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) {
-        e.preventDefault(); spaceHeld = true;
+      if (e.code==="Space" && !["input","textarea","button"]
+        .includes(document.activeElement.tagName.toLowerCase())) {
+        e.preventDefault(); spaceHeld=true;
       }
     });
     window.addEventListener("keyup", e => { if(e.code==="Space") spaceHeld=false; });
 
-    // cursor hide in fullscreen after idle
     let cursorTimeout;
     function showCursor(){ document.body.style.cursor=""; }
     function hideCursor(){ document.body.style.cursor="none"; }
     document.addEventListener("fullscreenchange", ()=>{
-      if(document.fullscreenElement){
+      if (document.fullscreenElement) {
         showCursor(); clearTimeout(cursorTimeout);
         cursorTimeout = setTimeout(hideCursor,2000);
       } else {
@@ -182,7 +178,7 @@
       }
     });
     document.addEventListener("mousemove", ()=>{
-      if(document.fullscreenElement){
+      if (document.fullscreenElement) {
         showCursor(); clearTimeout(cursorTimeout);
         cursorTimeout = setTimeout(hideCursor,2000);
       }
@@ -214,20 +210,21 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.16"></script>
   <script>
     function enterFullScreen(el){
-      const r=el.requestFullscreen||el.webkitRequestFullscreen||
-              el.mozRequestFullScreen||el.msRequestFullscreen;
+      const r = el.requestFullscreen || el.webkitRequestFullscreen ||
+                el.mozRequestFullScreen || el.msRequestFullscreen;
       if(r) return r.call(el);
     }
     function exitFullScreen(){
-      const e=document.exitFullscreen||document.webkitExitFullscreen||
-              document.mozCancelFullScreen||document.msExitFullscreen;
+      const e = document.exitFullscreen || document.webkitExitFullscreen ||
+                document.mozCancelFullScreen || document.msExitFullscreen;
       if(e) return e.call(document);
     }
 
-    const PROXY_PREFIX="https://surfcam-alpha.vercel.app/api/proxy?url=";
+    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
     function loadPlayerSettings(u){
-      try{return JSON.parse(localStorage.playerSettings||"{}")[u]||{zoomScale:1,panX:0,panY:0};}
-      catch{return{zoomScale:1,panX:0,panY:0};}
+      try { return JSON.parse(localStorage.playerSettings||"{}")[u] ||
+                    {zoomScale:1,panX:0,panY:0}; }
+      catch { return {zoomScale:1,panX:0,panY:0}; }
     }
     function savePlayerSettings(u,d){
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
@@ -244,11 +241,10 @@
       const storageKey="streamConfigs", activeLabels=new Set();
 
       function getStreamList(){
-        try{return JSON.parse(localStorage[storageKey]||"[]");}catch{return[];}
+        try { return JSON.parse(localStorage[storageKey]||"[]"); }
+        catch { return []; }
       }
-      function saveStreamList(list){
-        localStorage[storageKey]=JSON.stringify(list);
-      }
+      function saveStreamList(l){ localStorage[storageKey]=JSON.stringify(l); }
       function extractTitle(u){
         const m=u.match(/wc-([^\/]+)\/playlist/);
         return m?m[1]:u;
@@ -288,19 +284,21 @@
       }
       document.addEventListener("mouseup",()=>{
         activeLabels.forEach(lbl=>{
-          const url=lbl.dataset.url;
-          const cb=lbl.parentNode.querySelector("input");
+          const url=lbl.dataset.url,
+                cb=lbl.parentNode.querySelector("input");
           updateStreamEnabled(url,cb.checked);
         });
         activeLabels.clear();
       });
 
       function reorderPlayers(){
-        const main=document.getElementById("main-content"), cfg=getStreamList();
-        Array.from(main.children).sort((a,b)=>
-          cfg.findIndex(x=>x.url===a.dataset.url)
-          -cfg.findIndex(x=>x.url===b.dataset.url)
-        ).forEach(el=>main.appendChild(el));
+        const main=document.getElementById("main-content"),
+              cfg=getStreamList();
+        Array.from(main.children)
+          .sort((a,b)=>
+            cfg.findIndex(x=>x.url===a.dataset.url)-
+            cfg.findIndex(x=>x.url===b.dataset.url)
+          ).forEach(el=>main.appendChild(el));
       }
 
       function updateStreamEnabled(url,enabled){
@@ -352,7 +350,7 @@
         container.appendChild(video);
 
         if(isMobile){
-          // mobile overlay + scrub + title
+          /* mobile overlay, scrub, title */
           const overlay=document.createElement("div");
           overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start";
@@ -374,18 +372,21 @@
           mt.addEventListener("mouseup",  ()=>seekingM=false);
           mt.addEventListener("input",    ()=>video.currentTime=parseFloat(mt.value));
           video.addEventListener("loadedmetadata",()=>{
-            mt.max=video.duration||0; mt.value=video.currentTime||0;
+            mt.max=video.duration||0; updateMobileBuffer();
           });
           video.addEventListener("timeupdate",()=>{
             if(!seekingM) mt.value=video.currentTime;
           });
+          function updateMobileBuffer(){
+            // native controls suffice; no shading needed
+          }
           mb.appendChild(mt);
           const tM=document.createElement("div");
           tM.className="title-bar"; tM.textContent=extractTitle(url);
           mc.appendChild(tM);
 
         } else {
-          // desktop canvas & pan/zoom
+          /* DESKTOP RENDER */
           const canvas=document.createElement("canvas");
           canvas.className="display-canvas";
           canvas.width=960; canvas.height=540;
@@ -393,20 +394,31 @@
           const ctx=canvas.getContext("2d");
           (function render(){
             if(video.readyState>=2){
+              // resize first
+              if(document.fullscreenElement===container){
+                canvas.width=container.clientWidth;
+                canvas.height=container.clientHeight;
+              } else {
+                canvas.width=960;
+                canvas.height=540;
+              }
+              // then clamp pan
               clampPan(container,canvas);
+              // then draw
               ctx.save();
-              ctx.clearRect(0,0,960,540);
-              const cx=480, cy=270;
+              ctx.clearRect(0,0,canvas.width,canvas.height);
+              const cx=canvas.width/2, cy=canvas.height/2;
               ctx.translate(cx,cy);
               ctx.scale(container.zoomScale,container.zoomScale);
               ctx.translate(container.panX,container.panY);
               ctx.translate(-cx,-cy);
-              try{ctx.drawImage(video,0,0,960,540);}catch{}
+              try{ctx.drawImage(video,0,0,canvas.width,canvas.height);}catch{}
               ctx.restore();
             }
             requestAnimationFrame(render);
           })();
 
+          // pan/zoom handlers (clamp on move and wheel)
           let sx, sy, dragging=false;
           canvas.addEventListener("mousedown", e=>{
             if(e.button!==0||(!spaceHeld&&document.fullscreenElement!==container))return;
@@ -433,6 +445,8 @@
             clampPan(container,canvas);
             savePlayerSettings(url,{zoomScale:z,panX:container.panX,panY:container.panY});
           },{passive:false});
+
+          // click vs pan
           let ct=0, cx=0, cy=0;
           canvas.addEventListener("mousedown", e=>{
             if(e.button!==0)return;
@@ -446,7 +460,7 @@
           });
         }
 
-        // desktop controls + timeline shading
+        // DESKTOP CONTROLS
         if(!isMobile){
           const cc=document.createElement("div");
           cc.className="controls-container overlay-controls";
@@ -454,6 +468,7 @@
           const bar=document.createElement("div");
           bar.className="control-bar";
 
+          // play/pause
           const playBtn=document.createElement("button");
           playBtn.textContent="Play";
           video.addEventListener("play", ()=>playBtn.textContent="Pause");
@@ -463,6 +478,7 @@
           });
           bar.appendChild(playBtn);
 
+          // timeline shading
           const timeline=document.createElement("input");
           timeline.type="range"; timeline.min=0; timeline.step=0.1; timeline.value=0;
           let seeking=false;
@@ -470,17 +486,15 @@
           timeline.addEventListener("mouseup",  ()=>seeking=false);
           timeline.addEventListener("input",    ()=>video.currentTime=parseFloat(timeline.value));
           video.addEventListener("loadedmetadata",()=>{
-            timeline.max=video.duration||0;
+            timeline.max=video.duration||0; updateBuffer();
           });
           function updateBuffer(){
             const d=video.duration||0;
             if(!d) return;
-            const c=video.currentTime;
+            const c=video.currentTime, bufEnd=video.buffered.length
+              ?video.buffered.end(video.buffered.length-1)
+              :c;
             timeline.value=c;
-            let bufEnd=c;
-            if(video.buffered.length){
-              bufEnd=video.buffered.end(video.buffered.length-1);
-            }
             const pPct=(c/d)*100, bPct=(bufEnd/d)*100;
             timeline.style.background=
               `linear-gradient(to right,
@@ -489,9 +503,10 @@
                 #fff ${bPct}%, #fff 100%)`;
           }
           video.addEventListener("timeupdate",updateBuffer);
-          video.addEventListener("progress",  updateBuffer);
+          video.addEventListener("progress",updateBuffer);
           bar.appendChild(timeline);
 
+          // fullscreen
           const fsBtn=document.createElement("button");
           fsBtn.textContent="⛶";
           fsBtn.addEventListener("click",()=>{
@@ -500,6 +515,7 @@
           });
           bar.appendChild(fsBtn);
 
+          // reset
           const resetBtn=document.createElement("button");
           resetBtn.textContent="Reset";
           resetBtn.addEventListener("click",()=>{
@@ -508,6 +524,7 @@
           });
           bar.appendChild(resetBtn);
 
+          // disable
           const disableBtn=document.createElement("button");
           disableBtn.className="disable-btn"; disableBtn.textContent="X";
           disableBtn.addEventListener("click",e=>{
@@ -536,7 +553,7 @@
           });
         }
 
-        // HLS vs native
+        // HLS or native
         const canNative=video.canPlayType("application/vnd.apple.mpegurl");
         if(Hls.isSupported()&&!canNative){
           const hls=new Hls({
@@ -548,7 +565,7 @@
             loader: class extends Hls.DefaultConfig.loader {
               load(ctx,cfg,cb){
                 let u=ctx.url;
-                while(u.startsWith(PROXY_PREFIX))u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
+                while(u.startsWith(PROXY_PREFIX)) u=decodeURIComponent(u.slice(PROXY_PREFIX.length));
                 ctx.url=PROXY_PREFIX+encodeURIComponent(u);
                 super.load(ctx,cfg,cb);
               }
@@ -572,14 +589,15 @@
           if(!isMobile) video.play().catch(console.error);
         }
 
-        container.addEventListener("dblclick",()=>{
+        container.addEventListener("dblclick",()=>{ 
           if(!document.fullscreenElement) enterFullScreen(container);
           else exitFullScreen();
         });
+
         return container;
       }
 
-      // show/hide all buttons
+      // show/hide all
       document.getElementById("btn-show-all")
         .addEventListener("click",()=>getStreamList().forEach(s=>updateStreamEnabled(s.url,true)));
       document.getElementById("btn-hide-all")
@@ -616,7 +634,7 @@
         if(e.key==="Escape"&&backdrop.style.display==="block") backdrop.click();
       });
 
-      // mobile tap-out
+      // mobile tap-out sidebar
       if(document.documentElement.classList.contains("mobile")){
         const sidebar=document.getElementById("sidebar"),
               toggle=document.getElementById("sidebarToggle"),
