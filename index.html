@@ -164,16 +164,13 @@
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
-    function clampPan(container) {
-      const Z = container.zoomScale;
-      const halfW = 960 / 2;
-      const halfH = 540 / 2;
-      const minX = halfW - halfW * Z;
-      const maxX = halfW * Z - halfW;
-      const minY = halfH - halfH * Z;
-      const maxY = halfH * Z - halfH;
-      container.panX = Math.min(maxX, Math.max(minX, container.panX));
-      container.panY = Math.min(maxY, Math.max(minY, container.panY));
+    // CLAMP PAN: use fixed internal 960×540 dimensions
+    function clampPan(c){
+      const Z=c.zoomScale, halfIW=960/2, halfIH=540/2;
+      const minX=halfIW - halfIW*Z, maxX=halfIW*Z - halfIW;
+      const minY=halfIH - halfIH*Z, maxY=halfIH*Z - halfIH;
+      c.panX = Math.min(maxX, Math.max(minX, c.panX));
+      c.panY = Math.min(maxY, Math.max(minY, c.panY));
     }
 
     (function(){
