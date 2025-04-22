@@ -96,7 +96,8 @@
     html.mobile.pseudo-fullscreen,
     html.mobile.pseudo-fullscreen body {
       overflow: auto !important;
-      height: auto !important;
+      height: 110vh !important;
+      -webkit-overflow-scrolling: touch;
     }
     html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile {
       position: absolute;
@@ -309,16 +310,33 @@
 
           const overlay=document.createElement("div"); overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start"; container.appendChild(overlay);
-          overlay.addEventListener("click",()=>{
-            if(container.hls) container.hls.startLoad();
-            container.classList.add("fullscreen-mobile");
-            currentScale=1; panX=0; panY=0;
-            video.style.transform="translate(0px, 0px) scale(1)";
-            video.play().catch(()=>{}).then(()=>{
-              overlay.style.display="none";
-              document.documentElement.classList.add("pseudo-fullscreen");
-              // hide browser UI
-              setTimeout(()=>{ window.scrollTo(0,1); },200);
+          // place this helper function somewhere above your overlay click handler
+          function hideBrowserUI() {
+            // force the document taller than the viewport
+            document.documentElement.style.height = '110vh';
+            document.body.style.height            = '110vh';
+            // first attempt
+            window.scrollTo(0, 1);
+            // second attempt (catches Safari’s one‐time quirk)
+            Promise.resolve().then(() => window.scrollTo(0, 1));
+          }
+
+          // overwrite your existing “Tap to Start” handler with this:
+          overlay.addEventListener('click', () => {
+            if (container.hls) container.hls.startLoad();
+            // enter pseudo‑fullscreen
+            container.classList.add('fullscreen-mobile');
+            document.documentElement.classList.add('pseudo-fullscreen');
+            // hide the browser chrome
+            hideBrowserUI();
+            // reset zoom & pan
+            currentScale = 1;
+            panX = 0;
+            panY = 0;
+            video.style.transform = 'translate(0px, 0px) scale(1)';
+            // play the video and then hide the overlay
+            video.play().catch(() => {}).then(() => {
+              overlay.style.display = 'none';
             });
           });
           video.addEventListener("play",()=>overlay.style.display="none");
