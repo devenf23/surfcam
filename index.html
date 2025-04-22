@@ -164,18 +164,16 @@
       let o={}; try{o=JSON.parse(localStorage.playerSettings||"{}");}catch{}
       o[u]=d; localStorage.playerSettings=JSON.stringify(o);
     }
-    // clampPan ensures pan values are within limits.
-    function clampPan(container) {
-      const Z = container.zoomScale;
-      const halfW = 960 / 2;
-      const halfH = 540 / 2;
-      const minPanX = halfW - halfW * Z;
-      const maxPanX = halfW * Z - halfW;
-      const minPanY = halfH - halfH * Z;
-      const maxPanY = halfH * Z - halfH;
-      container.panX = Math.min(maxPanX, Math.max(minPanX, container.panX));
-      container.panY = Math.min(maxPanY, Math.max(minPanY, container.panY));
+    /* ----------- UPDATED ------------ */
+    function clampPan(c){
+      const Z=c.zoomScale, W=960, H=540;
+      if(Z<=1){ c.panX=0; c.panY=0; return; }
+      const mx=(W*(Z-1))/(2*Z);
+      const my=(H*(Z-1))/(2*Z);
+      c.panX = Math.min(mx,Math.max(-mx,c.panX));
+      c.panY = Math.min(my,Math.max(-my,c.panY));
     }
+    /* -------------------------------- */
 
     (function(){
       const storageKey="streamConfigs", activeLabels=new Set();
