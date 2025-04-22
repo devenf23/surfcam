@@ -310,34 +310,48 @@
 
           const overlay=document.createElement("div"); overlay.className="mobile-play-overlay";
           overlay.innerText="Tap to Start"; container.appendChild(overlay);
-          // place this helper function somewhere above your overlay click handler
+          // helper – make sure this is declared once, above your overlay click handler
           function hideBrowserUI() {
             // force the document taller than the viewport
             document.documentElement.style.height = '110vh';
             document.body.style.height            = '110vh';
             // first attempt
             window.scrollTo(0, 1);
-            // second attempt (catches Safari’s one‐time quirk)
+            // second attempt (catches Safari’s one‑time quirk)
             Promise.resolve().then(() => window.scrollTo(0, 1));
           }
 
-          // overwrite your existing “Tap to Start” handler with this:
+          // replace your existing “Tap to Start” handler with this:
           overlay.addEventListener('click', () => {
+            // if using HLS, start loading
             if (container.hls) container.hls.startLoad();
-            // enter pseudo‑fullscreen
+
+            // enter our pseudo‑fullscreen styles
             container.classList.add('fullscreen-mobile');
             document.documentElement.classList.add('pseudo-fullscreen');
-            // hide the browser chrome
+
+            // immediately hide browser chrome
             hideBrowserUI();
-            // reset zoom & pan
+
+            // also listen for the very first touchmove to re‑fire scroll (Brave / Safari fallback)
+            const touchHide = () => {
+              hideBrowserUI();
+              container.removeEventListener('touchmove', touchHide);
+            };
+            container.addEventListener('touchmove', touchHide, { passive: true });
+
+            // reset pan/zoom
             currentScale = 1;
             panX = 0;
             panY = 0;
             video.style.transform = 'translate(0px, 0px) scale(1)';
-            // play the video and then hide the overlay
-            video.play().catch(() => {}).then(() => {
-              overlay.style.display = 'none';
-            });
+
+            // play, then hide the “Tap to Start” overlay
+            video.play()
+              .catch(() => {})
+              .then(() => {
+                overlay.style.display = 'none';
+              });
           });
           video.addEventListener("play",()=>overlay.style.display="none");
           video.addEventListener("pause",()=>{
