@@ -20,11 +20,6 @@
       min-height: 100vh;        /* but never shrink below one viewport */
     }
 
-    html.mobile #main-content {
-      height: auto !important;  /* remove its “inner‐only” scroll */
-      overflow: visible !important;
-    }
-
     /* ---------- SIDEBAR ---------- */
     #sidebar { background:#444; width:220px; padding:20px; box-sizing:border-box; overflow-y:auto; transition:transform .3s ease; }
     #sidebar.hidden { transform:translateX(-100%); }
@@ -38,7 +33,14 @@
 
     /* ---------- MAIN CONTENT ---------- */
     #main-content { flex:1; background:#333; padding:20px; box-sizing:border-box; display:flex; flex-wrap:wrap; gap:20px; overflow:auto; }
-    html.mobile #main-content { flex-direction:column; align-items:center; flex-wrap:nowrap; margin-left:0; }
+    html.mobile #main-content { 
+      flex-direction:column; 
+      align-items:center; 
+      flex-wrap:nowrap; 
+      margin-left:0;
+      height: auto !important;  /* remove its “inner‐only” scroll */
+      overflow: visible !important;
+    }
 
     /* ---------- PLAYER CONTAINERS ---------- */
     .player-container { background:#222; display:flex; flex-direction:column; position:relative; box-sizing:border-box; }
