@@ -7,11 +7,14 @@
   <style>
     /* ---------- GENERAL ---------- */
     html, body { margin:0; padding:0; height:100vh; font-family:Arial,sans-serif; background:#222; color:#fff; overflow:hidden; }
-    html.mobile,
-    html.mobile body {
-      height: 100vh;
-      overflow-y: auto;
+    html.mobile {
+      height: auto !important;
+      overflow-y: auto !important;
       -webkit-overflow-scrolling: touch;
+    }
+    html.mobile body {
+      height: auto !important;
+      overflow: visible !important;
     }
     .container { display:flex; height:100vh; }
     /* --------------- ADD THESE TWO RULES --------------- */
