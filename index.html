@@ -113,61 +113,61 @@
       font-size:24px; color:#fff; cursor:pointer;
     }
 
-/* ---------- MOBILE PSEUDO‑FULLSCREEN, ADDRESS BAR HIDE & PINCH/PAN/SWIPE ---------- */
-/* only <html> scrolls so browsers see window.scrollY > 0 and hide their chrome */
-  html.mobile.pseudo-fullscreen {
-  overflow-y: auto !important;
-  height: 110vh   !important;
-  -webkit-overflow-scrolling: touch;
-}
+    /* ---------- MOBILE PSEUDO‑FULLSCREEN, ADDRESS BAR HIDE & PINCH/PAN/SWIPE ---------- */
+    /* only <html> scrolls so browsers see window.scrollY > 0 and hide their chrome */
+      html.mobile.pseudo-fullscreen {
+      overflow-y: auto !important;
+      height: 110vh   !important;
+      -webkit-overflow-scrolling: touch;
+    }
 
-/* free <body> from scroll so there’s no nested overflow stealing the gesture */
-html.mobile.pseudo-fullscreen body {
-  overflow: visible    !important;
-  height: auto         !important;
-}
+    /* free <body> from scroll so there’s no nested overflow stealing the gesture */
+    html.mobile.pseudo-fullscreen body {
+      overflow: visible    !important;
+      height: auto         !important;
+    }
 
-/* ensure your outer container grows beyond 100vh */
-html.mobile.pseudo-fullscreen .container {
-  height: auto         !important;
-  min-height: 110vh    !important;
-}
+    /* ensure your outer container grows beyond 100vh */
+    html.mobile.pseudo-fullscreen .container {
+      height: auto         !important;
+      min-height: 110vh    !important;
+    }
 
-/* make sure main‐content doesn’t re‑introduce an inner scroll */
-html.mobile.pseudo-fullscreen #main-content {
-  overflow: visible    !important;
-  height: auto         !important;
-}
+    /* make sure main‐content doesn’t re‑introduce an inner scroll */
+    html.mobile.pseudo-fullscreen #main-content {
+      overflow: visible    !important;
+      height: auto         !important;
+    }
 
-/* your existing pseudo‑fullscreen player rules below… */
-html.mobile.pseudo-fullscreen #sidebarToggle {
-  display: none;
-}
-html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100vw; height: 110vh;
-  z-index: 1000;
-  background: #000;
-  overflow: hidden;
-}
-html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile .source-video {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  object-fit: contain;
-}
-html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile .controls-container {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  bottom: -100px;
-  transition: bottom 0.3s ease;
-}
-html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile.controls-open .controls-container {
-  bottom: 20px;
-}
+    /* your existing pseudo‑fullscreen player rules below… */
+    html.mobile.pseudo-fullscreen #sidebarToggle {
+      display: none;
+    }
+    html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw; height: 110vh;
+      z-index: 1000;
+      background: #000;
+      overflow: hidden;
+    }
+    html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile .source-video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+    }
+    html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile .controls-container {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      bottom: -100px;
+      transition: bottom 0.3s ease;
+    }
+    html.mobile.pseudo-fullscreen .player-container.mobile.fullscreen-mobile.controls-open .controls-container {
+      bottom: 20px;
+    }
   </style>
   <script>
     if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))
