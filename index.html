@@ -14,6 +14,16 @@
       -webkit-overflow-scrolling: touch;
     }
     .container { display:flex; height:100vh; }
+    /* --------------- ADD THESE TWO RULES --------------- */
+    html.mobile .container {
+      height: auto !important;  /* let the whole container grow with content */
+      min-height: 100vh;        /* but never shrink below one viewport */
+    }
+
+    html.mobile #main-content {
+      height: auto !important;  /* remove its “inner‐only” scroll */
+      overflow: visible !important;
+    }
 
     /* ---------- SIDEBAR ---------- */
     #sidebar { background:#444; width:220px; padding:20px; box-sizing:border-box; overflow-y:auto; transition:transform .3s ease; }
