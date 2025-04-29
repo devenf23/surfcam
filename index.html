@@ -318,7 +318,8 @@
     /* Fix 2: Apply scroll only to HTML for non-safari */
     html.pseudo-fullscreen-mobile {
         position: relative; /* Needed for fixed player */
-        /* overflow: hidden !important; */ /* Prevent scroll on html by default */
+        overflow: hidden !important; /* Prevent scroll on html by default */
+        height: 100vh !important; /* Ensure html takes full height */
     }
     html.pseudo-fullscreen-mobile.non-safari {
         overflow-y: scroll !important; /* Make ONLY HTML scrollable */
@@ -327,9 +328,10 @@
     }
     /* Ensure body doesn't interfere with html scrolling */
     html.pseudo-fullscreen-mobile body {
-        overflow: visible !important;
+        overflow: visible !important; /* Let content flow */
         height: auto !important;
         position: static !important; /* Ensure body flows normally */
+        min-height: 105vh; /* Match html min-height */
     }
     /* Ensure container doesn't restrict height */
      html.pseudo-fullscreen-mobile .container {
@@ -385,9 +387,10 @@
           console.log("Attempting to hide browser UI (scrolling trick)...");
           // Try scrolling both window and html element with a longer delay
           setTimeout(() => {
-              console.log(`ScrollTop Before: window=${window.scrollY}, html=${document.documentElement.scrollTop}`);
-              // Try scrolling html first, then window as fallback
-              if (document.documentElement.scrollHeight > window.innerHeight) {
+              const htmlScrollable = document.documentElement.scrollHeight > document.documentElement.clientHeight;
+              console.log(`ScrollTop Before: window=${window.scrollY}, html=${document.documentElement.scrollTop}, htmlScrollable=${htmlScrollable}`);
+              // Try scrolling html first if it's scrollable, otherwise window
+              if (htmlScrollable) {
                   document.documentElement.scrollTop = 1;
               } else {
                   window.scrollTo(0, 1);
@@ -396,7 +399,7 @@
               setTimeout(() => {
                   console.log(`ScrollTop After: window=${window.scrollY}, html=${document.documentElement.scrollTop}`);
               }, 100);
-          }, 250); // Slightly longer delay
+          }, 300); // Increased delay further
       } else { console.log("Browser UI hiding skipped (PWA standalone or Safari)."); }
     }
   </script>
@@ -601,9 +604,9 @@
         container.classList.remove("player-fullscreen-mobile"); container.classList.remove("controls-open");
         video.style.transform = 'scale(1) translate(0px, 0px)'; video.style.transformOrigin = 'center center';
         const fsControls = container.querySelector('.fullscreen-controls'); if (fsControls) fsControls.remove();
-        document.body.style.height = ''; document.body.style.overflow = '';
-        htmlEl.style.height = ''; htmlEl.style.overflow = '';
-        htmlEl.style.minHeight = ''; // Reset min-height
+        // Reset styles applied for non-safari UI hiding
+        document.body.style.height = ''; document.body.style.overflow = ''; document.body.style.position = '';
+        htmlEl.style.height = ''; htmlEl.style.overflow = ''; htmlEl.style.minHeight = '';
     }
 
     // --- Mobile Pseudo-Fullscreen Controls Setup ---
@@ -702,7 +705,7 @@
                 const originY = initialMidpoint.y - videoRect.top;
                 video.style.transformOrigin = `${originX}px ${originY}px`;
 
-                // Fix 1: Store the current translation state when starting a new gesture
+                // Store the current translation state when starting a new gesture
                 lastTranslateX = currentTranslateX;
                 lastTranslateY = currentTranslateY;
                 video.style.transition = 'none';
@@ -741,7 +744,7 @@
 
             if (e.touches.length < 2) { // End of two-finger gesture or single touch end
                 initialDistance = null; initialMidpoint = null;
-                // Fix 1: Store the final translation state when gesture ends
+                // Fix 1: Store the final translation state *before* resetting scale/origin
                 lastTranslateX = currentTranslateX;
                 lastTranslateY = currentTranslateY;
 
@@ -752,7 +755,7 @@
                     lastTranslateX = 0; // Reset stored state too
                     lastTranslateY = 0;
                     video.style.transformOrigin = 'center center'; // Reset origin only when scale is 1
-                    applyTransform();
+                    applyTransform(); // Apply the reset transform
                 } else {
                      video.style.transformOrigin = 'center center'; // Reset origin after gesture
                 }
