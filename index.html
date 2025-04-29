@@ -185,15 +185,17 @@
     }
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
-      /* Fix 1: Ensure aspect ratio is maintained within fullscreen */
+      /* Ensure aspect ratio is maintained within fullscreen */
       width: 100% !important; /* Fill width */
       height: auto !important; /* Height adjusts */
-      max-height: calc(100vh - 60px); /* Limit height (leave space for controls) */
+      max-height: calc(100vh - 60px); /* Limit height (leave space for controls ~50-60px) */
       aspect-ratio: 16 / 9; /* Maintain aspect ratio */
       border-radius: 0;
       position: relative;
       flex-shrink: 1; /* Allow shrinking if needed */
     }
+    /* Lint Fix 4: Removed empty ruleset */
+
     .player-container:fullscreen .canvas-wrapper canvas,
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
       width: 100% !important;
@@ -222,8 +224,6 @@
       z-index: 2;
       background: #222; /* Match player background */
       border-radius: 0 0 12px 12px; /* Round bottom corners */
-      /* Fix 2: Remove top border which acted as separator when overlaying */
-      /* border-top: 1px solid #444; */
     }
     .control-bar {
       display: flex; align-items: center; gap: 10px; padding: 8px 12px;
@@ -247,34 +247,34 @@
     .disable-btn:hover { background: #c0392b; }
     .title-bar {
       text-align: center; padding: 5px 10px; font-size: 14px; color: #eee;
-      /* Fix 2: Remove top border, now part of controls container */
-      /* border-top: 1px solid #444; */
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       background: rgba(0,0,0,0.75); /* Give title bar distinct background */
-      border-radius: 0 0 12px 12px; /* Round bottom if it's the last element */
+      /* Round bottom only if it's the last element in controls-container */
+      border-radius: 0 0 12px 12px;
     }
-    /* Only make title bar rounded if it's the last child (i.e., no control bar below it) */
+    /* Adjust title bar if control bar is present (i.e., title is not last) */
     .control-bar + .title-bar {
-        border-radius: 0; /* Remove rounding if control bar is present */
-        border-top: 1px solid #444; /* Add separator line above title if controls are below */
+        border-radius: 0; /* Remove rounding */
+        border-top: 1px solid #444; /* Add separator line above title */
     }
 
+    /* Lint Fix 4: Removed empty ruleset */
 
-    /* Fix 2: Desktop Controls Overlay ONLY in Fullscreen */
+    /* Desktop Controls Overlay ONLY in Fullscreen */
     .player-container:fullscreen .controls-container,
     .player-container:-webkit-full-screen .controls-container {
-        position: absolute; /* Overlay in fullscreen */
-        bottom: 0;
-        left: 0;
-        right: 0;
-        opacity: 1;
-        transition: opacity 0.3s ease;
-        border-radius: 0; /* No rounding in fullscreen */
-        background: rgba(0,0,0,0.75); /* Overlay background */
+        position: relative; /* Change from absolute to relative to stack below */
+        bottom: auto; left: auto; right: auto; /* Reset positioning */
+        opacity: 1; /* Always visible */
+        transition: none; /* No transition needed */
+        border-radius: 0; /* No rounding */
+        background: #222; /* Match normal controls background */
         pointer-events: auto;
-        max-width: 800px; /* Limit width in fullscreen */
-        margin: 0 auto 10px auto; /* Center and add bottom margin */
-        border-radius: 8px; /* Add slight rounding in fullscreen */
+        width: 100%; /* Take full width of the flex item */
+        max-width: 800px; /* Limit width */
+        margin: 10px auto 0 auto; /* Add top margin, center horizontally */
+        border-radius: 8px; /* Add slight rounding */
+        flex-shrink: 0; /* Prevent shrinking */
     }
     .player-container:fullscreen .title-bar,
     .player-container:-webkit-full-screen .title-bar {
@@ -282,8 +282,8 @@
         border-top: 1px solid #444; /* Add separator */
     }
 
-     /* Hide desktop controls initially in native fullscreen unless hovered */
-    .player-container:fullscreen .controls-container,
+     /* Remove auto-hide for fullscreen desktop controls as they are below now */
+    /* .player-container:fullscreen .controls-container,
     .player-container:-webkit-full-screen .controls-container {
         opacity: 0;
         pointer-events: none;
@@ -292,7 +292,7 @@
     .player-container:-webkit-full-screen:hover .controls-container {
         opacity: 1;
         pointer-events: auto;
-    }
+    } */
 
 
     /* ------- URL MODAL & BACKDROP ------- */
@@ -308,7 +308,7 @@
     html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; border-radius: 0 8px 8px 0; box-shadow: 3px 0 10px rgba(0,0,0,0.3); }
     #sidebarToggle {
       display: none; /* Shown via JS */ position: fixed; top: 20px; left: 10px; transform: none; z-index: 1100; background: #444; border: none;
-      /* Fix 3: Ensure circular shape */
+      /* Ensure circular shape */
       width: 40px; height: 40px; padding: 0; /* Remove padding */
       font-size: 20px; line-height: 40px; /* Center icon vertically */ text-align: center; /* Center icon horizontally */
       color: #fff; cursor: pointer; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
@@ -333,8 +333,8 @@
 
     /* ---------- MOBILE PSEUDO-FULLSCREEN ---------- */
     html.pseudo-fullscreen-mobile {}
-    html.pseudo-fullscreen-mobile.non-safari { height: 110vh !important; overflow-y: scroll !important; position: relative; /* Added */ }
-    html.pseudo-fullscreen-mobile.non-safari body { height: auto !important; overflow: visible !important; position: relative; /* Added */ }
+    html.pseudo-fullscreen-mobile.non-safari { height: 110vh !important; overflow-y: scroll !important; position: relative; }
+    html.pseudo-fullscreen-mobile.non-safari body { height: auto !important; overflow: visible !important; position: relative; }
     .player-container.player-fullscreen-mobile { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; max-width: none !important; margin: 0 !important; border-radius: 0 !important; background-color: #000 !important; z-index: 2000 !important; overflow: hidden; }
     .player-container.player-fullscreen-mobile .source-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; border-radius: 0; transform-origin: center center; transform: scale(1) translate(0px, 0px); cursor: grab; will-change: transform; }
     .player-container.player-fullscreen-mobile .source-video:active { cursor: grabbing; }
@@ -479,9 +479,8 @@
       } else { // Desktop Setup
         const canvasWrapper = document.createElement("div"); canvasWrapper.className = "canvas-wrapper"; container.appendChild(canvasWrapper);
         const canvas = document.createElement("canvas"); canvas.className = "display-canvas"; canvas.width = 960; canvas.height = 540; canvasWrapper.appendChild(canvas);
-        // Controls container is now added *after* canvas wrapper for desktop non-fullscreen
-        const controlsContainer = document.createElement("div"); controlsContainer.className = "controls-container"; // No overlay class initially
-        container.appendChild(controlsContainer); // Append after canvas wrapper
+        const controlsContainer = document.createElement("div"); controlsContainer.className = "controls-container";
+        container.appendChild(controlsContainer); // Append controls container below canvas
         container.appendChild(video); // Add hidden video last
 
         const ctx = canvas.getContext("2d");
@@ -491,22 +490,48 @@
         video.addEventListener('error', () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null; });
 
         // --- Desktop Interactions ---
-        let startX, startY, isDragging = false; canvasWrapper.addEventListener("mousedown", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (e.button === 0 && (spaceHeld || isFullscreen)) { startX = e.clientX; startY = e.clientY; isDragging = false; container.style.cursor = 'grabbing'; e.preventDefault(); } }); document.addEventListener("mousemove", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if ((e.buttons & 1) && (spaceHeld || isFullscreen) && typeof startX === 'number') { const dx = e.clientX - startX; const dy = e.clientY - startY; if (!isDragging && Math.hypot(dx, dy) > 5) isDragging = true; if (isDragging) { container.panX += dx / container.zoomScale; container.panY += dy / container.zoomScale; clampPan(container); savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY }); startX = e.clientX; startY = e.clientY; } } }); document.addEventListener("mouseup", e => { if (e.button === 0 && typeof startX === 'number') { container.style.cursor = ''; startX = null; startY = null; setTimeout(() => isDragging = false, 0); } }); canvasWrapper.addEventListener("wheel", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (spaceHeld || isFullscreen) { e.preventDefault(); const rect = canvasWrapper.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top; const normX = mouseX / rect.width; const normY = mouseY / rect.height; const canvasX = normX * 960; const canvasY = normY * 540; const oldZoom = container.zoomScale; const zoomAmount = 0.15; let newZoom = oldZoom * (e.deltaY < 0 ? (1 + zoomAmount) : (1 / (1 + zoomAmount))); newZoom = Math.max(1, Math.min(5, newZoom)); if (newZoom !== oldZoom) { container.panX += (canvasX - 480) * (1 / newZoom - 1 / oldZoom); container.panY += (canvasY - 270) * (1 / newZoom - 1 / oldZoom); container.zoomScale = newZoom; clampPan(container); savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY }); } } }, { passive: false }); let clickTimeout = null; let lastClickTime = 0; canvasWrapper.addEventListener("click", (e) => { if (e.button !== 0 || isDragging) return; const now = Date.now(); if (now - lastClickTime < 300) { clearTimeout(clickTimeout); lastClickTime = 0; if (!document.fullscreenElement && !document.webkitFullscreenElement) enterNativeFullScreen(container); else exitNativeFullScreen(); } else { clickTimeout = setTimeout(() => { if (video.paused) video.play().catch(()=>{}); else video.pause(); }, 300); } lastClickTime = now; });
+        let startX, startY, isDragging = false; canvasWrapper.addEventListener("mousedown", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (e.button === 0 && (spaceHeld || isFullscreen)) { startX = e.clientX; startY = e.clientY; isDragging = false; container.style.cursor = 'grabbing'; e.preventDefault(); } }); document.addEventListener("mousemove", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if ((e.buttons & 1) && (spaceHeld || isFullscreen) && typeof startX === 'number') { const dx = e.clientX - startX; const dy = e.clientY - startY; if (!isDragging && Math.hypot(dx, dy) > 5) isDragging = true; if (isDragging) { container.panX += dx / container.zoomScale; container.panY += dy / container.zoomScale; clampPan(container); savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY }); startX = e.clientX; startY = e.clientY; } } }); document.addEventListener("mouseup", e => { if (e.button === 0 && typeof startX === 'number') { container.style.cursor = ''; startX = null; startY = null; setTimeout(() => isDragging = false, 0); } }); canvasWrapper.addEventListener("wheel", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (spaceHeld || isFullscreen) { e.preventDefault(); const rect = canvasWrapper.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top; const normX = mouseX / rect.width; const normY = mouseY / rect.height; const canvasX = normX * 960; const canvasY = normY * 540; const oldZoom = container.zoomScale; const zoomAmount = 0.15; let newZoom = oldZoom * (e.deltaY < 0 ? (1 + zoomAmount) : (1 / (1 + zoomAmount))); newZoom = Math.max(1, Math.min(5, newZoom)); if (newZoom !== oldZoom) { container.panX += (canvasX - 480) * (1 / newZoom - 1 / oldZoom); container.panY += (canvasY - 270) * (1 / newZoom - 1 / oldZoom); container.zoomScale = newZoom; clampPan(container); savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY }); } } }, { passive: false });
+        // Click/Double Click Listener - Attach to container for fullscreen exit
+        let clickTimeout = null; let lastClickTime = 0;
+        const handleDesktopClick = (e) => {
+            // Only handle clicks directly on canvasWrapper when not fullscreen
+            const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+            if (!isFullscreen && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) return;
+            if (e.button !== 0 || isDragging) return;
 
-        // --- Desktop Controls (Now appended to controlsContainer) ---
-        const controlBar = document.createElement("div"); controlBar.className = "control-bar"; controlsContainer.appendChild(controlBar); // Append to controlsContainer
+            const now = Date.now();
+            if (now - lastClickTime < 300) { // Double click
+                clearTimeout(clickTimeout); lastClickTime = 0;
+                if (!isFullscreen) enterNativeFullScreen(container);
+                else exitNativeFullScreen(); // Exit works on container click now
+            } else { // Single click
+                clickTimeout = setTimeout(() => {
+                    // Only toggle play/pause if click was on canvasWrapper (not black bars)
+                    if (e.target === canvasWrapper || canvasWrapper.contains(e.target)) {
+                       if (video.paused) video.play().catch(()=>{}); else video.pause();
+                    }
+                }, 300);
+            }
+            lastClickTime = now;
+        };
+        // Add listener to container, works in/out of fullscreen
+        container.addEventListener("click", handleDesktopClick);
+
+
+        // --- Desktop Controls ---
+        const controlBar = document.createElement("div"); controlBar.className = "control-bar"; controlsContainer.appendChild(controlBar);
         const playPauseBtn = document.createElement("button"); playPauseBtn.textContent = video.paused ? "Play" : "Pause"; playPauseBtn.setAttribute("aria-label", "Play/Pause"); playPauseBtn.addEventListener("click", (e) => { e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); }); video.addEventListener("play", () => playPauseBtn.textContent = "Pause"); video.addEventListener("pause", () => playPauseBtn.textContent = "Play"); video.addEventListener("ended", () => playPauseBtn.textContent = "Play"); controlBar.appendChild(playPauseBtn);
         const progressBar = document.createElement("div"); progressBar.className = "progress-bar"; const bufferedBar = document.createElement("div"); bufferedBar.className = "buffered"; const playedBar = document.createElement("div"); playedBar.className = "played"; const thumb = document.createElement("div"); thumb.className = "thumb"; progressBar.appendChild(bufferedBar); progressBar.appendChild(playedBar); progressBar.appendChild(thumb); controlBar.appendChild(progressBar); function updateProgressBar() { /* ... (no changes) ... */ const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) { const currentTime = video.currentTime; const buffered = video.buffered; let bufferedEnd = 0; try { for (let i = 0; i < buffered.length; i++) { if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) { bufferedEnd = buffered.end(i); break; } bufferedEnd = Math.max(bufferedEnd, buffered.end(i)); } } catch (err) {} const playedPercent = (currentTime / duration) * 100; const bufferedPercent = (bufferedEnd / duration) * 100; playedBar.style.width = `${Math.min(100, playedPercent)}%`; thumb.style.left = `${Math.min(100, playedPercent)}%`; bufferedBar.style.width = `${Math.min(100, bufferedPercent)}%`; } else { playedBar.style.width = '0%'; thumb.style.left = '0%'; bufferedBar.style.width = '0%'; } } video.addEventListener("timeupdate", updateProgressBar); video.addEventListener("progress", updateProgressBar); video.addEventListener("loadedmetadata", updateProgressBar); video.addEventListener("durationchange", updateProgressBar); let isSeeking = false; function seek(event) { /* ... (no changes) ... */ const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) { const progressBarRect = progressBar.getBoundingClientRect(); let clientX = event.clientX; if (event.type.startsWith('touch')) { if (event.touches.length > 0) clientX = event.touches[0].clientX; else if (event.changedTouches.length > 0) clientX = event.changedTouches[0].clientX; else return; } if (typeof clientX === 'undefined') return; const clickX = clientX - progressBarRect.left; let seekPercent = clickX / progressBarRect.width; seekPercent = Math.max(0, Math.min(1, seekPercent)); const seekTime = seekPercent * duration; let isSeekable = false; try { for (let i = 0; i < video.seekable.length; i++) { if (seekTime >= video.seekable.start(i) && seekTime <= video.seekable.end(i)) { isSeekable = true; break; } } } catch (e) { isSeekable = true; } if (isSeekable) { video.currentTime = seekTime; updateProgressBar(); } } } progressBar.addEventListener("mousedown", (e) => { if (e.button === 0) { isSeeking = true; document.body.style.userSelect = 'none'; seek(e); progressBar.style.cursor = 'grabbing'; } }); progressBar.addEventListener("touchstart", (e) => { isSeeking = true; document.body.style.webkitUserSelect = 'none'; seek(e); }, { passive: true }); document.addEventListener("mousemove", (e) => { if (isSeeking) seek(e); }); document.addEventListener("touchmove", (e) => { if (isSeeking) { e.preventDefault(); seek(e); } }, { passive: false }); document.addEventListener("mouseup", (e) => { if (e.button === 0 && isSeeking) { isSeeking = false; progressBar.style.cursor = 'pointer'; document.body.style.userSelect = ''; } }); document.addEventListener("touchend", (e) => { if (isSeeking) { isSeeking = false; document.body.style.webkitUserSelect = ''; } });
         const fsBtnDesktop = document.createElement("button"); fsBtnDesktop.innerHTML = "&#x26F6;"; fsBtnDesktop.setAttribute("aria-label", "Enter/Exit Fullscreen"); fsBtnDesktop.addEventListener("click", (e) => { e.stopPropagation(); if (!document.fullscreenElement && !document.webkitFullscreenElement) enterNativeFullScreen(container); else exitNativeFullScreen(); }); controlBar.appendChild(fsBtnDesktop); function updateFsButtonIcon() { const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container; fsBtnDesktop.innerHTML = isFs ? "&#x2921;" : "&#x26F6;"; } document.addEventListener("fullscreenchange", updateFsButtonIcon); document.addEventListener("webkitfullscreenchange", updateFsButtonIcon);
         const resetBtn = document.createElement("button"); resetBtn.textContent = "Reset"; resetBtn.setAttribute("aria-label", "Reset Pan & Zoom"); resetBtn.addEventListener("click", (e) => { e.stopPropagation(); container.zoomScale = 1; container.panX = 0; container.panY = 0; savePlayerSettings(url, { zoomScale: 1, panX: 0, panY: 0 }); }); controlBar.appendChild(resetBtn);
         const disableBtn = document.createElement("button"); disableBtn.className = "disable-btn"; disableBtn.textContent = "✕"; disableBtn.setAttribute("aria-label", "Hide this stream"); disableBtn.addEventListener("click", (e) => { e.stopPropagation(); updateStreamEnabled(url, false); }); controlBar.appendChild(disableBtn);
-        // Title bar is now optional for desktop if controls are always visible below
-        // const titleBar = document.createElement("div"); titleBar.className = "title-bar"; titleBar.textContent = extractTitle(url); controlsContainer.appendChild(titleBar);
+        // Title bar added after control bar
+        const titleBar = document.createElement("div"); titleBar.className = "title-bar"; titleBar.textContent = extractTitle(url); controlsContainer.appendChild(titleBar);
 
         // --- Desktop Controls Auto-Hide (Only in Fullscreen) ---
         let hideControlsTimeout = null; function showControlsTemporarily() { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (!isFullscreen) return; /* Only run in fullscreen */ controlsContainer.style.opacity = '1'; controlsContainer.style.pointerEvents = 'auto'; clearTimeout(hideControlsTimeout); if (!video.paused) { hideControlsTimeout = setTimeout(() => { controlsContainer.style.opacity = '0'; controlsContainer.style.pointerEvents = 'none'; }, 3000); } }
         container.addEventListener('mousemove', showControlsTemporarily); container.addEventListener('mouseenter', showControlsTemporarily); video.addEventListener('pause', showControlsTemporarily); video.addEventListener('play', showControlsTemporarily);
-        function setInitialControlsVisibility() { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (isFullscreen) { showControlsTemporarily(); } else { controlsContainer.style.opacity = '1'; controlsContainer.style.pointerEvents = 'auto'; clearTimeout(hideControlsTimeout); } } document.addEventListener("fullscreenchange", setInitialControlsVisibility); document.addEventListener("webkitfullscreenchange", setInitialControlsVisibility); // setInitialControlsVisibility(); // Initial visibility handled by default CSS
+        function setInitialControlsVisibility() { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (isFullscreen) { showControlsTemporarily(); } else { controlsContainer.style.opacity = '1'; controlsContainer.style.pointerEvents = 'auto'; clearTimeout(hideControlsTimeout); } } document.addEventListener("fullscreenchange", setInitialControlsVisibility); document.addEventListener("webkitfullscreenchange", setInitialControlsVisibility);
 
       } // End Desktop Specific Setup
 
@@ -539,9 +564,13 @@
 
         if (video.paused) video.play().catch(e => console.log("Pseudo-FS entry play failed:", e));
 
-        const { cleanup: controlsCleanup } = setupMobileFullscreenControls(container, video);
-        const { cleanup: gestureCleanup } = setupPseudoFullscreenGestures(container, video);
-        pseudoFsCleanup = () => { if (controlsCleanup) controlsCleanup(); if (gestureCleanup) gestureCleanup(); };
+        const { cleanup: controlsCleanup, showFsControls, hideFsControls } = setupMobileFullscreenControls(container, video);
+        const { cleanup: gestureCleanup } = setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls); // Pass control functions
+        // Store controls API on player object for gesture handler access
+        if(players[container.dataset.url]) {
+            players[container.dataset.url].controlsApi = { showFsControls, hideFsControls };
+        }
+        pseudoFsCleanup = () => { if (controlsCleanup) controlsCleanup(); if (gestureCleanup) gestureCleanup(); if(players[container.dataset.url]) delete players[container.dataset.url].controlsApi; };
         if (!IS_SAFARI_MOBILE) hideBrowserUI();
     }
 
@@ -565,7 +594,7 @@
          let listeners = [];
          function addListener(element, type, handler, options) { element.addEventListener(type, handler, options); listeners.push({ element, type, handler, options }); }
 
-         if (fsControls) { /* Controls already exist, just ensure state */ container.classList.remove("controls-open"); hideFsControls(); return { cleanup: fsControls.cleanupFsListeners || (() => {}) }; }
+         if (fsControls) { container.classList.remove("controls-open"); hideFsControls(); return { cleanup: fsControls.cleanupFsListeners || (() => {}), showFsControls, hideFsControls }; } // Return existing if present
 
          console.log("Setting up mobile fullscreen controls UI for:", container.dataset.url);
          fsControls = document.createElement("div"); fsControls.className = "controls-container fullscreen-controls";
@@ -590,7 +619,7 @@
          addListener(fsPlayPauseBtn, "click", (e) => { e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); });
          addListener(fsExitBtn, "click", (e) => { e.stopPropagation(); exitPseudoFullscreen(container, video); });
 
-         // --- Controls Visibility Functions (Called by Gesture Handler) ---
+         // --- Controls Visibility Functions ---
          function showFsControls() { if (!fsControls || !container.classList.contains('player-fullscreen-mobile')) return; fsControls.style.bottom = `env(safe-area-inset-bottom, 10px)`; container.classList.add("controls-open"); clearTimeout(controlsTimeout_fs); }
          function hideFsControls() { if (!fsControls || !container.classList.contains('player-fullscreen-mobile')) return; if (!isFsSeeking) { fsControls.style.bottom = '-120px'; container.classList.remove("controls-open"); } }
          const handleControlsInteraction = (e) => { e.stopPropagation(); /* Prevent interfering with gestures */ };
@@ -602,11 +631,14 @@
          const cleanup = () => { console.log("Cleaning up fullscreen controls listeners for:", container.dataset.url); listeners.forEach(({ element, type, handler, options }) => { element.removeEventListener(type, handler, options); }); listeners = []; clearTimeout(controlsTimeout_fs); };
          fsControls.cleanupFsListeners = cleanup;
 
-         return { cleanup, showFsControls, hideFsControls }; // Return show/hide functions
+         // Store reference for gesture handler
+         players[container.dataset.url].controlsApi = { showFsControls, hideFsControls };
+
+         return { cleanup, showFsControls, hideFsControls };
     }
 
     // --- Mobile Pseudo-Fullscreen Gestures Setup ---
-    function setupPseudoFullscreenGestures(container, video) {
+    function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) { // Receive show/hide functions
         let initialDistance = null; let initialScale = 1; let currentScale = 1;
         let initialMidpoint = null; let currentTranslateX = 0; let currentTranslateY = 0;
         let lastTranslateX = 0; let lastTranslateY = 0;
@@ -614,46 +646,38 @@
         let listeners = [];
         function addListener(element, type, handler, options) { element.addEventListener(type, handler, options); listeners.push({ element, type, handler, options }); }
 
-        // Get controls show/hide functions
-        const fsControlsElement = container.querySelector('.fullscreen-controls');
-        // Ensure controlsApi exists and has methods before using it
-        const controlsApi = fsControlsElement && fsControlsElement.cleanupFsListeners
-            ? players[container.dataset.url]?.controlsApi // Get from stored ref if exists
-            : setupMobileFullscreenControls(container, video); // Setup if needed (should exist)
+        // Get controls API if not passed (fallback, should be passed now)
+        const controlsApi = players[container.dataset.url]?.controlsApi || { showFsControls, hideFsControls };
 
         function applyTransform() {
-            currentScale = Math.max(1, Math.min(currentScale, 5)); // Clamp scale 1x-5x
+            currentScale = Math.max(1, Math.min(currentScale, 5));
             const videoRect = video.getBoundingClientRect();
             const visualWidth = Math.min(videoRect.width, videoRect.height * (video.videoWidth / video.videoHeight));
             const visualHeight = Math.min(videoRect.height, videoRect.width * (video.videoHeight / video.videoWidth));
-            const maxTranslateX = (visualWidth * (currentScale - 1)) / 2; // Simpler calculation based on visual size
+            const maxTranslateX = (visualWidth * (currentScale - 1)) / 2;
             const maxTranslateY = (visualHeight * (currentScale - 1)) / 2;
-
-            // Adjust clamping based on scale - allow panning further when zoomed
             currentTranslateX = Math.max(-maxTranslateX, Math.min(maxTranslateX, currentTranslateX));
             currentTranslateY = Math.max(-maxTranslateY, Math.min(maxTranslateY, currentTranslateY));
 
-            // Use center origin for translation, origin for scale set separately
-            video.style.transformOrigin = `center center`;
+            // Apply transform using the dynamically set origin during pinch
             video.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
         }
-
 
         const handleTouchStart = (e) => {
             if (e.target.closest('.fullscreen-controls')) return;
             isGesturing = true;
 
-            if (e.touches.length === 1) { // Potential swipe start
+            if (e.touches.length === 1) {
                 touchStartY = e.touches[0].clientY; touchStartTime = Date.now(); isSwipingY = false;
-            } else if (e.touches.length === 2) { // Pinch/Pan start
+            } else if (e.touches.length === 2) {
                 isSwipingY = false; touchStartY = null;
                 const touch1 = e.touches[0]; const touch2 = e.touches[1];
                 initialDistance = getTouchDistance(touch1, touch2);
                 initialScale = currentScale;
                 initialMidpoint = getTouchMidpoint(touch1, touch2);
 
-                // Fix 3: Set transform origin based on midpoint relative to video element
                 const videoRect = video.getBoundingClientRect();
+                // Fix 3: Calculate origin relative to video element's top-left
                 const originX = initialMidpoint.x - videoRect.left;
                 const originY = initialMidpoint.y - videoRect.top;
                 video.style.transformOrigin = `${originX}px ${originY}px`;
@@ -666,10 +690,10 @@
         const handleTouchMove = (e) => {
             if (!isGesturing || e.target.closest('.fullscreen-controls')) return;
 
-            if (e.touches.length === 1 && touchStartY !== null) { // Single finger move (Swipe check)
+            if (e.touches.length === 1 && touchStartY !== null) {
                 const currentY = e.touches[0].clientY; const deltaY = currentY - touchStartY; const deltaTime = Date.now() - touchStartTime;
                 if (!isSwipingY && (Math.abs(deltaY) > 10 || deltaTime > 100)) { isSwipingY = true; }
-            } else if (e.touches.length === 2 && initialDistance !== null) { // Two fingers move (Pinch/Pan)
+            } else if (e.touches.length === 2 && initialDistance !== null) {
                 e.preventDefault(); isSwipingY = false;
                 const touch1 = e.touches[0]; const touch2 = e.touches[1];
                 const currentDistance = getTouchDistance(touch1, touch2);
@@ -678,11 +702,13 @@
                 const scaleFactor = currentDistance / initialDistance;
                 currentScale = initialScale * scaleFactor;
 
-                // Fix 3: Pan calculation relative to the initial midpoint
+                // Fix 3: Calculate translation based on midpoint movement
                 const dx = currentMidpoint.x - initialMidpoint.x;
                 const dy = currentMidpoint.y - initialMidpoint.y;
 
-                // Apply translation delta to the last known translation
+                // Apply translation delta relative to the scaled state around the origin
+                // This requires adjusting the delta by the scale factor if origin wasn't center
+                // Simpler approach: Apply delta directly to last translation
                 currentTranslateX = lastTranslateX + dx;
                 currentTranslateY = lastTranslateY + dy;
 
@@ -693,28 +719,24 @@
         const handleTouchEnd = (e) => {
             if (!isGesturing) return;
 
-            if (e.touches.length < 2) { // End of two-finger gesture or single touch end
+            if (e.touches.length < 2) {
                 initialDistance = null; initialMidpoint = null;
                 if (currentScale <= 1) { currentScale = 1; currentTranslateX = 0; currentTranslateY = 0; applyTransform(); }
                 video.style.transformOrigin = 'center center'; // Reset origin after gesture
             }
 
-            if (e.touches.length === 0 && isSwipingY && touchStartY !== null) { // End of single-finger swipe
+            if (e.touches.length === 0 && isSwipingY && touchStartY !== null) {
                 const currentY = e.changedTouches[0].clientY; const deltaY = currentY - touchStartY; const deltaTime = Date.now() - touchStartTime; const swipeThreshold = 50;
                 console.log(`Swipe detected: deltaY=${deltaY}, deltaTime=${deltaTime}`);
                 if (Math.abs(deltaY) > swipeThreshold && deltaTime < 500) {
                     const controlsAreOpen = container.classList.contains('controls-open');
                     if (deltaY < 0) { // Swipe Up -> Show Controls
                         console.log("Swipe Up -> Show Controls");
-                        if (controlsApi && controlsApi.showFsControls) controlsApi.showFsControls(); // Use returned function
-                        else if (fsControlsElement) fsControlsElement.style.bottom = `env(safe-area-inset-bottom, 10px)`; // Fallback
-                        container.classList.add('controls-open');
+                        if (controlsApi && controlsApi.showFsControls) controlsApi.showFsControls();
                     } else { // Swipe Down
                         if (controlsAreOpen) { // -> Hide Controls
                             console.log("Swipe Down (Controls Open) -> Hide Controls");
-                            if (controlsApi && controlsApi.hideFsControls) controlsApi.hideFsControls(); // Use returned function
-                            else if (fsControlsElement) fsControlsElement.style.bottom = '-120px'; // Fallback
-                            container.classList.remove('controls-open');
+                            if (controlsApi && controlsApi.hideFsControls) controlsApi.hideFsControls();
                         } else { // -> Exit Fullscreen
                             console.log("Swipe Down (Controls Hidden) -> Exit Fullscreen");
                             exitPseudoFullscreen(container, video);
@@ -773,3 +795,4 @@
   </script>
 </body>
 </html>
+
