@@ -13,7 +13,7 @@
       font-family: Arial, sans-serif;
       background: #222;
       color: #fff;
-      overflow: hidden; /* Prevent scroll on body */
+      overflow: hidden; /* Prevent scroll on body by default */
       position: fixed; /* Prevent pull-to-refresh/overscroll effects */
       width: 100%;
     }
@@ -202,9 +202,6 @@
       width: 100% !important;
       height: 100% !important;
     }
-     /* Native Fullscreen video adjustments (Desktop) */
-    /* Lint Fix 3: Removed empty ruleset */
-
 
     .player-container.desktop .source-video {
       opacity: 0; position: absolute; top: -9999px; left: -9999px;
@@ -318,9 +315,32 @@
     .video-title-row span { flex-grow: 1; text-align: center; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ---------- MOBILE PSEUDO-FULLSCREEN ---------- */
-    html.pseudo-fullscreen-mobile {}
-    html.pseudo-fullscreen-mobile.non-safari { height: 110vh !important; overflow-y: scroll !important; position: relative; }
-    html.pseudo-fullscreen-mobile.non-safari body { height: auto !important; overflow: visible !important; position: relative; }
+    /* Fix 2: Apply scroll only to HTML for non-safari */
+    html.pseudo-fullscreen-mobile {
+        position: relative; /* Needed for fixed player */
+        /* overflow: hidden !important; */ /* Prevent scroll on html by default */
+    }
+    html.pseudo-fullscreen-mobile.non-safari {
+        overflow-y: scroll !important; /* Make ONLY HTML scrollable */
+        height: auto !important; /* Allow height to grow */
+        min-height: 105vh; /* Make slightly taller than viewport */
+    }
+    /* Ensure body doesn't interfere with html scrolling */
+    html.pseudo-fullscreen-mobile body {
+        overflow: visible !important;
+        height: auto !important;
+        position: static !important; /* Ensure body flows normally */
+    }
+    /* Ensure container doesn't restrict height */
+     html.pseudo-fullscreen-mobile .container {
+         height: auto !important;
+         min-height: 105vh; /* Match html min-height */
+     }
+     /* Ensure main content doesn't restrict height */
+     html.pseudo-fullscreen-mobile #main-content {
+         height: auto !important;
+     }
+
     .player-container.player-fullscreen-mobile { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; max-width: none !important; margin: 0 !important; border-radius: 0 !important; background-color: #000 !important; z-index: 2000 !important; overflow: hidden; }
     .player-container.player-fullscreen-mobile .source-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; border-radius: 0; transform-origin: center center; transform: scale(1) translate(0px, 0px); cursor: grab; will-change: transform; }
     .player-container.player-fullscreen-mobile .source-video:active { cursor: grabbing; }
@@ -366,15 +386,17 @@
           // Try scrolling both window and html element with a longer delay
           setTimeout(() => {
               console.log(`ScrollTop Before: window=${window.scrollY}, html=${document.documentElement.scrollTop}`);
-              window.scrollTo(0, 1);
+              // Try scrolling html first, then window as fallback
               if (document.documentElement.scrollHeight > window.innerHeight) {
                   document.documentElement.scrollTop = 1;
+              } else {
+                  window.scrollTo(0, 1);
               }
               // Check after a short delay if it worked
               setTimeout(() => {
                   console.log(`ScrollTop After: window=${window.scrollY}, html=${document.documentElement.scrollTop}`);
               }, 100);
-          }, 200); // Increased delay
+          }, 250); // Slightly longer delay
       } else { console.log("Browser UI hiding skipped (PWA standalone or Safari)."); }
     }
   </script>
@@ -529,11 +551,6 @@
         // Title bar added after control bar
         const titleBar = document.createElement("div"); titleBar.className = "title-bar"; titleBar.textContent = extractTitle(url); controlsContainer.appendChild(titleBar);
 
-        // --- Desktop Controls Auto-Hide (Only in Fullscreen - REMOVED as controls are below) ---
-        // let hideControlsTimeout = null; function showControlsTemporarily() { ... }
-        // container.addEventListener('mousemove', showControlsTemporarily); ... etc ...
-        // function setInitialControlsVisibility() { ... } document.addEventListener("fullscreenchange", setInitialControlsVisibility); ... etc ...
-
       } // End Desktop Specific Setup
 
       // --- HLS.js Setup ---
@@ -586,6 +603,7 @@
         const fsControls = container.querySelector('.fullscreen-controls'); if (fsControls) fsControls.remove();
         document.body.style.height = ''; document.body.style.overflow = '';
         htmlEl.style.height = ''; htmlEl.style.overflow = '';
+        htmlEl.style.minHeight = ''; // Reset min-height
     }
 
     // --- Mobile Pseudo-Fullscreen Controls Setup ---
@@ -675,7 +693,7 @@
                 isSwipingY = false; touchStartY = null;
                 const touch1 = e.touches[0]; const touch2 = e.touches[1];
                 initialDistance = getTouchDistance(touch1, touch2);
-                initialScale = currentScale;
+                initialScale = currentScale; // Start from current scale
                 initialMidpoint = getTouchMidpoint(touch1, touch2);
 
                 const videoRect = video.getBoundingClientRect();
@@ -684,7 +702,9 @@
                 const originY = initialMidpoint.y - videoRect.top;
                 video.style.transformOrigin = `${originX}px ${originY}px`;
 
-                lastTranslateX = currentTranslateX; lastTranslateY = currentTranslateY;
+                // Fix 1: Store the current translation state when starting a new gesture
+                lastTranslateX = currentTranslateX;
+                lastTranslateY = currentTranslateY;
                 video.style.transition = 'none';
             }
         };
@@ -721,18 +741,21 @@
 
             if (e.touches.length < 2) { // End of two-finger gesture or single touch end
                 initialDistance = null; initialMidpoint = null;
-                // Fix 1: Don't reset transform origin here, let it persist until scale is 1
-                // video.style.transformOrigin = 'center center';
+                // Fix 1: Store the final translation state when gesture ends
+                lastTranslateX = currentTranslateX;
+                lastTranslateY = currentTranslateY;
+
                 if (currentScale <= 1) { // If scale is back to 1 or less, reset fully
                     currentScale = 1;
                     currentTranslateX = 0;
                     currentTranslateY = 0;
+                    lastTranslateX = 0; // Reset stored state too
+                    lastTranslateY = 0;
                     video.style.transformOrigin = 'center center'; // Reset origin only when scale is 1
                     applyTransform();
+                } else {
+                     video.style.transformOrigin = 'center center'; // Reset origin after gesture
                 }
-                // Store the final translation state after gesture ends
-                lastTranslateX = currentTranslateX;
-                lastTranslateY = currentTranslateY;
             }
 
             if (e.touches.length === 0 && isSwipingY && touchStartY !== null) { // End of single-finger swipe
