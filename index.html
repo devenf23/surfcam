@@ -325,6 +325,7 @@
         overflow-y: scroll !important; /* Make ONLY HTML scrollable */
         height: auto !important; /* Allow height to grow */
         min-height: 105vh; /* Make slightly taller than viewport */
+        /* position: static !important; */ /* Let it be relative */
     }
     /* Ensure body doesn't interfere with html scrolling */
     html.pseudo-fullscreen-mobile body {
@@ -337,10 +338,14 @@
      html.pseudo-fullscreen-mobile .container {
          height: auto !important;
          min-height: 105vh; /* Match html min-height */
+         position: static !important; /* Ensure container flows */
+         display: block !important; /* Change from flex */
      }
      /* Ensure main content doesn't restrict height */
      html.pseudo-fullscreen-mobile #main-content {
          height: auto !important;
+         min-height: 105vh; /* Match html min-height */
+         display: block !important; /* Change from flex */
      }
 
     .player-container.player-fullscreen-mobile { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; max-width: none !important; margin: 0 !important; border-radius: 0 !important; background-color: #000 !important; z-index: 2000 !important; overflow: hidden; }
@@ -661,7 +666,7 @@
     }
 
     // --- Mobile Pseudo-Fullscreen Gestures Setup ---
-    function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) { // Receive show/hide functions
+    function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) {
         let initialDistance = null; let initialScale = 1; let currentScale = 1;
         let initialMidpoint = null; let currentTranslateX = 0; let currentTranslateY = 0;
         let lastTranslateX = 0; let lastTranslateY = 0;
@@ -669,7 +674,6 @@
         let listeners = [];
         function addListener(element, type, handler, options) { element.addEventListener(type, handler, options); listeners.push({ element, type, handler, options }); }
 
-        // Get controls API if not passed (fallback, should be passed now)
         const controlsApi = players[container.dataset.url]?.controlsApi || { showFsControls, hideFsControls };
 
         function applyTransform() {
@@ -681,8 +685,6 @@
             const maxTranslateY = (visualHeight * (currentScale - 1)) / 2;
             currentTranslateX = Math.max(-maxTranslateX, Math.min(maxTranslateX, currentTranslateX));
             currentTranslateY = Math.max(-maxTranslateY, Math.min(maxTranslateY, currentTranslateY));
-
-            // Apply transform using the dynamically set origin during pinch
             video.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
         }
 
@@ -700,7 +702,6 @@
                 initialMidpoint = getTouchMidpoint(touch1, touch2);
 
                 const videoRect = video.getBoundingClientRect();
-                // Calculate origin relative to video element's top-left
                 const originX = initialMidpoint.x - videoRect.left;
                 const originY = initialMidpoint.y - videoRect.top;
                 video.style.transformOrigin = `${originX}px ${originY}px`;
@@ -727,11 +728,10 @@
                 const scaleFactor = currentDistance / initialDistance;
                 currentScale = initialScale * scaleFactor;
 
-                // Calculate translation based on midpoint movement
                 const dx = currentMidpoint.x - initialMidpoint.x;
                 const dy = currentMidpoint.y - initialMidpoint.y;
 
-                // Apply translation delta relative to the scaled state around the origin
+                // Apply translation delta relative to the last stored state
                 currentTranslateX = lastTranslateX + dx;
                 currentTranslateY = lastTranslateY + dy;
 
