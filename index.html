@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/> <title>Live DVR – Desktop & Mobile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Live DVR – Desktop & Mobile</title>
   <style>
     /* ---------- GENERAL ---------- */
     html, body {
       margin: 0;
       padding: 0;
-      height: 100vh;
+      height: 100vh; /* Full viewport height */
       font-family: Arial, sans-serif;
       background: #222;
       color: #fff;
@@ -34,7 +35,7 @@
       z-index: 1000; /* Keep sidebar above main content */
       -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
-    #sidebar.hidden { /* Used by original mobile swipe logic */
+    #sidebar.hidden { /* Used by mobile swipe logic */
        transform: translateX(-100%);
     }
     #btn-add-urls,
@@ -45,15 +46,15 @@
       margin-bottom: 10px;
       font-size: 16px;
       cursor: pointer;
-      border-radius: 8px; /* Added rounded corners */
-      border: 1px solid #666; /* Added subtle border */
-      background-color: #555; /* Slightly lighter background */
+      border-radius: 8px;
+      border: 1px solid #666;
+      background-color: #555;
       color: #fff;
     }
      #btn-add-urls:hover,
     .sideBtn:hover,
     #urlModal button:hover {
-        background-color: #666; /* Darken on hover */
+        background-color: #666;
     }
     #sideButtons {
       display: flex;
@@ -74,24 +75,27 @@
       display: flex;
       align-items: center;
       margin-bottom: 5px;
-      padding: 5px; /* Added padding */
-      border-radius: 4px; /* Added rounded corners */
-      transition: background-color 0.2s; /* Smooth transition */
+      padding: 5px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+    .stream-item.selecting { /* Style for items being drag-selected */
+        background-color: #666;
     }
     .stream-item:hover {
-        background-color: #555; /* Highlight on hover */
+        background-color: #555;
     }
     .stream-item label {
-      margin-left: 8px; /* Increased margin */
+      margin-left: 8px;
       cursor: pointer;
-      user-select: none;
-      flex-grow: 1; /* Allow label to take available space */
+      user-select: none; /* Prevent text selection during drag */
+      flex-grow: 1;
     }
      .stream-item input[type="checkbox"] {
         cursor: pointer;
-        width: 18px; /* Larger checkbox */
+        width: 18px;
         height: 18px;
-        flex-shrink: 0; /* Prevent checkbox shrinking */
+        flex-shrink: 0;
      }
 
 
@@ -102,21 +106,21 @@
       padding: 20px;
       box-sizing: border-box;
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: wrap; /* Allows players to wrap on desktop */
       gap: 20px;
       overflow: auto; /* Enable scrolling for content */
-      border-radius: 8px 0 0 8px; /* Rounded corners on top-left and bottom-left */
+      border-radius: 8px 0 0 8px;
       height: 100vh; /* Ensure it takes full viewport height */
-      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+      -webkit-overflow-scrolling: touch;
     }
     html.mobile #main-content {
-      flex-direction: column;
-      align-items: center;
+      flex-direction: column; /* Stack players vertically */
+      align-items: center; /* Center players horizontally */
       flex-wrap: nowrap; /* Prevent wrapping in mobile column view */
       margin-left: 0;
-      border-radius: 0; /* Remove border radius for mobile */
-      padding-top: 60px; /* Add padding to avoid overlap with fixed toggle button */
-      height: 100vh; /* Explicitly set height */
+      border-radius: 0;
+      padding-top: 60px; /* Space for sidebar toggle */
+      height: 100vh;
       overflow-y: scroll; /* Ensure vertical scrolling is enabled */
     }
 
@@ -127,37 +131,32 @@
       flex-direction: column;
       position: relative;
       box-sizing: border-box;
-      border-radius: 12px; /* Added rounded corners */
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* Added shadow */
-      overflow: hidden; /* Ensure content respects border-radius */
-      flex-shrink: 0; /* Prevent players from shrinking undesirably */
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      overflow: hidden; /* Important for pseudo-fullscreen */
+      flex-shrink: 0;
     }
     .player-container.desktop {
-      width: 960px; /* Consider using relative units or max-width for better responsiveness */
-      max-width: 100%; /* Ensure it doesn't overflow */
-      height: 600px; /* Consider aspect-ratio or relative height */
+      width: 960px;
+      max-width: 100%;
+      height: 600px;
       margin-bottom: 40px;
     }
     .player-container.mobile {
       margin: 0 auto 20px;
-      display: flex;
-      flex-direction: column;
-      background: #222;
-      box-sizing: border-box;
-      width: calc(100% - 40px); /* Adjust width accounting for main content padding */
-      max-width: 480px; /* Add a max-width for larger mobile screens */
-      border-radius: 12px; /* Consistent rounded corners */
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* Consistent shadow */
+      width: calc(100% - 40px); /* Adjust for main content padding */
+      max-width: 480px;
+      border-radius: 12px;
     }
 
     /* --------- VIDEO & CANVAS --------- */
-    .canvas-wrapper {
+    .canvas-wrapper { /* Desktop canvas */
       position: relative;
-      width: 100%; /* Fill container width */
-      aspect-ratio: 16 / 9; /* Maintain 16:9 aspect ratio */
+      width: 100%;
+      aspect-ratio: 16 / 9;
       overflow: hidden;
-      border-radius: 12px 12px 0 0; /* Rounded top corners */
-      background-color: #000; /* Black background for canvas */
+      border-radius: 12px 12px 0 0;
+      background-color: #000;
     }
     .canvas-wrapper canvas {
       position: absolute;
@@ -165,23 +164,23 @@
       left: 0;
       width: 100%;
       height: 100%;
-      display: block; /* Remove potential extra space */
+      display: block;
     }
-    /* Ensure fullscreen respects container */
+    /* Native Fullscreen (Desktop) */
     .player-container:fullscreen,
     .player-container:-webkit-full-screen {
         width: 100% !important;
         height: 100% !important;
         max-width: none !important;
-        border-radius: 0 !important; /* Remove radius in fullscreen */
+        border-radius: 0 !important;
         box-shadow: none !important;
-        z-index: 2147483647; /* Max z-index */
+        z-index: 2147483647;
     }
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
       width: 100%!important;
-      height: 100%!important; /* Adjust height calculation if needed */
-      aspect-ratio: unset; /* Allow fullscreen aspect ratio */
+      height: 100%!important;
+      aspect-ratio: unset;
       border-radius: 0;
     }
     .player-container:fullscreen .canvas-wrapper canvas,
@@ -189,34 +188,28 @@
       width: 100%!important;
       height: 100%!important;
     }
-     /* Fullscreen video adjustments */
+     /* Native Fullscreen video adjustments (Desktop) */
     .player-container:fullscreen .source-video,
     .player-container:-webkit-full-screen .source-video {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: contain; /* Fit video within screen */
-        z-index: 1; /* Video below controls */
-        border-radius: 0; /* No radius in fullscreen */
+        /* Video element is hidden offscreen for desktop canvas rendering */
     }
 
     .player-container.desktop .source-video {
       opacity: 0;
       position: absolute;
-      top: -9999px; /* Move offscreen instead of opacity 0 */
+      top: -9999px;
       left: -9999px;
-      width: 1px; /* Minimize resource usage */
+      width: 1px;
       height: 1px;
       pointer-events: none;
     }
+    /* Mobile Video (Not fullscreen) */
     .player-container.mobile .source-video {
-       width: 100%; /* Make video fill container */
+       width: 100%;
        height: auto; /* Maintain aspect ratio */
-       display: block; /* Ensure proper layout */
-       border-radius: 12px 12px 0 0; /* Match container rounding */
-       background-color: #000; /* Ensure black background if video loads slowly */
+       display: block;
+       border-radius: 12px 12px 0 0;
+       background-color: #000;
     }
     .player-container.mobile .display-canvas {
       display: none; /* Canvas not used in default mobile view */
@@ -226,25 +219,25 @@
     .controls-container {
       position: relative;
       z-index: 2;
-      background: rgba(0,0,0,0.75); /* Apply background here */
-      border-radius: 0 0 12px 12px; /* Rounded bottom corners */
+      background: rgba(0,0,0,0.75);
+      border-radius: 0 0 12px 12px;
     }
     .control-bar {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 8px 12px; /* Increased padding */
+      padding: 8px 12px;
     }
     .control-bar button {
-      padding: 6px 10px; /* Slightly larger buttons */
+      padding: 6px 10px;
       cursor: pointer;
       background-color: #555;
       border: none;
       color: #fff;
-      border-radius: 6px; /* Rounded corners for buttons */
-      font-size: 14px; /* Adjust font size */
+      border-radius: 6px;
+      font-size: 14px;
       transition: background-color 0.2s;
-      flex-shrink: 0; /* Prevent buttons shrinking */
+      flex-shrink: 0;
     }
     .control-bar button:hover {
         background-color: #666;
@@ -253,14 +246,14 @@
     /* Custom progress bar */
     .progress-bar {
       position: relative;
-      flex: 1 1 auto; /* Allow shrinking but prefer full width */
-      height: 8px; /* Slightly thicker bar */
-      background: #555; /* Darker background */
+      flex: 1 1 auto;
+      height: 8px;
+      background: #555;
       border-radius: 8px;
       overflow: visible;
-      margin: 0 10px; /* Increased margin */
+      margin: 0 10px;
       cursor: pointer;
-      min-width: 50px; /* Ensure progress bar doesn't become too small */
+      min-width: 50px;
     }
     .progress-bar .buffered,
     .progress-bar .played {
@@ -269,52 +262,52 @@
       bottom: 0;
       left: 0;
       border-radius: 8px;
-      pointer-events: none; /* Allow clicks to pass through */
+      pointer-events: none;
     }
     .progress-bar .buffered {
       background: #888;
       width: 0%;
-      opacity: 0.7; /* Slightly transparent */
+      opacity: 0.7;
     }
     .progress-bar .played {
       background: #4d90fe;
       width: 0%;
-      z-index: 1; /* Ensure played is above buffered */
+      z-index: 1;
     }
     .progress-bar .thumb {
       position: absolute;
       top: 50%;
       left: 0;
-      width: 14px; /* Larger thumb */
+      width: 14px;
       height: 14px;
       background: #fff;
       border-radius: 50%;
       transform: translate(-50%,-50%);
       cursor: pointer;
-      z-index: 2; /* Ensure thumb is on top */
-      box-shadow: 0 0 5px rgba(0, 0, 0, 0.5); /* Add shadow to thumb */
-      transition: transform 0.1s ease; /* Smooth scaling */
+      z-index: 2;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s ease;
     }
     .progress-bar:hover .thumb {
-        transform: translate(-50%, -50%) scale(1.1); /* Slightly enlarge thumb on hover */
+        transform: translate(-50%, -50%) scale(1.1);
     }
 
 
     .disable-btn {
-      background: #e74c3c; /* More distinct red */
+      background: #e74c3c;
       color: #fff;
       border: none;
     }
     .disable-btn:hover {
-        background: #c0392b; /* Darker red on hover */
+        background: #c0392b;
     }
     .title-bar {
       text-align: center;
-      padding: 5px 10px; /* Adjusted padding */
-      font-size: 14px; /* Adjusted font size */
-      color: #eee; /* Lighter text color */
-      border-top: 1px solid #444; /* Separator line */
-      white-space: nowrap; /* Prevent title wrapping */
+      padding: 5px 10px;
+      font-size: 14px;
+      color: #eee;
+      border-top: 1px solid #444;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -323,23 +316,23 @@
       bottom: 0;
       left: 0;
       right: 0;
-      opacity: 1; /* Initially visible */
-      transition: opacity 0.3s ease; /* Smooth fade */
-      border-radius: 0 0 12px 12px; /* Match container */
-      background: rgba(0,0,0,0.75); /* Ensure background is set */
-      pointer-events: auto; /* Ensure clickable */
+      opacity: 1;
+      transition: opacity 0.3s ease;
+      border-radius: 0 0 12px 12px;
+      background: rgba(0,0,0,0.75);
+      pointer-events: auto;
     }
-     /* Hide desktop overlay controls initially in fullscreen unless hovered */
+     /* Hide desktop overlay controls initially in native fullscreen unless hovered */
     .player-container:fullscreen .overlay-controls,
     .player-container:-webkit-full-screen .overlay-controls {
         opacity: 0;
-        border-radius: 0; /* No radius in fullscreen */
-        pointer-events: none; /* Not clickable when hidden */
+        border-radius: 0;
+        pointer-events: none;
     }
     .player-container:fullscreen:hover .overlay-controls,
     .player-container:-webkit-full-screen:hover .overlay-controls {
         opacity: 1;
-        pointer-events: auto; /* Clickable on hover */
+        pointer-events: auto;
     }
 
 
@@ -347,227 +340,229 @@
     #modalBackdrop {
       display: none;
       position: fixed;
-      z-index: 1005; /* Ensure backdrop is below modal */
+      z-index: 1005;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.7); /* Darker backdrop */
+      background: rgba(0,0,0,0.7);
     }
     #urlModal {
       display: none;
       position: fixed;
-      z-index: 1010; /* Ensure modal is above backdrop */
+      z-index: 1010;
       left: 50%;
       top: 50%;
       transform: translate(-50%,-50%);
-      width: 90%; /* Use percentage width */
-      max-width: 1200px; /* Set a max-width */
+      width: 90%;
+      max-width: 1200px;
       background: #555;
-      border: none; /* Remove border */
-      padding: 25px; /* Increased padding */
+      border: none;
+      padding: 25px;
       box-sizing: border-box;
-      border-radius: 12px; /* Rounded corners */
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5); /* Add shadow */
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
     }
      #urlModal h3 {
         margin-top: 0;
         text-align: center;
         color: #fff;
-        margin-bottom: 15px; /* Space below heading */
+        margin-bottom: 15px;
      }
     #urlModal textarea {
       width: 100%;
-      height: 400px; /* Adjusted height */
-      padding: 15px; /* Increased padding */
+      height: 400px;
+      padding: 15px;
       font-size: 14px;
       box-sizing: border-box;
-      border-radius: 8px; /* Rounded corners */
-      border: 1px solid #666; /* Subtle border */
-      background-color: #f8f8f8; /* Lighter background */
-      color: #333; /* Darker text */
-      margin-bottom: 15px; /* Space below textarea */
-      resize: vertical; /* Allow vertical resize */
-      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+      border-radius: 8px;
+      border: 1px solid #666;
+      background-color: #f8f8f8;
+      color: #333;
+      margin-bottom: 15px;
+      resize: vertical;
+      -webkit-overflow-scrolling: touch;
     }
-     #urlModal button { /* Style applies to save button */
-        width: auto; /* Allow button to size naturally */
-        padding: 12px 25px; /* Larger padding */
+     #urlModal button {
+        width: auto;
+        padding: 12px 25px;
         font-size: 16px;
-        display: block; /* Make it a block element */
-        margin: 0 auto; /* Center the button */
+        display: block;
+        margin: 0 auto;
      }
 
     /* ----- MOBILE SIDEBAR ----- */
     html.mobile #urlModal {
-      width: 90vw; /* Use viewport width */
-      max-width: 400px; /* Max width for mobile modal */
-      padding: 15px; /* Adjust padding */
-      font-size: 14px; /* Adjust font size */
+      width: 90vw;
+      max-width: 400px;
+      padding: 15px;
+      font-size: 14px;
     }
     html.mobile #urlModal textarea {
-      height: 200px; /* Adjust height for mobile */
+      height: 200px;
       padding: 10px;
       font-size: 14px;
     }
     html.mobile #sidebar {
-      position: fixed; /* Fixed position for mobile */
+      position: fixed;
       top: 0;
       left: 0;
-      height: 100%; /* Full height */
-      /* transform: translateX(-100%); */ /* Start hidden - Handled by .hidden class now */
-      /* transition: transform 0.3s ease; */ /* Handled by .hidden class now */
-      border-radius: 0 8px 8px 0; /* Rounded corners when open */
-      box-shadow: 3px 0 10px rgba(0,0,0,0.3); /* Add shadow */
+      height: 100%;
+      border-radius: 0 8px 8px 0;
+      box-shadow: 3px 0 10px rgba(0,0,0,0.3);
     }
-    /* html.mobile #sidebar.visible { */ /* No longer needed, use .hidden */
-        /* transform: translateX(0); */
-    /* } */
     #sidebarToggle {
-      display: none; /* Hidden by default, shown only on mobile when sidebar is hidden */
+      display: none; /* Shown via JS */
       position: fixed;
-      top: 20px; /* Position near top */
-      left: 10px; /* Position from left */
-      transform: none; /* Remove previous transform */
-      z-index: 1100; /* Above sidebar */
+      top: 20px;
+      left: 10px;
+      transform: none;
+      z-index: 1100;
       background: #444;
       border: none;
-      padding: 8px 10px; /* Adjust padding */
-      font-size: 20px; /* Adjust size */
+      padding: 8px 10px;
+      font-size: 20px;
       color: #fff;
       cursor: pointer;
-      border-radius: 50%; /* Make it circular */
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Add shadow */
-      /* transition: left 0.3s ease; */ /* No longer needed */
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     }
-     /* html.mobile #sidebarToggle.shifted { */ /* No longer needed */
-        /* left: 230px; */
-     /* } */
 
     /* ----- MOBILE ROOT SCROLL OVERRIDE ----- */
-    /* These might be less necessary with body { position: fixed } */
-    /* html.mobile {
-      height: auto !important;
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch;
-    }
-    html.mobile body {
-      height: auto !important;
-      overflow: visible !important;
-    } */
     html.mobile .container {
-      height: 100vh !important; /* Ensure container fills height */
-      /* min-height: 100vh; */
+      height: 100vh !important;
     }
-    /* html.mobile #main-content { */
-      /* height: auto !important; */ /* Let it be controlled by flexbox */
-      /* overflow: visible !important; */ /* Use overflow: auto/scroll */
-       /* padding-top: 60px; */ /* Padding already set */
-    /* } */
 
     /* ------ MOBILE NON‑FULLSCREEN PLAYER ------ */
-    html.mobile .player-container.mobile:not(.fullscreen) { /* Use :not(.fullscreen) */
-      /* Styles already defined in .player-container.mobile */
-    }
-    html.mobile .player-container.mobile:not(.fullscreen) .source-video {
-      /* Styles already defined */
-    }
-    /* Hide desktop-specific elements in this mobile view */
-    html.mobile .player-container.mobile:not(.fullscreen) .canvas-wrapper,
-    html.mobile .player-container.mobile:not(.fullscreen) .display-canvas {
+    /* Styles are handled by .player-container.mobile */
+
+    /* Hide desktop-specific elements */
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .canvas-wrapper,
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .display-canvas {
       display: none !important;
     }
-     /* Show simplified controls for non-fullscreen mobile */
-    html.mobile .player-container.mobile:not(.fullscreen) .controls-container {
-        display: block !important; /* Show the container */
-        position: relative; /* Normal flow */
-        background: #222; /* Match player background */
-        border-radius: 0 0 12px 12px; /* Rounded bottom */
-        padding: 0; /* Remove extra padding, control-bar has it */
+     /* Show simplified controls */
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .controls-container {
+        display: block !important;
+        position: relative;
+        background: #222;
+        border-radius: 0 0 12px 12px;
+        padding: 0;
     }
-    /* Hide desktop progress bar elements etc. */
-    html.mobile .player-container.mobile:not(.fullscreen) .progress-bar,
-    html.mobile .player-container.mobile:not(.fullscreen) .reset-btn,
-    html.mobile .player-container.mobile:not(.fullscreen) .disable-btn {
+    /* Hide specific desktop/fullscreen controls */
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .progress-bar,
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .reset-btn,
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .disable-btn {
         display: none !important;
     }
-    /* Adjust non-fullscreen mobile control bar */
-     html.mobile .player-container.mobile:not(.fullscreen) .control-bar {
-        justify-content: space-between; /* Space out buttons */
-        padding: 8px 12px; /* Match desktop padding */
-        background: none; /* Remove duplicate background */
+    /* Adjust control bar layout */
+     html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .control-bar {
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: none;
      }
-     /* Ensure mobile fullscreen button is visible here */
-     html.mobile .player-container.mobile:not(.fullscreen) .fs-btn-mobile {
-        display: inline-block; /* Ensure it's visible */
+     /* Ensure mobile fullscreen button is visible */
+     html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .fs-btn-mobile {
+        display: inline-block;
      }
-     /* Hide the dedicated fullscreen controls when not in fullscreen */
-     .fullscreen-controls {
-         display: none;
-     }
-     /* Hide the non-fullscreen title row and controls when in fullscreen */
-     .player-container.fullscreen .video-title-row,
-     .player-container.fullscreen .controls-container:not(.fullscreen-controls) {
-         display: none !important;
-     }
-     /* Show the dedicated fullscreen controls when in fullscreen */
-     .player-container.fullscreen .fullscreen-controls {
-         display: block !important;
-     }
-
 
     .video-title-row {
       display: flex;
       align-items: center;
-      justify-content: space-between; /* Space between title and button */
-      padding: 8px 12px; /* Add padding */
-      background: rgba(0,0,0,0.6); /* Semi-transparent background */
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.6);
       color: #eee;
       font-size: 14px;
-      border-bottom: 1px solid #444; /* Separator */
+      border-bottom: 1px solid #444;
     }
     .fs-btn-mobile {
       cursor: pointer;
-      background: none; /* Transparent background */
+      background: none;
       color: #fff;
       border: none;
       padding: 4px 8px;
-      font-size: 20px; /* Larger icon */
-      line-height: 1; /* Prevent extra spacing */
-      flex-shrink: 0; /* Prevent button shrinking */
+      font-size: 20px;
+      line-height: 1;
+      flex-shrink: 0;
     }
      .video-title-row span {
-        flex-grow: 1; /* Allow title to take space */
+        flex-grow: 1;
         text-align: center;
-        margin: 0 10px; /* Add horizontal margin */
+        margin: 0 10px;
         white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis; /* Add ellipsis for long titles */
+        text-overflow: ellipsis;
      }
 
-    /* ---------- MOBILE FULLSCREEN ---------- */
-    /* Styles applied via JS using .fullscreen class and fullscreen API */
-    .player-container.fullscreen { /* Class added via JS */
-        /* Fullscreen styles are handled by :fullscreen pseudo-class */
-        /* This class is mainly for JS targeting */
+    /* ---------- MOBILE PSEUDO-FULLSCREEN ---------- */
+    /* Class added to HTML element when pseudo-fullscreen is active */
+    html.pseudo-fullscreen-mobile {
+      /* Optionally make body slightly taller for non-safari to hide chrome */
     }
+    html.pseudo-fullscreen-mobile.non-safari body {
+       height: 110vh !important; /* Make body taller */
+       overflow-y: scroll !important; /* Ensure scrollable */
+    }
+    /* Player container when in pseudo-fullscreen */
+    .player-container.player-fullscreen-mobile {
+        position: fixed !important; /* Use fixed to overlay everything */
+        top: 0;
+        left: 0;
+        width: 100vw !important; /* Full viewport width */
+        height: 100vh !important; /* Full viewport height */
+        max-width: none !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        background-color: #000 !important; /* Black background */
+        z-index: 2000 !important; /* High z-index */
+        overflow: hidden; /* Prevent internal scrollbars */
+    }
+    /* Video element inside pseudo-fullscreen player */
+    .player-container.player-fullscreen-mobile .source-video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Fit video within bounds, letter/pillarbox */
+        border-radius: 0;
+        /* transform-origin: center center; */ /* Set origin for zoom/pan */
+        /* transform: scale(1) translate(0, 0); */ /* Initial transform state - applied by JS */
+        cursor: grab; /* Indicate panning possible */
+    }
+    .player-container.player-fullscreen-mobile .source-video:active {
+        cursor: grabbing;
+    }
+
+     /* Hide non-fullscreen controls/title when in pseudo-fullscreen */
+     .player-container.player-fullscreen-mobile .video-title-row,
+     .player-container.player-fullscreen-mobile .controls-container:not(.fullscreen-controls) {
+         display: none !important;
+     }
+     /* Show the dedicated fullscreen controls */
+     .player-container.player-fullscreen-mobile .fullscreen-controls {
+         display: block !important;
+     }
 
     /* Mobile Fullscreen Controls (positioned absolutely) */
     .fullscreen-controls {
+        display: none; /* Hidden by default */
         position: absolute;
         bottom: -120px; /* Start off-screen */
         left: 50%;
         transform: translateX(-50%);
         width: 90%; /* Responsive width */
         max-width: 500px; /* Max width */
-        z-index: 2147483647; /* Ensure above video */
+        z-index: 2100; /* Ensure above video */
         transition: bottom 0.3s ease-in-out;
         border-radius: 10px; /* Rounded corners */
         background-color: rgba(0, 0, 0, 0.8); /* Dark background */
         box-sizing: border-box;
         padding-bottom: env(safe-area-inset-bottom, 10px); /* Add padding for notch/home bar */
     }
-    .player-container.fullscreen.controls-open .fullscreen-controls {
+    /* State when controls are visible */
+    .player-container.controls-open .fullscreen-controls {
         bottom: 10px; /* Slide controls up - adjust if needed with safe-area */
         /* bottom: env(safe-area-inset-bottom, 10px); */ /* Position above home bar */
     }
@@ -589,14 +584,13 @@
             top: calc(20px + env(safe-area-inset-top, 0px)); /* Adjust toggle position */
         }
         html.mobile #main-content {
-             /* padding-top: calc(60px + env(safe-area-inset-top, 0px)); */ /* Already has 60px */
              padding-top: 60px; /* Keep existing padding */
              padding-bottom: env(safe-area-inset-bottom, 0px); /* Add bottom padding */
              height: calc(100vh - env(safe-area-inset-top, 0px)); /* Adjust height for status bar */
              box-sizing: border-box; /* Include padding in height */
         }
         /* Adjust fullscreen controls position for bottom safe area */
-        .player-container.fullscreen.controls-open .fullscreen-controls {
+        .player-container.controls-open .fullscreen-controls {
              bottom: env(safe-area-inset-bottom, 10px);
         }
     }
@@ -607,117 +601,94 @@
     // --- PWA Meta Tag Injection for Safari Mobile ---
     (function() {
       const ua = navigator.userAgent;
-      // Detect iPhone, iPad, iPod, ensure it's WebKit (Safari), but not Chrome (CriOS) or Firefox (FxiOS)
       const isSafariMobile = /iPhone|iPad|iPod/.test(ua) && /AppleWebKit/.test(ua) && !/CriOS/.test(ua) && !/FxiOS/.test(ua);
 
       if (isSafariMobile) {
-        // Add meta tags for PWA behavior on iOS Safari
         const head = document.head;
-
-        // Enable standalone mode (hides browser UI when launched from home screen)
         let metaCapable = document.createElement('meta');
         metaCapable.name = 'apple-mobile-web-app-capable';
         metaCapable.content = 'yes';
         head.appendChild(metaCapable);
-
-        // Set status bar style (optional, 'black-translucent' allows content underneath)
         let metaStatusBarStyle = document.createElement('meta');
         metaStatusBarStyle.name = 'apple-mobile-web-app-status-bar-style';
-        metaStatusBarStyle.content = 'black-translucent'; // or 'default' or 'black'
+        metaStatusBarStyle.content = 'black-translucent';
         head.appendChild(metaStatusBarStyle);
-
-        // Set the title shown under the home screen icon
         let metaTitle = document.createElement('meta');
         metaTitle.name = 'apple-mobile-web-app-title';
-        metaTitle.content = 'Live DVR'; // Use your app's title
+        metaTitle.content = 'Live DVR';
         head.appendChild(metaTitle);
-
-        // Optional: Add an icon for the home screen (replace 'path/to/icon.png')
-        // Example sizes: 180x180 for iPhone, 167x167 for iPad Pro, etc.
-        // let linkIcon = document.createElement('link');
-        // linkIcon.rel = 'apple-touch-icon';
-        // linkIcon.sizes = '180x180';
-        // linkIcon.href = '/icons/apple-touch-icon-180x180.png'; // Example path
-        // head.appendChild(linkIcon);
-
         console.log("Safari Mobile detected: Added PWA meta tags.");
       }
     })();
     // --- End PWA Meta Tag Injection ---
 
-    // Mobile detection (add class to HTML element)
-    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    // --- Global Flags & Detection ---
+    const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    const IS_SAFARI_MOBILE = IS_MOBILE && /iPhone|iPad|iPod/.test(navigator.userAgent) && /AppleWebKit/.test(navigator.userAgent) && !/CriOS/.test(navigator.userAgent) && !/FxiOS/.test(navigator.userAgent);
+    if (IS_MOBILE) {
       document.documentElement.classList.add("mobile");
+      if (IS_SAFARI_MOBILE) {
+          document.documentElement.classList.add("safari-mobile");
+      } else {
+          document.documentElement.classList.add("non-safari-mobile");
+      }
     }
+
     // Spacebar handling (for desktop pan/zoom modifier)
     let spaceHeld = false;
     window.addEventListener("keydown", e => {
-      // Ignore if typing in input fields
-      if (e.code === "Space" &&
-          !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) {
-        e.preventDefault(); // Prevent page scroll
+      if (e.code === "Space" && !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) {
+        e.preventDefault();
         spaceHeld = true;
       }
     });
     window.addEventListener("keyup", e => {
-      if (e.code === "Space") {
-          spaceHeld = false;
-      }
+      if (e.code === "Space") spaceHeld = false;
     });
 
-    // Cursor auto-hide in fullscreen (desktop)
+    // Cursor auto-hide in native fullscreen (desktop)
     let cursorTimeout;
     function showCursor() { document.body.style.cursor = ""; }
     function hideCursor() { document.body.style.cursor = "none"; }
     document.addEventListener("fullscreenchange", () => {
       if (document.fullscreenElement) {
-        showCursor(); // Show initially
-        clearTimeout(cursorTimeout); // Clear previous timeout
-        cursorTimeout = setTimeout(hideCursor, 3000); // Hide after 3s
+        showCursor();
+        clearTimeout(cursorTimeout);
+        cursorTimeout = setTimeout(hideCursor, 3000);
       } else {
-        showCursor(); // Ensure cursor is visible when exiting fullscreen
-        clearTimeout(cursorTimeout); // Clear timeout
+        showCursor();
+        clearTimeout(cursorTimeout);
       }
     });
     document.addEventListener("mousemove", () => {
-      // Only manage cursor visibility if in fullscreen
       if (document.fullscreenElement) {
-        showCursor(); // Show on move
-        clearTimeout(cursorTimeout); // Reset timer
-        cursorTimeout = setTimeout(hideCursor, 3000); // Set timer to hide again
+        showCursor();
+        clearTimeout(cursorTimeout);
+        cursorTimeout = setTimeout(hideCursor, 3000);
       }
     });
 
-    // Helper to hide browser UI on mobile (scrolling trick - less reliable now)
-    // Kept for potential edge cases but PWA/Fullscreen API is preferred
+    // Helper to hide browser UI on mobile (scrolling trick)
     function hideBrowserUI() {
-      // Only attempt if not in standalone PWA mode
-      if (!window.matchMedia('(display-mode: standalone)').matches) {
+      // Only attempt if not in standalone PWA mode and not Safari Mobile (Safari handles it better)
+      if (!window.matchMedia('(display-mode: standalone)').matches && !IS_SAFARI_MOBILE) {
           console.log("Attempting to hide browser UI (scrolling trick)...");
-          // The effectiveness of this varies across browsers and versions
-          const currentScrollY = window.scrollY;
-          document.documentElement.style.height = '110vh'; // Temporarily increase height
-          document.body.style.height = '110vh';
-          window.scrollTo(0, 1); // Scroll down slightly
-          // Use setTimeout to ensure scroll happens after potential layout changes
+          // Needs to happen after element is fullscreened and potentially after a small delay
           setTimeout(() => {
-              window.scrollTo(0, 1);
-              // Attempt to restore scroll position if needed, might cause flicker
-              // window.scrollTo(0, currentScrollY);
-              // Optional: Reset height after a short delay if it causes issues
-              // setTimeout(() => {
-              //     document.documentElement.style.height = '';
-              //     document.body.style.height = '';
-              // }, 100);
-          }, 50); // Increased delay slightly
+              // Check if body is actually scrollable (height > viewport)
+              if (document.body.scrollHeight > window.innerHeight) {
+                  window.scrollTo(0, 1); // Scroll down slightly
+              }
+          }, 100); // Delay slightly
       } else {
-          console.log("In standalone mode, browser UI is already hidden.");
+          console.log("Browser UI hiding skipped (PWA standalone or Safari).");
       }
     }
   </script>
 </head>
 <body>
-  <button id="sidebarToggle">&#x2630;</button> <div class="container">
+  <button id="sidebarToggle">&#x2630;</button>
+  <div class="container">
     <div id="sidebar">
       <button id="btn-add-urls">Add URLs</button>
       <div id="sideButtons">
@@ -728,11 +699,8 @@
           <p class="no-streams">Loading streams...</p>
       </div>
     </div>
-
-    <div id="main-content">
-        </div>
+    <div id="main-content"></div>
   </div>
-
   <div id="modalBackdrop"></div>
   <div id="urlModal">
     <h3 style="margin-top:0; text-align:center;">Paste Playlist URLs (one per line)</h3>
@@ -741,142 +709,86 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
   <script>
     // --- Fullscreen API Helpers ---
-    function enterFullScreen(el) {
-      // Check if fullscreen is already active to avoid errors
-      if (document.fullscreenElement || document.webkitFullscreenElement) {
-          console.warn("Already in fullscreen mode.");
-          return Promise.resolve(); // Return a resolved promise
-      }
+    // Native Fullscreen (Primarily for Desktop)
+    function enterNativeFullScreen(el) {
+      if (document.fullscreenElement || document.webkitFullscreenElement) return Promise.resolve();
       const r = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-      if (r) {
-        console.log("Requesting fullscreen for:", el);
-        // Return the promise returned by requestFullscreen
-        return r.call(el).catch(err => console.error("Fullscreen request failed:", err));
-      } else {
-        console.warn("Fullscreen API not supported on this element.");
-        return Promise.reject("Fullscreen not supported"); // Return a rejected promise
-      }
+      if (r) return r.call(el).catch(err => console.error("Native Fullscreen request failed:", err));
+      else return Promise.reject("Native Fullscreen not supported");
     }
-    function exitFullScreen() {
-      // Check if not in fullscreen to avoid errors
-      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          console.warn("Not in fullscreen mode.");
-          return Promise.resolve(); // Return a resolved promise
-      }
+    function exitNativeFullScreen() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) return Promise.resolve();
       const e = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
-      if (e) {
-        console.log("Exiting fullscreen.");
-        // Return the promise returned by exitFullscreen
-        return e.call(document).catch(err => console.error("Exit fullscreen failed:", err));
-      } else {
-        console.warn("Exit Fullscreen API not supported.");
-        return Promise.reject("Exit fullscreen not supported"); // Return a rejected promise
-      }
+      if (e) return e.call(document).catch(err => console.error("Exit Native Fullscreen failed:", err));
+      else return Promise.reject("Exit Native Fullscreen not supported");
     }
 
     // --- Constants and Settings ---
-    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url="; // Ensure this proxy works as expected
-    const PLAYER_SETTINGS_KEY = "liveDvrPlayerSettings_v1"; // Added versioning
-    const STREAM_CONFIGS_KEY = "liveDvrStreamConfigs_v1"; // Added versioning
+    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+    const PLAYER_SETTINGS_KEY = "liveDvrPlayerSettings_v1";
+    const STREAM_CONFIGS_KEY = "liveDvrStreamConfigs_v1";
 
     // --- Local Storage Helpers ---
     function loadPlayerSettings(url) {
       try {
         const allSettings = JSON.parse(localStorage.getItem(PLAYER_SETTINGS_KEY) || "{}");
-        // Provide default values if settings for this URL don't exist
         return allSettings[url] || { zoomScale: 1, panX: 0, panY: 0 };
-      } catch (e) {
-        console.error("Error loading player settings:", e);
-        return { zoomScale: 1, panX: 0, panY: 0 }; // Return defaults on error
-      }
+      } catch (e) { console.error("LS Error:", e); return { zoomScale: 1, panX: 0, panY: 0 }; }
     }
     function savePlayerSettings(url, data) {
       try {
         let allSettings = JSON.parse(localStorage.getItem(PLAYER_SETTINGS_KEY) || "{}");
         allSettings[url] = data;
         localStorage.setItem(PLAYER_SETTINGS_KEY, JSON.stringify(allSettings));
-      } catch (e) {
-        console.error("Error saving player settings:", e);
-      }
+      } catch (e) { console.error("LS Error:", e); }
     }
     function getStreamList() {
       try {
-        // Basic validation to ensure it's an array of objects with url/enabled
         const stored = localStorage.getItem(STREAM_CONFIGS_KEY);
         if (!stored) return [];
         const parsed = JSON.parse(stored);
         if (!Array.isArray(parsed) || !parsed.every(item => typeof item === 'object' && 'url' in item && 'enabled' in item)) {
-            console.warn("Invalid stream list format in localStorage. Resetting.");
-            localStorage.removeItem(STREAM_CONFIGS_KEY);
-            return [];
+            localStorage.removeItem(STREAM_CONFIGS_KEY); return [];
         }
         return parsed;
-      } catch (e) {
-        console.error("Error loading stream list:", e);
-        localStorage.removeItem(STREAM_CONFIGS_KEY); // Clear invalid data
-        return []; // Return empty array on error
-      }
+      } catch (e) { console.error("LS Error:", e); localStorage.removeItem(STREAM_CONFIGS_KEY); return []; }
     }
     function saveStreamList(list) {
       try {
-        // Ensure list is valid before saving
-        if (!Array.isArray(list) || !list.every(item => typeof item === 'object' && 'url' in item && 'enabled' in item)) {
-            console.error("Attempted to save invalid stream list format:", list);
-            return;
-        }
+        if (!Array.isArray(list) || !list.every(item => typeof item === 'object' && 'url' in item && 'enabled' in item)) return;
         localStorage.setItem(STREAM_CONFIGS_KEY, JSON.stringify(list));
-      } catch (e) {
-        console.error("Error saving stream list:", e);
-      }
+      } catch (e) { console.error("LS Error:", e); }
     }
 
     // --- Utility Functions ---
-    function extractTitle(url) {
-      try {
-        // Decode URL first to handle encoded characters
-        const decodedUrl = decodeURIComponent(url);
-        // Try to get a meaningful segment from the path
-        const pathSegments = new URL(decodedUrl).pathname.split('/').filter(Boolean); // Filter empty segments
-        if (pathSegments.length > 1 && !pathSegments[pathSegments.length - 1].includes('.')) {
-             // Use second to last segment if last one looks like a directory
-             return pathSegments[pathSegments.length - 2].replace(/[-_]/g, ' ');
-        } else if (pathSegments.length > 0 && !pathSegments[pathSegments.length - 1].includes('.')) {
-             // Use last segment if it doesn't look like a file
-             return pathSegments[pathSegments.length - 1].replace(/[-_]/g, ' ');
-        }
-        // Fallback: Use hostname if path didn't yield a good title
-        const hostname = new URL(decodedUrl).hostname;
-        if (hostname) return hostname;
-
-        // Absolute fallback: Original URL (should rarely be needed)
-        return url;
-      } catch {
-        // Handle potential errors if URL is invalid
-        // Fallback to original regex or just the end of the string
-        const match = url.match(/[\/=]([^=\/]+?)(\.m3u8|\/playlist.*)?$/);
-        return match ? match[1].replace(/[-_]/g, ' ') : url;
-      }
+    // Reverted to original title extraction logic
+    function extractTitle(url){
+      const m = url.match(/wc-([^\/]+)\/playlist/); // Original regex
+      return m ? m[1] : url; // Fallback to URL if pattern not found
     }
-    function clampPan(container) {
+    function clampPan(container) { // Used for desktop canvas pan
       const Z = container.zoomScale;
-      const W = 960; // Base width for calculation
-      const H = 540; // Base height for calculation
-      if (Z <= 1) {
-        container.panX = 0;
-        container.panY = 0;
-        return;
-      }
-      // Calculate max pan distance based on zoom
-      const maxPanX = (W * (Z - 1)) / (2 * Z);
-      const maxPanY = (H * (Z - 1)) / (2 * Z);
-      // Clamp pan values
-      container.panX = Math.min(maxPanX, Math.max(-maxPanX, container.panX));
-      container.panY = Math.min(maxPanY, Math.max(-maxPanY, container.panY));
+      const W = 960; const H = 540;
+      if (Z <= 1) { container.panX = 0; container.panY = 0; return; }
+      const mx = (W * (Z - 1)) / (2 * Z); const my = (H * (Z - 1)) / (2 * Z);
+      container.panX = Math.min(mx, Math.max(-mx, container.panX));
+      container.panY = Math.min(my, Math.max(-my, container.panY));
     }
-
+    // Helper for calculating distance between two touch points
+    function getTouchDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    // Helper for calculating midpoint between two touch points
+    function getTouchMidpoint(touch1, touch2) {
+        return {
+            x: (touch1.clientX + touch2.clientX) / 2,
+            y: (touch1.clientY + touch2.clientY) / 2
+        };
+    }
 
     // --- DOM Elements ---
     const sidebar = document.getElementById("sidebar");
@@ -892,56 +804,55 @@
     const btnHideAll = document.getElementById("btn-hide-all");
 
     // --- State ---
-    const activeLabels = new Set(); // For drag-selection in sidebar
-    const isMobile = document.documentElement.classList.contains("mobile");
-    let players = {}; // Store references to player instances { url: { container, video, hls, ... } }
+    const activeSidebarLabels = new Set(); // For drag-selection in sidebar
+    let sidebarDragStartState = null; // Store initial state for drag-toggle
+    let isSidebarDragging = false;
+    let players = {}; // Store references: { url: { container, video, hls, ... } }
 
     // --- Sidebar Logic ---
     function updateStreamSidebar() {
-      streamListContainer.innerHTML = ""; // Clear existing items
+      streamListContainer.innerHTML = "";
       const streams = getStreamList();
-
       if (!streams.length) {
-        const p = document.createElement("p");
-        p.className = "no-streams";
+        const p = document.createElement("p"); p.className = "no-streams";
         p.textContent = "No streams added. Click 'Add URLs'.";
         streamListContainer.appendChild(p);
       } else {
         streams.forEach(stream => {
-          const item = document.createElement("div");
-          item.className = "stream-item";
-
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.checked = stream.enabled;
-          checkbox.dataset.url = stream.url; // Store URL for reference
-          checkbox.id = `cb-${encodeURIComponent(stream.url)}`; // Ensure ID is valid
+          const item = document.createElement("div"); item.className = "stream-item";
+          const checkbox = document.createElement("input"); checkbox.type = "checkbox";
+          checkbox.checked = stream.enabled; checkbox.dataset.url = stream.url;
+          checkbox.id = `cb-${encodeURIComponent(stream.url)}`;
           checkbox.addEventListener("change", (e) => {
+            // Direct checkbox click should still toggle immediately
             updateStreamEnabled(stream.url, e.target.checked);
           });
           item.appendChild(checkbox);
 
-          const label = document.createElement("label");
-          label.textContent = extractTitle(stream.url);
-          label.htmlFor = checkbox.id; // Associate label with checkbox
-          label.dataset.url = stream.url; // Store URL for reference
+          const label = document.createElement("label"); label.textContent = extractTitle(stream.url);
+          label.htmlFor = checkbox.id; label.dataset.url = stream.url;
 
-          // Drag-to-select logic
+          // --- Revised Sidebar Click/Drag Logic ---
           label.addEventListener("mousedown", e => {
-            if (e.button === 0) { // Only for left click
-              checkbox.checked = !checkbox.checked; // Toggle immediately on label click
-              activeLabels.add(label);
+            if (e.button === 0) { // Left click only
               e.preventDefault(); // Prevent text selection
-              updateStreamEnabled(stream.url, checkbox.checked); // Update state immediately
+              isSidebarDragging = true;
+              sidebarDragStartState = checkbox.checked; // Store initial state of the clicked item
+              activeSidebarLabels.clear(); // Start new selection
+              activeSidebarLabels.add(label);
+              item.classList.add('selecting'); // Visual feedback
+              // DO NOT toggle state here yet
             }
           });
           label.addEventListener("mouseenter", e => {
-            // Check if left mouse button is pressed down during mouseenter
-            if (e.buttons & 1 && !activeLabels.has(label)) {
-              checkbox.checked = !checkbox.checked; // Toggle state
-              activeLabels.add(label);
-              updateStreamEnabled(stream.url, checkbox.checked); // Update state immediately
+            if (isSidebarDragging && (e.buttons & 1)) { // If dragging over other labels
+              activeSidebarLabels.add(label);
+              item.classList.add('selecting');
             }
+          });
+          item.addEventListener("mouseleave", () => {
+              // Optional: remove 'selecting' class if mouse leaves while dragging
+              // if (isSidebarDragging) item.classList.remove('selecting');
           });
 
           item.appendChild(label);
@@ -949,1301 +860,569 @@
         });
       }
     }
+    // Global mouseup listener for sidebar drag completion
+    document.addEventListener("mouseup", (e) => {
+      if (e.button === 0 && isSidebarDragging) {
+        isSidebarDragging = false;
+        const labelsToToggle = new Set(activeSidebarLabels); // Copy the set
+        activeSidebarLabels.clear(); // Clear the main set for next drag
 
-    // Clear active labels on mouseup anywhere in the document
-    document.addEventListener("mouseup", () => {
-      activeLabels.clear();
+        // Remove visual feedback
+        document.querySelectorAll('.stream-item.selecting').forEach(el => el.classList.remove('selecting'));
+
+        if (labelsToToggle.size > 0) {
+            // Determine target state: toggle based on the initial state of the first item
+            const targetState = !sidebarDragStartState;
+            console.log(`Sidebar drag complete. Toggling ${labelsToToggle.size} items to: ${targetState}`);
+
+            // Update all selected items
+            labelsToToggle.forEach(label => {
+                const url = label.dataset.url;
+                const checkbox = document.getElementById(`cb-${encodeURIComponent(url)}`);
+                if (checkbox) {
+                    checkbox.checked = targetState; // Update checkbox UI
+                    updateStreamEnabled(url, targetState); // Update player state
+                }
+            });
+        }
+        sidebarDragStartState = null; // Reset drag start state
+      }
     });
+    // Prevent context menu while dragging on labels
+    streamListContainer.addEventListener('contextmenu', (e) => {
+        if (isSidebarDragging) {
+            e.preventDefault();
+        }
+    });
+
 
     // --- Player Management ---
     function reorderPlayers() {
       const streams = getStreamList();
       const sortedPlayers = Array.from(mainContent.children)
-        .filter(el => el.classList.contains('player-container')) // Ensure only player containers are sorted
+        .filter(el => el.classList.contains('player-container'))
         .sort((a, b) => {
           const indexA = streams.findIndex(s => s.url === a.dataset.url);
           const indexB = streams.findIndex(s => s.url === b.dataset.url);
-          // Handle cases where a player might exist but its config was removed
-          if (indexA === -1) return 1; // Put unknown players at the end
-          if (indexB === -1) return -1;
-          return indexA - indexB; // Sort based on config order
+          if (indexA === -1) return 1; if (indexB === -1) return -1;
+          return indexA - indexB;
         });
-
-      // Append sorted players back to main content
       sortedPlayers.forEach(playerElement => mainContent.appendChild(playerElement));
     }
-
     function updateStreamEnabled(url, enabled) {
       let streams = getStreamList();
       const streamIndex = streams.findIndex(s => s.url === url);
-      if (streamIndex === -1) {
-          console.warn(`Stream config not found for URL: ${url}`);
-          return; // Exit if config doesn't exist
-      }
+      if (streamIndex === -1) return;
 
-      // Update the enabled status in the config list
       streams[streamIndex].enabled = enabled;
-      saveStreamList(streams); // Save the updated list
+      saveStreamList(streams);
 
       const existingPlayerRef = players[url];
-
       if (enabled) {
         if (!existingPlayerRef) {
-          // Create and add player if it doesn't exist
           const playerElements = createPlayerContainer(streams[streamIndex]);
           if (playerElements) {
             mainContent.appendChild(playerElements.container);
-            players[url] = playerElements; // Store reference
-            // On mobile, HLS might need manual start if not autoplaying
-            // This is generally handled by user interaction (tap/fullscreen) now
+            players[url] = playerElements;
           }
         } else {
-          // Player exists, ensure it's visible (it might have been hidden via CSS/removed)
-          if (!existingPlayerRef.container.isConnected) {
-              mainContent.appendChild(existingPlayerRef.container); // Re-add if removed
-          }
-          existingPlayerRef.container.style.display = "flex"; // Ensure visible
-
-          // Restart HLS if it was stopped/destroyed
-          if (existingPlayerRef.hls && !existingPlayerRef.hls.media) {
-              console.log("Reattaching media for HLS:", url);
-              existingPlayerRef.hls.attachMedia(existingPlayerRef.video);
-          }
-          // Ensure HLS loading starts/resumes
-          if (existingPlayerRef.hls) {
-             console.log("Starting HLS load for:", url);
-             existingPlayerRef.hls.startLoad();
-          } else if (existingPlayerRef.video.src && existingPlayerRef.video.paused) {
-             // If using native playback and paused, try playing
-             existingPlayerRef.video.play().catch(e => console.log("Play prevented:", e));
-          }
-          // Ensure video plays if it should be (e.g., was playing before disable)
-          if (existingPlayerRef.video.autoplay || !existingPlayerRef.video.paused) {
-              existingPlayerRef.video.play().catch(e => console.log("Autoplay prevented:", e));
-          }
+          if (!existingPlayerRef.container.isConnected) mainContent.appendChild(existingPlayerRef.container);
+          existingPlayerRef.container.style.display = "flex";
+          if (existingPlayerRef.hls && !existingPlayerRef.hls.media) existingPlayerRef.hls.attachMedia(existingPlayerRef.video);
+          if (existingPlayerRef.hls) existingPlayerRef.hls.startLoad();
+          else if (existingPlayerRef.video.src && existingPlayerRef.video.paused) existingPlayerRef.video.play().catch(()=>{});
+          if (existingPlayerRef.video.autoplay || !existingPlayerRef.video.paused) existingPlayerRef.video.play().catch(()=>{});
         }
       } else {
-        // Disable: Remove player if it exists
         if (existingPlayerRef) {
-          console.log("Disabling and removing player:", url);
-          // Clean up HLS instance
-          if (existingPlayerRef.hls) {
-            existingPlayerRef.hls.destroy();
-          }
-          // Stop video and remove src
+          if (existingPlayerRef.hls) existingPlayerRef.hls.destroy();
           existingPlayerRef.video.pause();
           existingPlayerRef.video.removeAttribute('src');
-          existingPlayerRef.video.load(); // Abort loading/reset
-
-          // Cancel animation frame for desktop canvas
-          if (existingPlayerRef.animationFrameId) {
-              cancelAnimationFrame(existingPlayerRef.animationFrameId);
+          existingPlayerRef.video.load();
+          if (existingPlayerRef.animationFrameId) cancelAnimationFrame(existingPlayerRef.animationFrameId);
+          // Clean up pseudo-fullscreen listeners if active
+          if (existingPlayerRef.container.classList.contains('player-fullscreen-mobile')) {
+              exitPseudoFullscreen(existingPlayerRef.container, existingPlayerRef.video);
           }
-
-          // Remove the container from DOM
           existingPlayerRef.container.remove();
-          delete players[url]; // Remove reference
+          delete players[url];
         }
       }
-
-      reorderPlayers(); // Ensure order is correct after add/remove
-      updateStreamSidebar(); // Reflect changes in the sidebar checkbox
+      reorderPlayers();
+      updateStreamSidebar(); // Update sidebar checkbox state
     }
 
     // --- Player Creation ---
     function createPlayerContainer(stream) {
-      if (!stream || !stream.enabled) return null; // Don't create if not enabled
-
-      const url = stream.url;
-      const savedSettings = loadPlayerSettings(url);
-
-      // --- Create Elements ---
+      if (!stream || !stream.enabled) return null;
+      const url = stream.url; const savedSettings = loadPlayerSettings(url);
       const container = document.createElement("div");
-      container.className = `player-container ${isMobile ? "mobile" : "desktop"}`;
+      container.className = `player-container ${IS_MOBILE ? "mobile" : "desktop"}`;
       container.dataset.url = url;
-      // Assign pan/zoom state directly to the container element
-      container.zoomScale = savedSettings.zoomScale;
-      container.panX = savedSettings.panX;
-      container.panY = savedSettings.panY;
-
+      container.zoomScale = savedSettings.zoomScale; container.panX = savedSettings.panX; container.panY = savedSettings.panY;
       const video = document.createElement("video");
       video.className = "source-video";
-      video.setAttribute("playsinline", ""); // Essential for inline playback on iOS
-      video.setAttribute("webkit-playsinline", ""); // Older iOS
-      video.setAttribute("crossorigin", "anonymous"); // Needed for canvas/proxy?
-      video.muted = true; // Start muted to allow autoplay in most cases
-      video.preload = "metadata"; // Load only metadata initially to save bandwidth
+      video.setAttribute("playsinline", ""); video.setAttribute("webkit-playsinline", "");
+      video.setAttribute("crossorigin", "anonymous"); video.muted = true; video.preload = "metadata";
 
-      let hlsInstance = null; // To be populated later if HLS.js is used
-      let animationFrameId = null; // For desktop canvas render loop
+      let hlsInstance = null; let animationFrameId = null;
 
-      // --- Mobile Specific Setup ---
-      if (isMobile) {
-        video.controls = false; // Use custom controls
-
-        // Title row (contains title and fullscreen button)
-        const titleRow = document.createElement("div");
-        titleRow.className = "video-title-row";
-        const titleSpan = document.createElement("span");
-        titleSpan.textContent = extractTitle(url);
-        const fsBtnMobile = document.createElement("button");
-        fsBtnMobile.className = "fs-btn-mobile";
-        fsBtnMobile.innerHTML = "&#x26F6;"; // Enter fullscreen symbol
-        fsBtnMobile.setAttribute("aria-label", "Enter Fullscreen");
-        titleRow.appendChild(titleSpan);
-        titleRow.appendChild(fsBtnMobile);
-        container.appendChild(titleRow); // Add title row first
-
-        container.appendChild(video); // Add video element after title
-
-        // Simplified controls container for non-fullscreen mobile
-        const controlsContainerMobile = document.createElement("div");
-        controlsContainerMobile.className = "controls-container";
-        const controlBarMobile = document.createElement("div");
-        controlBarMobile.className = "control-bar";
-        const playPauseBtnMobile = document.createElement("button");
-        playPauseBtnMobile.textContent = "Play";
+      if (IS_MOBILE) {
+        video.controls = false;
+        const titleRow = document.createElement("div"); titleRow.className = "video-title-row";
+        const titleSpan = document.createElement("span"); titleSpan.textContent = extractTitle(url);
+        const fsBtnMobile = document.createElement("button"); fsBtnMobile.className = "fs-btn-mobile";
+        fsBtnMobile.innerHTML = "&#x26F6;"; fsBtnMobile.setAttribute("aria-label", "Enter Fullscreen");
+        titleRow.appendChild(titleSpan); titleRow.appendChild(fsBtnMobile); container.appendChild(titleRow);
+        container.appendChild(video);
+        const controlsContainerMobile = document.createElement("div"); controlsContainerMobile.className = "controls-container";
+        const controlBarMobile = document.createElement("div"); controlBarMobile.className = "control-bar";
+        const playPauseBtnMobile = document.createElement("button"); playPauseBtnMobile.textContent = "Play";
         playPauseBtnMobile.setAttribute("aria-label", "Play/Pause");
-        controlBarMobile.appendChild(playPauseBtnMobile);
-        controlsContainerMobile.appendChild(controlBarMobile);
-        container.appendChild(controlsContainerMobile); // Add controls below video
+        controlBarMobile.appendChild(playPauseBtnMobile); controlsContainerMobile.appendChild(controlBarMobile); container.appendChild(controlsContainerMobile);
 
-        // --- Mobile Interactions ---
         let lastTap = 0;
-        container.addEventListener("click", (e) => { // Listen on container for taps
-            // Ignore taps on controls
+        container.addEventListener("click", (e) => {
             if (e.target.closest('.controls-container')) return;
-
-            const now = Date.now();
-            const timeSinceLastTap = now - lastTap;
-
-            if (timeSinceLastTap < 350) { // Double tap threshold (slightly longer)
-                console.log("Double tap detected - entering fullscreen");
-                enterFullScreen(container);
-                lastTap = 0; // Reset tap timer
-            } else { // Single tap
-                console.log("Single tap detected - toggling play/pause");
-                if (video.paused) {
-                    video.play().catch(e => console.error("Play failed:", e));
-                } else {
-                    video.pause();
-                }
-                lastTap = now; // Record tap time
-            }
+            const now = Date.now(); const timeSinceLastTap = now - lastTap;
+            if (timeSinceLastTap < 350) { enterPseudoFullscreen(container, video); lastTap = 0; } // Double tap enters pseudo-FS
+            else { if (video.paused) video.play().catch(()=>{}); else video.pause(); lastTap = now; } // Single tap toggles play
         });
-
-        playPauseBtnMobile.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent tap on container from firing
-            if (video.paused) {
-                video.play().catch(err => console.error("Play error:", err));
-            } else {
-                video.pause();
-            }
-        });
-
-        fsBtnMobile.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent tap on container from firing
-            enterFullScreen(container);
-        });
-
+        playPauseBtnMobile.addEventListener("click", (e) => { e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); });
+        fsBtnMobile.addEventListener("click", (e) => { e.stopPropagation(); enterPseudoFullscreen(container, video); }); // Button enters pseudo-FS
         video.addEventListener("play", () => playPauseBtnMobile.textContent = "Pause");
         video.addEventListener("pause", () => playPauseBtnMobile.textContent = "Play");
-        video.addEventListener("ended", () => playPauseBtnMobile.textContent = "Play"); // Reset on end
+        video.addEventListener("ended", () => playPauseBtnMobile.textContent = "Play");
 
-        // Add fullscreen change listener to add/remove class and setup controls
-        container.addEventListener("fullscreenchange", handleFullscreenChange);
-        container.addEventListener("webkitfullscreenchange", handleFullscreenChange);
-
-        function handleFullscreenChange() {
-            // Use timeout to allow DOM to settle after fullscreen change
-            setTimeout(() => {
-                const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
-                console.log(`Fullscreen change for ${url}. Is fullscreen: ${isFs}`);
-                if (isFs) {
-                    container.classList.add('fullscreen'); // Add class for styling
-                    fsBtnMobile.innerHTML = "&#x2921;"; // Exit fullscreen symbol
-                    fsBtnMobile.setAttribute("aria-label", "Exit Fullscreen");
-                    setupMobileFullscreenControls(container, video); // Setup advanced controls
-                    hideBrowserUI(); // Attempt to hide browser chrome again
-                } else {
-                    container.classList.remove('fullscreen'); // Remove class
-                    fsBtnMobile.innerHTML = "&#x26F6;"; // Enter fullscreen symbol
-                    fsBtnMobile.setAttribute("aria-label", "Enter Fullscreen");
-                    // Remove fullscreen controls if they were added
-                    const fsControls = container.querySelector('.fullscreen-controls');
-                    if (fsControls) fsControls.remove();
-                    container.classList.remove('controls-open'); // Ensure controls state is reset
-                }
-            }, 100); // 100ms delay
-        }
-
-
-      }
-      // --- Desktop Specific Setup ---
-      else {
-        video.autoplay = true; // Autoplay usually works on desktop
-
-        // Canvas Wrapper
-        const canvasWrapper = document.createElement("div");
-        canvasWrapper.className = "canvas-wrapper";
-        container.appendChild(canvasWrapper); // Add wrapper first
-
-        // Canvas for rendering
-        const canvas = document.createElement("canvas");
-        canvas.className = "display-canvas";
-        canvas.width = 960; // Base resolution
-        canvas.height = 540;
-        canvasWrapper.appendChild(canvas);
-
-        container.appendChild(video); // Add video after canvas wrapper (for DOM order, though hidden)
-
+      } else { // Desktop Setup
+        video.autoplay = true;
+        const canvasWrapper = document.createElement("div"); canvasWrapper.className = "canvas-wrapper"; container.appendChild(canvasWrapper);
+        const canvas = document.createElement("canvas"); canvas.className = "display-canvas"; canvas.width = 960; canvas.height = 540; canvasWrapper.appendChild(canvas);
+        container.appendChild(video); // Add hidden video
         const ctx = canvas.getContext("2d");
-
-        // Render loop for canvas
         function renderCanvas() {
-          // Check if video has enough data and container is still in DOM
           if (video.readyState >= video.HAVE_METADATA && container.isConnected) {
-             clampPan(container); // Ensure pan is within bounds
-             ctx.save();
-             ctx.fillStyle = '#000'; // Black background for letterboxing/pillarboxing
-             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-             // Only draw if video dimensions are available
+             clampPan(container); ctx.save(); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
              if (video.videoWidth > 0 && video.videoHeight > 0) {
-                 const canvasAspect = canvas.width / canvas.height;
-                 const videoAspect = video.videoWidth / video.videoHeight;
-
+                 const canvasAspect = canvas.width / canvas.height; const videoAspect = video.videoWidth / video.videoHeight;
                  let drawWidth, drawHeight, offsetX, offsetY;
-
-                 // Calculate scaling to fit video within canvas while maintaining aspect ratio
-                 if (canvasAspect > videoAspect) { // Canvas is wider than video (pillarbox)
-                     drawHeight = canvas.height;
-                     drawWidth = drawHeight * videoAspect;
-                     offsetX = (canvas.width - drawWidth) / 2;
-                     offsetY = 0;
-                 } else { // Canvas is narrower than video (letterbox)
-                     drawWidth = canvas.width;
-                     drawHeight = drawWidth / videoAspect;
-                     offsetX = 0;
-                     offsetY = (canvas.height - drawHeight) / 2;
-                 }
-
-                 // Apply zoom and pan transformations centered on the canvas
-                 const centerX = canvas.width / 2;
-                 const centerY = canvas.height / 2;
-
-                 ctx.translate(centerX, centerY); // Move origin to center
-                 ctx.scale(container.zoomScale, container.zoomScale); // Apply zoom
-                 ctx.translate(container.panX, container.panY); // Apply pan (relative to zoomed scale)
-                 ctx.translate(-centerX, -centerY); // Move origin back
-
-                 try {
-                     // Draw the video onto the canvas, centered and scaled
-                     ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
-                 } catch (e) {
-                     console.error("Error drawing video to canvas:", e);
-                 }
-             } else {
-                 // Optionally draw a loading indicator if video dimensions aren't ready
-                 ctx.fillStyle = '#555';
-                 ctx.textAlign = 'center';
-                 ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
-             }
+                 if (canvasAspect > videoAspect) { drawHeight = canvas.height; drawWidth = drawHeight * videoAspect; offsetX = (canvas.width - drawWidth) / 2; offsetY = 0; }
+                 else { drawWidth = canvas.width; drawHeight = drawWidth / videoAspect; offsetX = 0; offsetY = (canvas.height - drawHeight) / 2; }
+                 const centerX = canvas.width / 2; const centerY = canvas.height / 2;
+                 ctx.translate(centerX, centerY); ctx.scale(container.zoomScale, container.zoomScale); ctx.translate(container.panX, container.panY); ctx.translate(-centerX, -centerY);
+                 try { ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight); } catch (e) { console.error("Draw Error:", e); }
+             } else { ctx.fillStyle = '#555'; ctx.textAlign = 'center'; ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2); }
              ctx.restore();
           }
-          // Continue the loop only if the container is still part of the document
-          if (container.isConnected) {
-             animationFrameId = requestAnimationFrame(renderCanvas);
-          } else {
-             console.log("Render loop stopped for removed player:", url);
-             animationFrameId = null; // Clear ID
-          }
+          if (container.isConnected) animationFrameId = requestAnimationFrame(renderCanvas); else animationFrameId = null;
         }
-        // Start render loop when video can play
-        video.addEventListener("canplay", () => {
-            if (!animationFrameId && container.isConnected) { // Start only once and if connected
-                console.log("Starting render loop for:", url);
-                renderCanvas();
-            }
-        }); // Don't use { once: true } - might need restart if video stalls/reloads
+        video.addEventListener("canplay", () => { if (!animationFrameId && container.isConnected) renderCanvas(); });
+        video.addEventListener('emptied', () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null; });
+        video.addEventListener('error', () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null; });
 
-        // Stop render loop if video source changes or errors out significantly
-         video.addEventListener('emptied', () => {
-             if (animationFrameId) {
-                 cancelAnimationFrame(animationFrameId);
-                 animationFrameId = null;
-                 console.log("Render loop stopped (video emptied):", url);
-             }
-         });
-         video.addEventListener('error', () => {
-             if (animationFrameId) {
-                 cancelAnimationFrame(animationFrameId);
-                 animationFrameId = null;
-                 console.log("Render loop stopped (video error):", url);
-             }
-         });
-
-
-        // --- Desktop Interactions (Pan/Zoom/Click) ---
         let startX, startY, isDragging = false;
         canvasWrapper.addEventListener("mousedown", e => {
-          // Pan only on left click + Space OR when in fullscreen
           const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
-          if (e.button === 0 && (spaceHeld || isFullscreen)) {
-            startX = e.clientX;
-            startY = e.clientY;
-            isDragging = false; // Reset dragging flag
-            container.style.cursor = 'grabbing'; // Indicate panning possible
-            e.preventDefault(); // Prevent default drag behavior
-          }
+          if (e.button === 0 && (spaceHeld || isFullscreen)) { startX = e.clientX; startY = e.clientY; isDragging = false; container.style.cursor = 'grabbing'; e.preventDefault(); }
         });
-
-        document.addEventListener("mousemove", e => { // Listen on document for dragging outside
+        document.addEventListener("mousemove", e => {
           const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
-          // Check if dragging should be active (left button down AND (space held OR fullscreen))
-          // Also check if the drag started on *this* player's canvas wrapper
           if ((e.buttons & 1) && (spaceHeld || isFullscreen) && typeof startX === 'number') {
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-
-            if (!isDragging && Math.hypot(dx, dy) > 5) { // Threshold to start dragging
-              isDragging = true;
-            }
-
+            const dx = e.clientX - startX; const dy = e.clientY - startY;
+            if (!isDragging && Math.hypot(dx, dy) > 5) isDragging = true;
             if (isDragging) {
-              // Adjust pan based on mouse movement and current zoom scale
-              container.panX += dx / container.zoomScale;
-              container.panY += dy / container.zoomScale;
-              clampPan(container); // Keep pan within bounds
+              container.panX += dx / container.zoomScale; container.panY += dy / container.zoomScale; clampPan(container);
               savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
-
-              // Update start position for next movement calculation
-              startX = e.clientX;
-              startY = e.clientY;
+              startX = e.clientX; startY = e.clientY;
             }
           }
         });
-
-        document.addEventListener("mouseup", e => { // Listen on document
-           if (e.button === 0) { // Left button released
-              if (typeof startX === 'number') { // If a pan was potentially started on this element
-                  container.style.cursor = ''; // Reset cursor
-                  // Only reset start positions if the mouseup is related to this element's drag start
-                  startX = null;
-                  startY = null;
-                  // Click logic is handled separately, reset drag flag here
-                  // Important: Set isDragging to false *after* potential click check if needed
-                  setTimeout(() => isDragging = false, 0); // Defer reset slightly
-              }
-           }
-        });
-
-        // Zoom with Wheel
+        document.addEventListener("mouseup", e => { if (e.button === 0 && typeof startX === 'number') { container.style.cursor = ''; startX = null; startY = null; setTimeout(() => isDragging = false, 0); } });
         canvasWrapper.addEventListener("wheel", e => {
           const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
           if (spaceHeld || isFullscreen) {
-            e.preventDefault(); // Prevent page scroll
-
-            const rect = canvasWrapper.getBoundingClientRect();
-            // Calculate mouse position relative to the canvas element
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            // Normalize mouse coordinates to canvas dimensions (0 to 1)
-            const normX = mouseX / rect.width;
-            const normY = mouseY / rect.height;
-
-            // Map normalized coordinates to the base canvas resolution (960x540)
-            const canvasX = normX * 960;
-            const canvasY = normY * 540;
-
-            const oldZoom = container.zoomScale;
-            // Determine zoom direction and calculate new zoom level
-            const zoomAmount = 0.15; // Increase zoom sensitivity
-            let newZoom = oldZoom * (e.deltaY < 0 ? (1 + zoomAmount) : (1 / (1 + zoomAmount)));
-            newZoom = Math.max(1, Math.min(5, newZoom)); // Clamp zoom level (e.g., 1x to 5x)
-
-            if (newZoom !== oldZoom) { // Only adjust pan if zoom actually changed
-                // Calculate pan adjustment to keep the point under the mouse stationary
-                // Pan offset = (Point Coordinate - Center Coordinate) * (1/NewZoom - 1/OldZoom)
-                container.panX += (canvasX - 480) * (1 / newZoom - 1 / oldZoom);
-                container.panY += (canvasY - 270) * (1 / newZoom - 1 / oldZoom);
-
-                container.zoomScale = newZoom;
-                clampPan(container); // Ensure pan stays within bounds after zoom
+            e.preventDefault(); const rect = canvasWrapper.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+            const normX = mouseX / rect.width; const normY = mouseY / rect.height;
+            const canvasX = normX * 960; const canvasY = normY * 540; const oldZoom = container.zoomScale;
+            const zoomAmount = 0.15; let newZoom = oldZoom * (e.deltaY < 0 ? (1 + zoomAmount) : (1 / (1 + zoomAmount)));
+            newZoom = Math.max(1, Math.min(5, newZoom));
+            if (newZoom !== oldZoom) {
+                container.panX += (canvasX - 480) * (1 / newZoom - 1 / oldZoom); container.panY += (canvasY - 270) * (1 / newZoom - 1 / oldZoom);
+                container.zoomScale = newZoom; clampPan(container);
                 savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
             }
           }
-        }, { passive: false }); // Need passive: false to preventDefault
-
-        // Click/Double-Click Handling on Canvas Wrapper
-        let clickTimeout = null;
-        let lastClickTime = 0;
+        }, { passive: false });
+        let clickTimeout = null; let lastClickTime = 0;
         canvasWrapper.addEventListener("click", (e) => {
-            if (e.button !== 0) return; // Only left clicks
-
-            // VERY IMPORTANT: Ignore click if dragging occurred between mousedown and mouseup
-            if (isDragging) {
-                 console.log("Click ignored due to dragging.");
-                 // isDragging = false; // Reset happens in mouseup listener
-                 return;
-            }
-
-            const now = Date.now();
-            if (now - lastClickTime < 300) { // Double click threshold
-                clearTimeout(clickTimeout); // Cancel single click timeout
-                lastClickTime = 0; // Reset timer
-                console.log("Double click on canvas");
-                // Double Click Action: Toggle Fullscreen
-                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                    enterFullScreen(container);
-                } else {
-                    exitFullScreen();
-                }
-            } else {
-                // Single Click Action: Toggle Play/Pause (deferred)
-                console.log("Potential single click on canvas");
-                clickTimeout = setTimeout(() => {
-                    console.log("Executing single click action: Toggle Play/Pause");
-                    if (video.paused) {
-                        video.play().catch(err => console.error("Play error:", err));
-                    } else {
-                        video.pause();
-                    }
-                }, 300); // Wait for potential double click
-            }
-            lastClickTime = now;
+            if (e.button !== 0 || isDragging) return; const now = Date.now();
+            if (now - lastClickTime < 300) { clearTimeout(clickTimeout); lastClickTime = 0; if (!document.fullscreenElement && !document.webkitFullscreenElement) enterNativeFullScreen(container); else exitNativeFullScreen(); }
+            else { clickTimeout = setTimeout(() => { if (video.paused) video.play().catch(()=>{}); else video.pause(); }, 300); } lastClickTime = now;
         });
 
-
-        // --- Desktop Overlay Controls ---
-        const controlsContainer = document.createElement("div");
-        controlsContainer.className = "controls-container overlay-controls";
-        container.appendChild(controlsContainer); // Add below canvas wrapper
-
-        const controlBar = document.createElement("div");
-        controlBar.className = "control-bar";
-        controlsContainer.appendChild(controlBar);
-
-        // Play/Pause Button
-        const playPauseBtn = document.createElement("button");
-        playPauseBtn.textContent = video.paused ? "Play" : "Pause"; // Initial state based on autoplay attempt
-        playPauseBtn.setAttribute("aria-label", "Play/Pause");
-        playPauseBtn.addEventListener("click", (e) => {
-          e.stopPropagation(); // Prevent click bubbling to canvas
-          if (video.paused) {
-            video.play().catch(err => console.error("Play error:", err));
-          } else {
-            video.pause();
-          }
-        });
-        video.addEventListener("play", () => playPauseBtn.textContent = "Pause");
-        video.addEventListener("pause", () => playPauseBtn.textContent = "Play");
-        video.addEventListener("ended", () => playPauseBtn.textContent = "Play"); // Reset on end
-        controlBar.appendChild(playPauseBtn);
-
-        // Progress Bar
-        const progressBar = document.createElement("div");
-        progressBar.className = "progress-bar";
-        const bufferedBar = document.createElement("div"); bufferedBar.className = "buffered";
-        const playedBar = document.createElement("div"); playedBar.className = "played";
-        const thumb = document.createElement("div"); thumb.className = "thumb";
-        progressBar.appendChild(bufferedBar);
-        progressBar.appendChild(playedBar);
-        progressBar.appendChild(thumb);
-        controlBar.appendChild(progressBar);
-
-        // Update progress bar display
-        function updateProgressBar() {
-          const duration = video.duration;
-          if (!isNaN(duration) && duration > 0 && isFinite(duration)) { // Check for valid, finite duration
-            const currentTime = video.currentTime;
-            const buffered = video.buffered;
-            let bufferedEnd = 0;
-            // Find the buffered range that includes the current time or the latest one
-            try { // Add try-catch for potential errors accessing buffered ranges
-                for (let i = 0; i < buffered.length; i++) {
-                     if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) {
-                         bufferedEnd = buffered.end(i);
-                         break; // Found the relevant range
-                     }
-                     // Keep track of the furthest point buffered if current time isn't buffered
-                     bufferedEnd = Math.max(bufferedEnd, buffered.end(i));
-                }
-            } catch (err) {
-                console.warn("Error accessing video buffered ranges:", err);
-            }
-
-            const playedPercent = (currentTime / duration) * 100;
-            const bufferedPercent = (bufferedEnd / duration) * 100;
-
-            playedBar.style.width = `${Math.min(100, playedPercent)}%`; // Clamp at 100%
-            thumb.style.left = `${Math.min(100, playedPercent)}%`;
-            bufferedBar.style.width = `${Math.min(100, bufferedPercent)}%`;
-          } else {
-            // Reset or handle live stream (duration Infinity)
-            playedBar.style.width = '0%'; // Or style differently for live
-            thumb.style.left = '0%';
-            bufferedBar.style.width = '0%';
-          }
+        const controlsContainer = document.createElement("div"); controlsContainer.className = "controls-container overlay-controls"; container.appendChild(controlsContainer);
+        const controlBar = document.createElement("div"); controlBar.className = "control-bar"; controlsContainer.appendChild(controlBar);
+        const playPauseBtn = document.createElement("button"); playPauseBtn.textContent = video.paused ? "Play" : "Pause"; playPauseBtn.setAttribute("aria-label", "Play/Pause");
+        playPauseBtn.addEventListener("click", (e) => { e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); });
+        video.addEventListener("play", () => playPauseBtn.textContent = "Pause"); video.addEventListener("pause", () => playPauseBtn.textContent = "Play"); video.addEventListener("ended", () => playPauseBtn.textContent = "Play"); controlBar.appendChild(playPauseBtn);
+        const progressBar = document.createElement("div"); progressBar.className = "progress-bar"; const bufferedBar = document.createElement("div"); bufferedBar.className = "buffered"; const playedBar = document.createElement("div"); playedBar.className = "played"; const thumb = document.createElement("div"); thumb.className = "thumb"; progressBar.appendChild(bufferedBar); progressBar.appendChild(playedBar); progressBar.appendChild(thumb); controlBar.appendChild(progressBar);
+        function updateProgressBar() { /* ... (desktop progress update logic remains the same) ... */
+            const duration = video.duration;
+            if (!isNaN(duration) && duration > 0 && isFinite(duration)) {
+                const currentTime = video.currentTime; const buffered = video.buffered; let bufferedEnd = 0;
+                try { for (let i = 0; i < buffered.length; i++) { if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) { bufferedEnd = buffered.end(i); break; } bufferedEnd = Math.max(bufferedEnd, buffered.end(i)); } } catch (err) {}
+                const playedPercent = (currentTime / duration) * 100; const bufferedPercent = (bufferedEnd / duration) * 100;
+                playedBar.style.width = `${Math.min(100, playedPercent)}%`; thumb.style.left = `${Math.min(100, playedPercent)}%`; bufferedBar.style.width = `${Math.min(100, bufferedPercent)}%`;
+            } else { playedBar.style.width = '0%'; thumb.style.left = '0%'; bufferedBar.style.width = '0%'; }
         }
-        video.addEventListener("timeupdate", updateProgressBar);
-        video.addEventListener("progress", updateProgressBar); // Update buffered ranges
-        video.addEventListener("loadedmetadata", updateProgressBar); // Initial update
-        video.addEventListener("durationchange", updateProgressBar); // Update if duration changes (e.g., live stream)
-
-
-        // Progress Bar Seeking
+        video.addEventListener("timeupdate", updateProgressBar); video.addEventListener("progress", updateProgressBar); video.addEventListener("loadedmetadata", updateProgressBar); video.addEventListener("durationchange", updateProgressBar);
         let isSeeking = false;
-        function seek(event) {
-          const duration = video.duration;
-          // Allow seeking only if duration is valid and finite
-          if (!isNaN(duration) && duration > 0 && isFinite(duration)) {
-            const progressBarRect = progressBar.getBoundingClientRect();
-            // Determine clientX from mouse or touch event
-             let clientX = event.clientX;
-             if (event.type.startsWith('touch')) {
-                 if (event.touches.length > 0) {
-                     clientX = event.touches[0].clientX; // touchstart, touchmove
-                 } else if (event.changedTouches.length > 0) {
-                     clientX = event.changedTouches[0].clientX; // touchend
-                 } else {
-                     return; // No touch point info
-                 }
-             }
-             if (typeof clientX === 'undefined') return; // Exit if no coordinate found
-
-            const clickX = clientX - progressBarRect.left;
-            let seekPercent = clickX / progressBarRect.width;
-            seekPercent = Math.max(0, Math.min(1, seekPercent)); // Clamp between 0 and 1
-            const seekTime = seekPercent * duration;
-
-             // Check if seekTime is within a seekable range (more robust check)
-             let isSeekable = false;
-             try { // Add try-catch for potential errors accessing seekable ranges
-                 for (let i = 0; i < video.seekable.length; i++) {
-                     if (seekTime >= video.seekable.start(i) && seekTime <= video.seekable.end(i)) {
-                         isSeekable = true;
-                         break;
-                     }
-                 }
-             } catch (err) {
-                 console.warn("Error accessing video seekable ranges:", err);
-                 // Assume seekable if error occurs, or handle differently
-                 isSeekable = true;
-             }
-
-
-             if (isSeekable) {
-                 video.currentTime = seekTime;
-                 updateProgressBar(); // Update UI immediately
-             } else {
-                 console.warn("Attempted to seek to a non-seekable time:", seekTime);
-             }
-          } else {
-              console.log("Cannot seek: Invalid or infinite duration.");
-          }
-        }
-
-        progressBar.addEventListener("mousedown", (e) => {
-          if (e.button === 0) { // Only left click
-            isSeeking = true;
-            document.body.style.userSelect = 'none'; // Prevent text selection during drag
-            seek(e); // Seek immediately on mousedown
-            progressBar.style.cursor = 'grabbing';
-          }
-        });
-         progressBar.addEventListener("touchstart", (e) => {
-             isSeeking = true;
-             document.body.style.webkitUserSelect = 'none'; // Prevent selection on iOS
-             seek(e); // Seek immediately on touchstart
-             // Don't preventDefault here if passive: true, handle in move listener
-         }, { passive: true }); // Use passive for better scroll performance initially
-
-        document.addEventListener("mousemove", (e) => {
-          if (isSeeking) {
-            seek(e);
-          }
-        });
-         document.addEventListener("touchmove", (e) => {
-             if (isSeeking) {
-                 // Prevent default page scroll ONLY when actively scrubbing
-                 e.preventDefault();
-                 seek(e);
-             }
-         }, { passive: false }); // Need passive: false to preventDefault scroll
-
-        document.addEventListener("mouseup", (e) => {
-          if (e.button === 0 && isSeeking) { // Left button released
-            isSeeking = false;
-            progressBar.style.cursor = 'pointer';
-            document.body.style.userSelect = ''; // Re-enable text selection
-          }
-        });
-         document.addEventListener("touchend", (e) => {
-             if (isSeeking) {
-                 isSeeking = false;
-                 document.body.style.webkitUserSelect = ''; // Re-enable selection on iOS
-                 // Optional: final seek on touchend if needed
-                 // seek(e);
-             }
-         });
-
-
-        // Fullscreen Button
-        const fsBtnDesktop = document.createElement("button");
-        fsBtnDesktop.innerHTML = "&#x26F6;"; // Enter fullscreen symbol
-        fsBtnDesktop.setAttribute("aria-label", "Enter/Exit Fullscreen");
-        fsBtnDesktop.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-            enterFullScreen(container);
-          } else {
-            exitFullScreen();
-          }
-        });
-        controlBar.appendChild(fsBtnDesktop);
-
-        // Update fullscreen button icon on change
-        function updateFsButtonIcon() {
-             const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
-             fsBtnDesktop.innerHTML = isFs ? "&#x2921;" : "&#x26F6;"; // Update icon
-        }
-        document.addEventListener("fullscreenchange", updateFsButtonIcon);
-        document.addEventListener("webkitfullscreenchange", updateFsButtonIcon);
-
-
-        // Reset Pan/Zoom Button
-        const resetBtn = document.createElement("button");
-        resetBtn.textContent = "Reset";
-        resetBtn.setAttribute("aria-label", "Reset Pan & Zoom");
-        resetBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          container.zoomScale = 1;
-          container.panX = 0;
-          container.panY = 0;
-          savePlayerSettings(url, { zoomScale: 1, panX: 0, panY: 0 });
-          // Force canvas redraw if needed, though render loop should handle it
-        });
-        controlBar.appendChild(resetBtn);
-
-        // Disable Stream Button
-        const disableBtn = document.createElement("button");
-        disableBtn.className = "disable-btn";
-        disableBtn.textContent = "✕"; // Multiplication X symbol
-        disableBtn.setAttribute("aria-label", "Hide this stream");
-        disableBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          updateStreamEnabled(url, false); // Call the function to disable and remove
-        });
-        controlBar.appendChild(disableBtn);
-
-        // Title Bar (below controls)
-        const titleBar = document.createElement("div");
-        titleBar.className = "title-bar";
-        titleBar.textContent = extractTitle(url);
-        controlsContainer.appendChild(titleBar); // Add after controlBar
-
-        // --- Control Bar Auto-Hide (Desktop Fullscreen) ---
-        let hideControlsTimeout = null;
-        function showControlsTemporarily() {
-            controlsContainer.style.opacity = '1';
-            controlsContainer.style.pointerEvents = 'auto'; // Make controls interactive
-            clearTimeout(hideControlsTimeout);
-            // Schedule hide only when in fullscreen and video is playing
-            const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
-            if (isFullscreen && !video.paused) {
-                hideControlsTimeout = setTimeout(() => {
-                    controlsContainer.style.opacity = '0';
-                    controlsContainer.style.pointerEvents = 'none'; // Prevent interaction when hidden
-                }, 3000); // Hide after 3 seconds of inactivity
+        function seek(event) { /* ... (desktop seek logic remains the same) ... */
+            const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) {
+                const progressBarRect = progressBar.getBoundingClientRect(); let clientX = event.clientX; if (event.type.startsWith('touch')) { if (event.touches.length > 0) clientX = event.touches[0].clientX; else if (event.changedTouches.length > 0) clientX = event.changedTouches[0].clientX; else return; } if (typeof clientX === 'undefined') return;
+                const clickX = clientX - progressBarRect.left; let seekPercent = clickX / progressBarRect.width; seekPercent = Math.max(0, Math.min(1, seekPercent)); const seekTime = seekPercent * duration;
+                let isSeekable = false; try { for (let i = 0; i < video.seekable.length; i++) { if (seekTime >= video.seekable.start(i) && seekTime <= video.seekable.end(i)) { isSeekable = true; break; } } } catch (e) { isSeekable = true; }
+                if (isSeekable) { video.currentTime = seekTime; updateProgressBar(); }
             }
         }
+        progressBar.addEventListener("mousedown", (e) => { if (e.button === 0) { isSeeking = true; document.body.style.userSelect = 'none'; seek(e); progressBar.style.cursor = 'grabbing'; } });
+        progressBar.addEventListener("touchstart", (e) => { isSeeking = true; document.body.style.webkitUserSelect = 'none'; seek(e); }, { passive: true });
+        document.addEventListener("mousemove", (e) => { if (isSeeking) seek(e); });
+        document.addEventListener("touchmove", (e) => { if (isSeeking) { e.preventDefault(); seek(e); } }, { passive: false });
+        document.addEventListener("mouseup", (e) => { if (e.button === 0 && isSeeking) { isSeeking = false; progressBar.style.cursor = 'pointer'; document.body.style.userSelect = ''; } });
+        document.addEventListener("touchend", (e) => { if (isSeeking) { isSeeking = false; document.body.style.webkitUserSelect = ''; } });
 
-        // Show controls on mouse move within the container or when entering fullscreen/pausing
-        container.addEventListener('mousemove', showControlsTemporarily);
-        container.addEventListener('mouseenter', showControlsTemporarily); // Show when mouse enters
-        video.addEventListener('pause', showControlsTemporarily); // Keep visible when paused
-        video.addEventListener('play', showControlsTemporarily); // Start timer when playing
-
-         // Initial state setup based on fullscreen
-         function setInitialControlsVisibility() {
-             const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
-             if (isFullscreen) {
-                 showControlsTemporarily(); // Show initially then start timer
-             } else {
-                 // Keep controls visible when not in fullscreen
-                 controlsContainer.style.opacity = '1';
-                 controlsContainer.style.pointerEvents = 'auto';
-                 clearTimeout(hideControlsTimeout);
-             }
-         }
-         document.addEventListener("fullscreenchange", setInitialControlsVisibility);
-         document.addEventListener("webkitfullscreenchange", setInitialControlsVisibility);
-         setInitialControlsVisibility(); // Set on load
-
+        const fsBtnDesktop = document.createElement("button"); fsBtnDesktop.innerHTML = "&#x26F6;"; fsBtnDesktop.setAttribute("aria-label", "Enter/Exit Fullscreen");
+        fsBtnDesktop.addEventListener("click", (e) => { e.stopPropagation(); if (!document.fullscreenElement && !document.webkitFullscreenElement) enterNativeFullScreen(container); else exitNativeFullScreen(); }); controlBar.appendChild(fsBtnDesktop);
+        function updateFsButtonIcon() { const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container; fsBtnDesktop.innerHTML = isFs ? "&#x2921;" : "&#x26F6;"; }
+        document.addEventListener("fullscreenchange", updateFsButtonIcon); document.addEventListener("webkitfullscreenchange", updateFsButtonIcon);
+        const resetBtn = document.createElement("button"); resetBtn.textContent = "Reset"; resetBtn.setAttribute("aria-label", "Reset Pan & Zoom");
+        resetBtn.addEventListener("click", (e) => { e.stopPropagation(); container.zoomScale = 1; container.panX = 0; container.panY = 0; savePlayerSettings(url, { zoomScale: 1, panX: 0, panY: 0 }); }); controlBar.appendChild(resetBtn);
+        const disableBtn = document.createElement("button"); disableBtn.className = "disable-btn"; disableBtn.textContent = "✕"; disableBtn.setAttribute("aria-label", "Hide this stream");
+        disableBtn.addEventListener("click", (e) => { e.stopPropagation(); updateStreamEnabled(url, false); }); controlBar.appendChild(disableBtn);
+        const titleBar = document.createElement("div"); titleBar.className = "title-bar"; titleBar.textContent = extractTitle(url); controlsContainer.appendChild(titleBar);
+        let hideControlsTimeout = null; function showControlsTemporarily() { /* ... (desktop controls auto-hide logic remains the same) ... */
+             controlsContainer.style.opacity = '1'; controlsContainer.style.pointerEvents = 'auto'; clearTimeout(hideControlsTimeout); const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (isFullscreen && !video.paused) { hideControlsTimeout = setTimeout(() => { controlsContainer.style.opacity = '0'; controlsContainer.style.pointerEvents = 'none'; }, 3000); }
+        }
+        container.addEventListener('mousemove', showControlsTemporarily); container.addEventListener('mouseenter', showControlsTemporarily); video.addEventListener('pause', showControlsTemporarily); video.addEventListener('play', showControlsTemporarily);
+        function setInitialControlsVisibility() { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (isFullscreen) { showControlsTemporarily(); } else { controlsContainer.style.opacity = '1'; controlsContainer.style.pointerEvents = 'auto'; clearTimeout(hideControlsTimeout); } }
+        document.addEventListener("fullscreenchange", setInitialControlsVisibility); document.addEventListener("webkitfullscreenchange", setInitialControlsVisibility); setInitialControlsVisibility();
       } // End Desktop Specific Setup
 
-      // --- HLS.js Setup (Common logic moved outside if/else) ---
-      // Prefer native HLS on Safari (iOS and macOS) for better performance/battery
+      // --- HLS.js Setup ---
       const preferNativeHls = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
       const canPlayNativeHls = video.canPlayType("application/vnd.apple.mpegurl");
-
       if (Hls.isSupported() && !preferNativeHls) {
-        console.log(`Using HLS.js for: ${url}`);
-        hlsInstance = new Hls({
-          // Sensible defaults, adjust if needed
-          maxBufferLength: 60, // seconds
-          maxMaxBufferLength: 120, // seconds
-          // Starting buffer size small, let it grow
-          // maxBufferSize: 60 * 1024 * 1024, // 60MB - Can lead to high memory usage
-          liveSyncDurationCount: 3, // Segments behind live edge for seeking
-          fragLoadingTimeOut: 20000, // 20 seconds timeout for fragment loading
-          manifestLoadingTimeOut: 20000, // 20 seconds timeout for manifest loading
-          levelLoadingTimeOut: 20000, // 20 seconds timeout for level playlist loading
-          // Enable progressive loading for potentially faster start times
-          progressive: true,
-          // Custom loader to ensure proxy is used correctly
-          loader: class extends Hls.DefaultConfig.loader {
-             load(context, config, callbacks) {
-                 let requestUrl = context.url;
-                 // Check if the URL is already proxied, decode if necessary
-                 while (requestUrl.startsWith(PROXY_PREFIX)) {
-                     requestUrl = decodeURIComponent(requestUrl.slice(PROXY_PREFIX.length));
-                 }
-                 // Apply the proxy prefix to the original/decoded URL
-                 context.url = PROXY_PREFIX + encodeURIComponent(requestUrl);
-                 // console.log("HLS Loader Request:", context.url); // Log proxied URL (can be verbose)
-                 super.load(context, config, callbacks);
-             }
-          }
+        hlsInstance = new Hls({ maxBufferLength: 60, maxMaxBufferLength: 120, liveSyncDurationCount: 3, fragLoadingTimeOut: 20000, manifestLoadingTimeOut: 20000, levelLoadingTimeOut: 20000, progressive: true,
+          loader: class extends Hls.DefaultConfig.loader { load(ctx, cfg, cb){ let u = ctx.url; while (u.startsWith(PROXY_PREFIX)) u = decodeURIComponent(u.slice(PROXY_PREFIX.length)); ctx.url = PROXY_PREFIX + encodeURIComponent(u); super.load(ctx, cfg, cb); } }
         });
+        hlsInstance.loadSource(url); hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { if (video.autoplay || !video.paused) video.play().catch(()=>{}); });
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => { console.error(`HLS Error: ${data.type}, ${data.details}`, data); if (data.fatal) { switch (data.type) { case Hls.ErrorTypes.NETWORK_ERROR: setTimeout(() => { if (hlsInstance) hlsInstance.startLoad(); }, 2000); break; case Hls.ErrorTypes.MEDIA_ERROR: hlsInstance.recoverMediaError(); break; default: hlsInstance.destroy(); setTimeout(() => { if (players[url] && players[url].container.isConnected) updateStreamEnabled(url, true); }, 5000); break; } } });
+      } else if (canPlayNativeHls) { video.src = PROXY_PREFIX + encodeURIComponent(url); if (video.autoplay) video.play().catch(()=>{}); }
+      else { console.warn(`HLS not supported for ${url}`); const em = document.createElement('div'); em.textContent = 'HLS not supported'; em.style.cssText = 'color:red;text-align:center;padding:20px;'; container.appendChild(em); }
 
-        hlsInstance.loadSource(url); // Load the original URL (loader will proxy)
-        hlsInstance.attachMedia(video);
-
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          console.log(`HLS Manifest parsed for: ${url}`);
-          if (video.autoplay || !video.paused) {
-             video.play().catch(e => console.log(`HLS.js Autoplay prevented for ${url}:`, e));
-          }
-        });
-
-        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-          console.error(`HLS Error for ${url}: Type: ${data.type}, Details: ${data.details}`, data);
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn(`HLS Network Error on ${url}, attempting to recover...`);
-                // Exponential backoff could be implemented here
-                setTimeout(() => { if (hlsInstance) hlsInstance.startLoad(); }, 2000); // Retry after 2s
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.warn(`HLS Media Error on ${url}, attempting media recovery...`);
-                hlsInstance.recoverMediaError();
-                break;
-              default:
-                console.error(`Unrecoverable HLS Error on ${url}, attempting to destroy and recreate.`);
-                hlsInstance.destroy();
-                // Attempt to recreate after a delay, only if player still exists
-                setTimeout(() => {
-                    if (players[url] && players[url].container.isConnected) {
-                        console.log("Recreating HLS instance after fatal error for:", url);
-                        updateStreamEnabled(url, true); // This will trigger recreation
-                    }
-                }, 5000); // Retry after 5s
-                break;
-            }
-          }
-        });
-      } else if (canPlayNativeHls) {
-        console.log(`Using Native HLS for: ${url}`);
-        // Set src directly (proxy handled by loader if needed, or apply here)
-        video.src = PROXY_PREFIX + encodeURIComponent(url);
-        // Native HLS usually requires user interaction to play on mobile
-        if (video.autoplay) {
-            video.play().catch(e => console.log(`Native HLS autoplay prevented for ${url}:`, e));
-        }
-      } else {
-          console.warn(`HLS playback not supported for ${url} on this browser.`);
-          // Optionally display an error message to the user within the player container
-          const errorMsg = document.createElement('div');
-          errorMsg.textContent = 'HLS playback not supported';
-          errorMsg.style.color = 'red';
-          errorMsg.style.textAlign = 'center';
-          errorMsg.style.padding = '20px';
-          container.appendChild(errorMsg);
-      }
-
-      // Return references to the created elements and HLS instance
       return { container, video, hls: hlsInstance, animationFrameId };
     }
 
-     // --- Mobile Fullscreen Controls & Gestures ---
-     // This function is called ONLY when entering fullscreen on mobile
-     function setupMobileFullscreenControls(container, video) {
-         // Check if controls already exist to prevent duplication
+    // --- Mobile Pseudo-Fullscreen ---
+    let pseudoFsCleanup = null; // Store cleanup function for current pseudo-fullscreen player
+
+    function enterPseudoFullscreen(container, video) {
+        if (document.querySelector('.player-fullscreen-mobile')) return; // Already in pseudo-fullscreen
+
+        console.log("Entering Pseudo Fullscreen for:", container.dataset.url);
+        const htmlEl = document.documentElement;
+
+        // Apply classes for styling
+        htmlEl.classList.add("pseudo-fullscreen-mobile");
+        if (!IS_SAFARI_MOBILE) {
+            htmlEl.classList.add("non-safari"); // For 110vh body height
+        }
+        container.classList.add("player-fullscreen-mobile");
+
+        // Setup controls
+        const { cleanup: controlsCleanup } = setupMobileFullscreenControls(container, video);
+
+        // Setup Pinch Zoom/Pan
+        const { cleanup: gestureCleanup } = setupPseudoFullscreenGestures(container, video);
+
+        // Combine cleanup functions
+        pseudoFsCleanup = () => {
+            console.log("Running pseudo fullscreen cleanup...");
+            if (controlsCleanup) controlsCleanup();
+            if (gestureCleanup) gestureCleanup();
+        };
+
+        // Attempt to hide browser UI for non-Safari after a delay
+        if (!IS_SAFARI_MOBILE) {
+            hideBrowserUI();
+        }
+    }
+
+    function exitPseudoFullscreen(container, video) {
+        if (!container || !container.classList.contains('player-fullscreen-mobile')) return; // Not in pseudo-fullscreen
+
+        console.log("Exiting Pseudo Fullscreen for:", container.dataset.url);
+        const htmlEl = document.documentElement;
+
+        // Run cleanup for listeners
+        if (pseudoFsCleanup) {
+            pseudoFsCleanup();
+            pseudoFsCleanup = null;
+        }
+
+        // Remove classes
+        htmlEl.classList.remove("pseudo-fullscreen-mobile");
+        htmlEl.classList.remove("non-safari");
+        container.classList.remove("player-fullscreen-mobile");
+        container.classList.remove("controls-open"); // Ensure controls state is reset
+
+        // Reset video transform
+        video.style.transform = 'scale(1) translate(0px, 0px)';
+        video.style.transformOrigin = 'center center';
+
+        // Remove fullscreen controls element
+        const fsControls = container.querySelector('.fullscreen-controls');
+        if (fsControls) fsControls.remove();
+
+        // Restore body scroll if it was modified
+        document.body.style.height = '';
+        document.body.style.overflow = '';
+    }
+
+    // --- Mobile Pseudo-Fullscreen Controls Setup ---
+    function setupMobileFullscreenControls(container, video) {
          let fsControls = container.querySelector('.fullscreen-controls');
-         if (fsControls) {
-             // Make sure they are visible if they already exist
-             container.classList.add("controls-open"); // Ensure state is correct
-             showFsControls(); // Run show logic (sets timer etc)
-             return; // Already set up
+         let controlsTimeout_fs; let isFsSeeking = false;
+         let listeners = []; // To store { element, type, handler } for easy removal
+
+         function addListener(element, type, handler, options) {
+             element.addEventListener(type, handler, options);
+             listeners.push({ element, type, handler, options });
          }
 
-         console.log("Setting up mobile fullscreen controls for:", container.dataset.url);
-
-         // Create a dedicated container for fullscreen controls
-         fsControls = document.createElement("div");
-         fsControls.className = "controls-container fullscreen-controls"; // Add specific class
-
-         const fsControlBar = document.createElement("div");
-         fsControlBar.className = "control-bar"; // Reuse existing class for layout
-
-         // Play/Pause Button
-         const fsPlayPauseBtn = document.createElement("button");
-         fsPlayPauseBtn.textContent = video.paused ? "Play" : "Pause";
-         fsControlBar.appendChild(fsPlayPauseBtn);
-
-         // Scrubber (Range Input) - Show progress bar in FS
-         const fsProgressBar = document.createElement("div");
-         fsProgressBar.className = "progress-bar"; // Use existing progress bar class
-         const fsBufferedBar = document.createElement("div"); fsBufferedBar.className = "buffered";
-         const fsPlayedBar = document.createElement("div"); fsPlayedBar.className = "played";
-         const fsThumb = document.createElement("div"); fsThumb.className = "thumb";
-         fsProgressBar.appendChild(fsBufferedBar);
-         fsProgressBar.appendChild(fsPlayedBar);
-         fsProgressBar.appendChild(fsThumb);
-         fsControlBar.appendChild(fsProgressBar); // Add progress bar to FS controls
-
-
-         // Exit Fullscreen Button
-         const fsExitBtn = document.createElement("button");
-         fsExitBtn.innerHTML = "&#x2921;"; // Exit fullscreen symbol
-         fsControlBar.appendChild(fsExitBtn);
-
-         fsControls.appendChild(fsControlBar);
-
-         // Optional Title Bar for Fullscreen
-         const fsTitleBar = document.createElement("div");
-         fsTitleBar.className = "title-bar";
-         fsTitleBar.textContent = extractTitle(container.dataset.url);
-         fsControls.appendChild(fsTitleBar);
-
-         container.appendChild(fsControls); // Add to the player container
-
-         // --- Fullscreen Control Logic ---
-         let isFsSeeking = false;
-         fsPlayPauseBtn.addEventListener("click", (e) => {
-             e.stopPropagation();
-             if (video.paused) video.play().catch(err => console.error("Play error:", err));
-             else video.pause();
-         });
-         // Update button state based on video events
-         const updateFsPlayButton = () => { fsPlayPauseBtn.textContent = video.paused ? "Play" : "Pause"; };
-         video.addEventListener("play", updateFsPlayButton);
-         video.addEventListener("pause", updateFsPlayButton);
-         video.addEventListener("ended", updateFsPlayButton);
-
-         // Update fullscreen progress bar
-         const updateFsProgressBar = () => {
-             const duration = video.duration;
-             if (!isNaN(duration) && duration > 0 && isFinite(duration)) {
-                 const currentTime = video.currentTime;
-                 const buffered = video.buffered;
-                 let bufferedEnd = 0;
-                 try {
-                     for (let i = 0; i < buffered.length; i++) {
-                         if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) {
-                             bufferedEnd = buffered.end(i); break;
-                         }
-                         bufferedEnd = Math.max(bufferedEnd, buffered.end(i));
-                     }
-                 } catch (e) { /* ignore */ }
-
-                 const playedPercent = (currentTime / duration) * 100;
-                 const bufferedPercent = (bufferedEnd / duration) * 100;
-                 fsPlayedBar.style.width = `${Math.min(100, playedPercent)}%`;
-                 fsThumb.style.left = `${Math.min(100, playedPercent)}%`;
-                 fsBufferedBar.style.width = `${Math.min(100, bufferedPercent)}%`;
-             } else {
-                 fsPlayedBar.style.width = '0%';
-                 fsThumb.style.left = '0%';
-                 fsBufferedBar.style.width = '0%';
-             }
-         };
-         video.addEventListener("timeupdate", updateFsProgressBar);
-         video.addEventListener("progress", updateFsProgressBar);
-         video.addEventListener("loadedmetadata", updateFsProgressBar);
-         video.addEventListener("durationchange", updateFsProgressBar);
-         updateFsProgressBar(); // Initial call
-
-         // Fullscreen Seeking Logic
-         const fsSeek = (event) => {
-             const duration = video.duration;
-             if (!isNaN(duration) && duration > 0 && isFinite(duration)) {
-                 const progressBarRect = fsProgressBar.getBoundingClientRect();
-                 let clientX = event.clientX;
-                 if (event.type.startsWith('touch')) {
-                     if (event.touches.length > 0) clientX = event.touches[0].clientX;
-                     else if (event.changedTouches.length > 0) clientX = event.changedTouches[0].clientX;
-                     else return;
-                 }
-                 if (typeof clientX === 'undefined') return;
-
-                 const clickX = clientX - progressBarRect.left;
-                 let seekPercent = clickX / progressBarRect.width;
-                 seekPercent = Math.max(0, Math.min(1, seekPercent));
-                 const seekTime = seekPercent * duration;
-
-                 let isSeekable = false;
-                 try {
-                     for (let i = 0; i < video.seekable.length; i++) {
-                         if (seekTime >= video.seekable.start(i) && seekTime <= video.seekable.end(i)) {
-                             isSeekable = true; break;
-                         }
-                     }
-                 } catch (e) { isSeekable = true; } // Assume seekable on error
-
-                 if (isSeekable) {
-                     video.currentTime = seekTime;
-                     updateFsProgressBar(); // Update UI
-                 }
-             }
-         };
-
-         fsProgressBar.addEventListener("mousedown", (e) => {
-             if (e.button === 0) { isFsSeeking = true; fsSeek(e); fsProgressBar.style.cursor = 'grabbing'; }
-         });
-         fsProgressBar.addEventListener("touchstart", (e) => {
-             isFsSeeking = true; fsSeek(e);
-         }, { passive: true });
-
-         // Use window listeners for move/end to capture events outside the bar
-         const handleFsMouseMove = (e) => { if (isFsSeeking) fsSeek(e); };
-         const handleFsTouchMove = (e) => { if (isFsSeeking) { e.preventDefault(); fsSeek(e); } };
-         const handleFsMouseUp = (e) => { if (e.button === 0 && isFsSeeking) { isFsSeeking = false; fsProgressBar.style.cursor = 'pointer'; } };
-         const handleFsTouchEnd = () => { if (isFsSeeking) isFsSeeking = false; };
-
-         window.addEventListener("mousemove", handleFsMouseMove);
-         window.addEventListener("touchmove", handleFsTouchMove, { passive: false });
-         window.addEventListener("mouseup", handleFsMouseUp);
-         window.addEventListener("touchend", handleFsTouchEnd);
-
-         // Store remove function for cleanup when exiting fullscreen
-         fsControls.cleanupFsListeners = () => {
-             console.log("Cleaning up fullscreen listeners for:", container.dataset.url);
-             window.removeEventListener("mousemove", handleFsMouseMove);
-             window.removeEventListener("touchmove", handleFsTouchMove);
-             window.removeEventListener("mouseup", handleFsMouseUp);
-             window.removeEventListener("touchend", handleFsTouchEnd);
-             // Remove listeners attached to video element as well
-             video.removeEventListener("play", updateFsPlayButton);
-             video.removeEventListener("pause", updateFsPlayButton);
-             video.removeEventListener("ended", updateFsPlayButton);
-             video.removeEventListener("timeupdate", updateFsProgressBar);
-             video.removeEventListener("progress", updateFsProgressBar);
-             video.removeEventListener("loadedmetadata", updateFsProgressBar);
-             video.removeEventListener("durationchange", updateFsProgressBar);
-         };
-
-
-         fsExitBtn.addEventListener("click", (e) => {
-             e.stopPropagation();
-             exitFullScreen(); // Use the standard exit function
-         });
-
-         // --- Fullscreen Gesture Handling & Controls Visibility ---
-         let startY_fs, startT_fs, isScrollingControls = false;
-         let controlsTimeout_fs;
-
-         function showFsControls() {
-             if (!fsControls || !container.classList.contains('fullscreen')) return; // Exit if not in FS or controls removed
-             fsControls.style.bottom = `env(safe-area-inset-bottom, 10px)`; // Slide controls up respecting safe area
+         if (fsControls) { // Controls might exist if re-entering quickly
+             // Ensure visibility and state
              container.classList.add("controls-open");
-             clearTimeout(controlsTimeout_fs);
-             // Hide controls after a delay if video is playing
-             if (!video.paused) {
-                 controlsTimeout_fs = setTimeout(hideFsControls, 4000);
-             }
-         }
-         function hideFsControls() {
-             if (!fsControls || !container.classList.contains('fullscreen')) return; // Exit if not in FS or controls removed
-             // Don't hide if seeking
-             if (!isFsSeeking) {
-                 fsControls.style.bottom = '-120px'; // Slide controls down (increase distance)
-                 container.classList.remove("controls-open");
-             }
+             showFsControls();
+             // Return existing cleanup function if available
+             return { cleanup: fsControls.cleanupFsListeners || (() => {}) };
          }
 
-         // Show controls immediately when entering fullscreen
-         showFsControls();
+         console.log("Setting up mobile fullscreen controls UI for:", container.dataset.url);
+         fsControls = document.createElement("div"); fsControls.className = "controls-container fullscreen-controls";
+         const fsControlBar = document.createElement("div"); fsControlBar.className = "control-bar";
+         const fsPlayPauseBtn = document.createElement("button"); fsPlayPauseBtn.textContent = video.paused ? "Play" : "Pause"; fsControlBar.appendChild(fsPlayPauseBtn);
+         const fsProgressBar = document.createElement("div"); fsProgressBar.className = "progress-bar"; const fsBufferedBar = document.createElement("div"); fsBufferedBar.className = "buffered"; const fsPlayedBar = document.createElement("div"); fsPlayedBar.className = "played"; const fsThumb = document.createElement("div"); fsThumb.className = "thumb"; fsProgressBar.appendChild(fsBufferedBar); fsProgressBar.appendChild(fsPlayedBar); fsProgressBar.appendChild(fsThumb); fsControlBar.appendChild(fsProgressBar);
+         const fsExitBtn = document.createElement("button"); fsExitBtn.innerHTML = "&#x2921;"; fsControlBar.appendChild(fsExitBtn);
+         fsControls.appendChild(fsControlBar);
+         const fsTitleBar = document.createElement("div"); fsTitleBar.className = "title-bar"; fsTitleBar.textContent = extractTitle(container.dataset.url); fsControls.appendChild(fsTitleBar);
+         container.appendChild(fsControls);
 
-         // Keep controls visible while paused, restart timer on play
-         const handleVideoPlayPauseForControls = () => {
-             if (!container.classList.contains('fullscreen')) return; // Only act in fullscreen
-             clearTimeout(controlsTimeout_fs); // Clear any existing timer
-             if (video.paused) {
-                 showFsControls(); // Show and don't auto-hide
-             } else {
-                 // Start hide timer only if controls are currently meant to be open
-                 if (container.classList.contains('controls-open')) {
-                     controlsTimeout_fs = setTimeout(hideFsControls, 4000);
-                 }
-             }
+         // --- Control Logic & Listeners ---
+         const updateFsPlayButton = () => { fsPlayPauseBtn.textContent = video.paused ? "Play" : "Pause"; };
+         addListener(video, "play", updateFsPlayButton);
+         addListener(video, "pause", updateFsPlayButton);
+         addListener(video, "ended", updateFsPlayButton);
+
+         const updateFsProgressBar = () => { /* ... (same as before) ... */
+            const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) { const currentTime = video.currentTime; const buffered = video.buffered; let bufferedEnd = 0; try { for (let i = 0; i < buffered.length; i++) { if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) { bufferedEnd = buffered.end(i); break; } bufferedEnd = Math.max(bufferedEnd, buffered.end(i)); } } catch (e) {} const playedPercent = (currentTime / duration) * 100; const bufferedPercent = (bufferedEnd / duration) * 100; fsPlayedBar.style.width = `${Math.min(100, playedPercent)}%`; fsThumb.style.left = `${Math.min(100, playedPercent)}%`; fsBufferedBar.style.width = `${Math.min(100, bufferedPercent)}%`; } else { fsPlayedBar.style.width = '0%'; fsThumb.style.left = '0%'; fsBufferedBar.style.width = '0%'; }
          };
-         video.addEventListener('pause', handleVideoPlayPauseForControls);
-         video.addEventListener('play', handleVideoPlayPauseForControls);
-         // Store cleanup function
-         fsControls.cleanupFsListeners = (fsControls.cleanupFsListeners || (() => {})) + (() => {
-             video.removeEventListener('pause', handleVideoPlayPauseForControls);
-             video.removeEventListener('play', handleVideoPlayPauseForControls);
-         });
+         addListener(video, "timeupdate", updateFsProgressBar); addListener(video, "progress", updateFsProgressBar); addListener(video, "loadedmetadata", updateFsProgressBar); addListener(video, "durationchange", updateFsProgressBar); updateFsProgressBar();
 
-
-         // Toggle controls on single tap on the video area
-         const handleContainerTap = (e) => {
-             // Ensure the click is directly on the container or video, not controls
-             // Only act if in fullscreen
-             if (!container.classList.contains('fullscreen')) return;
-             if (e.target === container || e.target === video) {
-                 if (container.classList.contains("controls-open")) {
-                     hideFsControls();
-                 } else {
-                     showFsControls();
-                 }
-             }
+         const fsSeek = (event) => { /* ... (same as before) ... */
+            const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) { const progressBarRect = fsProgressBar.getBoundingClientRect(); let clientX = event.clientX; if (event.type.startsWith('touch')) { if (event.touches.length > 0) clientX = event.touches[0].clientX; else if (event.changedTouches.length > 0) clientX = event.changedTouches[0].clientX; else return; } if (typeof clientX === 'undefined') return; const clickX = clientX - progressBarRect.left; let seekPercent = clickX / progressBarRect.width; seekPercent = Math.max(0, Math.min(1, seekPercent)); const seekTime = seekPercent * duration; let isSeekable = false; try { for (let i = 0; i < video.seekable.length; i++) { if (seekTime >= video.seekable.start(i) && seekTime <= video.seekable.end(i)) { isSeekable = true; break; } } } catch (e) { isSeekable = true; } if (isSeekable) { video.currentTime = seekTime; updateFsProgressBar(); } }
          };
-         container.addEventListener("click", handleContainerTap);
-         // Store cleanup function
-          fsControls.cleanupFsListeners = (fsControls.cleanupFsListeners || (() => {})) + (() => {
-              container.removeEventListener('click', handleContainerTap);
-          });
+         addListener(fsProgressBar, "mousedown", (e) => { if (e.button === 0) { isFsSeeking = true; fsSeek(e); fsProgressBar.style.cursor = 'grabbing'; } });
+         addListener(fsProgressBar, "touchstart", (e) => { isFsSeeking = true; fsSeek(e); }, { passive: true });
+         const handleFsMouseMove = (e) => { if (isFsSeeking) fsSeek(e); }; const handleFsTouchMove = (e) => { if (isFsSeeking) { e.preventDefault(); fsSeek(e); } }; const handleFsMouseUp = (e) => { if (e.button === 0 && isFsSeeking) { isFsSeeking = false; fsProgressBar.style.cursor = 'pointer'; } }; const handleFsTouchEnd = () => { if (isFsSeeking) isFsSeeking = false; };
+         addListener(window, "mousemove", handleFsMouseMove); addListener(window, "touchmove", handleFsTouchMove, { passive: false }); addListener(window, "mouseup", handleFsMouseUp); addListener(window, "touchend", handleFsTouchEnd);
 
+         addListener(fsPlayPauseBtn, "click", (e) => { e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); });
+         addListener(fsExitBtn, "click", (e) => { e.stopPropagation(); exitPseudoFullscreen(container, video); }); // Exit pseudo-FS
 
-         // Prevent taps on controls from hiding them immediately & reset timer
-         const handleControlsInteraction = (e) => {
-             e.stopPropagation(); // Stop tap from bubbling to container
-             // Reset hide timer on interaction with controls
-             clearTimeout(controlsTimeout_fs);
-             if (!video.paused && container.classList.contains('fullscreen')) { // Only reset if playing and in FS
-                 controlsTimeout_fs = setTimeout(hideFsControls, 4000);
-             }
+         // --- Controls Visibility ---
+         function showFsControls() { if (!fsControls || !container.classList.contains('player-fullscreen-mobile')) return; fsControls.style.bottom = `env(safe-area-inset-bottom, 10px)`; container.classList.add("controls-open"); clearTimeout(controlsTimeout_fs); if (!video.paused) { controlsTimeout_fs = setTimeout(hideFsControls, 4000); } }
+         function hideFsControls() { if (!fsControls || !container.classList.contains('player-fullscreen-mobile')) return; if (!isFsSeeking) { fsControls.style.bottom = '-120px'; container.classList.remove("controls-open"); } }
+         const handleVideoPlayPauseForControls = () => { if (!container.classList.contains('player-fullscreen-mobile')) return; clearTimeout(controlsTimeout_fs); if (video.paused) { showFsControls(); } else { if (container.classList.contains('controls-open')) { controlsTimeout_fs = setTimeout(hideFsControls, 4000); } } };
+         addListener(video, 'pause', handleVideoPlayPauseForControls); addListener(video, 'play', handleVideoPlayPauseForControls);
+         const handleContainerTap = (e) => { if (!container.classList.contains('player-fullscreen-mobile')) return; if (e.target === container || e.target === video) { if (container.classList.contains("controls-open")) hideFsControls(); else showFsControls(); } };
+         addListener(container, "click", handleContainerTap);
+         const handleControlsInteraction = (e) => { e.stopPropagation(); clearTimeout(controlsTimeout_fs); if (!video.paused && container.classList.contains('player-fullscreen-mobile')) { controlsTimeout_fs = setTimeout(hideFsControls, 4000); } };
+         addListener(fsControls, 'click', handleControlsInteraction); addListener(fsControls, 'touchstart', handleControlsInteraction, { passive: true });
+
+         showFsControls(); // Show initially
+
+         // --- Cleanup Function ---
+         const cleanup = () => {
+             console.log("Cleaning up fullscreen controls listeners for:", container.dataset.url);
+             listeners.forEach(({ element, type, handler, options }) => {
+                 element.removeEventListener(type, handler, options);
+             });
+             listeners = []; // Clear the array
+             clearTimeout(controlsTimeout_fs); // Clear any pending timeout
          };
-         fsControls.addEventListener('click', handleControlsInteraction);
-         fsControls.addEventListener('touchstart', handleControlsInteraction, { passive: true }); // Also reset on touch start
-         // Store cleanup function
-         fsControls.cleanupFsListeners = (fsControls.cleanupFsListeners || (() => {})) + (() => {
-             fsControls.removeEventListener('click', handleControlsInteraction);
-             fsControls.removeEventListener('touchstart', handleControlsInteraction);
-         });
+         fsControls.cleanupFsListeners = cleanup; // Attach cleanup function to the element
+
+         return { cleanup };
+    }
+
+    // --- Mobile Pseudo-Fullscreen Gestures Setup ---
+    function setupPseudoFullscreenGestures(container, video) {
+        let initialDistance = null;
+        let initialScale = 1;
+        let currentScale = 1;
+        let initialMidpoint = null;
+        let currentTranslateX = 0;
+        let currentTranslateY = 0;
+        let lastTranslateX = 0;
+        let lastTranslateY = 0;
+        let listeners = []; // To store { element, type, handler } for easy removal
+
+        function addListener(element, type, handler, options) {
+             element.addEventListener(type, handler, options);
+             listeners.push({ element, type, handler, options });
+        }
+
+        // Apply transform to video element
+        function applyTransform() {
+            // Clamp scale (e.g., between 1x and 5x)
+            currentScale = Math.max(1, Math.min(currentScale, 5));
+
+            // Clamp translation based on scale
+            const videoRect = video.getBoundingClientRect(); // Get current size
+            const maxTranslateX = (videoRect.width * (currentScale - 1)) / 2 / currentScale;
+            const maxTranslateY = (videoRect.height * (currentScale - 1)) / 2 / currentScale;
+
+            currentTranslateX = Math.max(-maxTranslateX, Math.min(maxTranslateX, currentTranslateX));
+            currentTranslateY = Math.max(-maxTranslateY, Math.min(maxTranslateY, currentTranslateY));
+
+            video.style.transformOrigin = `center center`; // Keep origin centered
+            video.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+        }
+
+        const handleTouchStart = (e) => {
+            if (e.touches.length === 2) { // Two fingers for pinch/pan
+                e.preventDefault(); // Prevent default page zoom/scroll
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                initialDistance = getTouchDistance(touch1, touch2);
+                initialScale = currentScale; // Start from current scale
+                initialMidpoint = getTouchMidpoint(touch1, touch2);
+                lastTranslateX = currentTranslateX; // Store last translation
+                lastTranslateY = currentTranslateY;
+                video.style.transition = 'none'; // Disable transition during gesture
+            }
+        };
+
+        const handleTouchMove = (e) => {
+            if (e.touches.length === 2 && initialDistance !== null) { // Two fingers moving
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const currentDistance = getTouchDistance(touch1, touch2);
+                const currentMidpoint = getTouchMidpoint(touch1, touch2);
+
+                // Calculate scale change
+                currentScale = initialScale * (currentDistance / initialDistance);
+
+                // Calculate translation change (relative to initial midpoint and scale)
+                // Adjust translation based on midpoint movement, considering the scale factor
+                currentTranslateX = lastTranslateX + (currentMidpoint.x - initialMidpoint.x);
+                currentTranslateY = lastTranslateY + (currentMidpoint.y - initialMidpoint.y);
 
 
-         // Swipe down on video to exit fullscreen
-         const handleTouchStart = (e) => {
-              // Only act if in fullscreen
-             if (!container.classList.contains('fullscreen')) return;
-             // Ignore if touching controls or multiple touches
-             if (e.target.closest('.fullscreen-controls') || e.touches.length !== 1) {
-                 isScrollingControls = true; // Assume interaction with controls
-                 return;
-             }
-             isScrollingControls = false;
-             startY_fs = e.touches[0].clientY;
-             startT_fs = Date.now();
-         };
-         const handleTouchEnd = (e) => {
-             // Only act if in fullscreen
-             if (!container.classList.contains('fullscreen')) return;
-             if (isScrollingControls || e.touches.length > 0) return; // Ignore if interacting with controls or multi-touch end
+                applyTransform();
+            }
+        };
 
-             const endY_fs = e.changedTouches[0].clientY;
-             const deltaY = endY_fs - startY_fs;
-             const deltaT = Date.now() - startT_fs;
+        const handleTouchEnd = (e) => {
+            if (e.touches.length < 2) { // Fewer than two fingers left
+                initialDistance = null;
+                initialMidpoint = null;
+                // video.style.transition = 'transform 0.1s ease-out'; // Re-enable smooth transition (optional)
 
-             // Check for a downward swipe gesture on the video area
-             if (deltaY > 60 && deltaT < 500) { // Thresholds for swipe down
-                 console.log("Swipe down detected - exiting fullscreen");
-                 exitFullScreen();
-             }
-         };
-         container.addEventListener("touchstart", handleTouchStart, { passive: true });
-         container.addEventListener("touchend", handleTouchEnd);
-          // Store cleanup function
-          fsControls.cleanupFsListeners = (fsControls.cleanupFsListeners || (() => {})) + (() => {
-              container.removeEventListener('touchstart', handleTouchStart);
-              container.removeEventListener('touchend', handleTouchEnd);
-          });
+                // If scale is 1, ensure translation is 0
+                if (currentScale <= 1) {
+                    currentScale = 1;
+                    currentTranslateX = 0;
+                    currentTranslateY = 0;
+                    applyTransform();
+                }
+            }
+        };
 
-     }
+        addListener(container, 'touchstart', handleTouchStart, { passive: false });
+        addListener(container, 'touchmove', handleTouchMove, { passive: false });
+        addListener(container, 'touchend', handleTouchEnd);
+        addListener(container, 'touchcancel', handleTouchEnd); // Also reset on cancel
+
+        // Initial state
+        applyTransform();
+
+        // Cleanup function
+        const cleanup = () => {
+            console.log("Cleaning up pseudo fullscreen gesture listeners for:", container.dataset.url);
+            listeners.forEach(({ element, type, handler, options }) => {
+                 element.removeEventListener(type, handler, options);
+            });
+            listeners = [];
+            // Reset transform explicitly on cleanup
+            video.style.transform = 'scale(1) translate(0px, 0px)';
+            video.style.transformOrigin = 'center center';
+        };
+
+        return { cleanup };
+    }
 
 
     // --- Modal Logic ---
-    function openUrlModal() {
-      const streams = getStreamList();
-      urlInput.value = streams.map(s => s.url).join("\n"); // Populate with current URLs
-      modalBackdrop.style.display = "block";
-      urlModal.style.display = "block";
-      document.body.style.overflow = 'hidden'; // Prevent background scroll
+    function openUrlModal() { /* ... (same as before) ... */
+        const streams = getStreamList(); urlInput.value = streams.map(s => s.url).join("\n"); modalBackdrop.style.display = "block"; urlModal.style.display = "block"; document.body.style.overflow = 'hidden';
     }
-    function closeUrlModal() {
-      modalBackdrop.style.display = "none";
-      urlModal.style.display = "none";
-      document.body.style.overflow = ''; // Restore scrolling
+    function closeUrlModal() { /* ... (same as before) ... */
+        modalBackdrop.style.display = "none"; urlModal.style.display = "none"; document.body.style.overflow = '';
     }
-    function saveUrlsAndClose() {
-      const urls = urlInput.value.split("\n")
-        .map(line => line.trim()) // Trim whitespace
-        .filter(line => line.length > 0 && line.startsWith("http")); // Basic validation
-
-      const existingStreams = getStreamList();
-      const newStreamList = [];
-      const currentUrls = new Set(); // Keep track of URLs in the input
-
-      urls.forEach(url => {
-          currentUrls.add(url);
-          // Try to preserve existing enabled state if URL matches
-          const existing = existingStreams.find(s => s.url === url);
-          newStreamList.push({ url: url, enabled: existing ? existing.enabled : true }); // Default to enabled=true for new URLs
-      });
-
-      saveStreamList(newStreamList); // Save the new configuration
-
-      // --- Reload/Update Players ---
-      // 1. Remove players whose URLs are no longer in the list
-      Object.keys(players).forEach(playerUrl => {
-          if (!currentUrls.has(playerUrl)) {
-              console.log("Removing player for URL no longer in list:", playerUrl);
-              updateStreamEnabled(playerUrl, false); // This handles cleanup and removal
-          }
-      });
-
-      // 2. Add/Update players for URLs in the new list
-      newStreamList.forEach(streamConfig => {
-          // updateStreamEnabled handles both adding new players and ensuring existing ones are running
-          updateStreamEnabled(streamConfig.url, streamConfig.enabled);
-      });
-
-      closeUrlModal();
-      updateStreamSidebar(); // Update sidebar to reflect the final state
-      reorderPlayers(); // Ensure order matches the new config
+    function saveUrlsAndClose() { /* ... (same as before - uses updateStreamEnabled) ... */
+        const urls = urlInput.value.split("\n").map(line => line.trim()).filter(line => line.length > 0 && line.startsWith("http")); const existingStreams = getStreamList(); const newStreamList = []; const currentUrls = new Set(); urls.forEach(url => { currentUrls.add(url); const existing = existingStreams.find(s => s.url === url); newStreamList.push({ url: url, enabled: existing ? existing.enabled : true }); }); saveStreamList(newStreamList); Object.keys(players).forEach(playerUrl => { if (!currentUrls.has(playerUrl)) { updateStreamEnabled(playerUrl, false); } }); newStreamList.forEach(streamConfig => { updateStreamEnabled(streamConfig.url, streamConfig.enabled); }); closeUrlModal(); updateStreamSidebar(); reorderPlayers();
     }
 
     // --- Initialization and Global Listeners ---
     function initializeApp() {
         console.log("Initializing App...");
         updateStreamSidebar(); // Initial sidebar render
-
-        // Load players based on the current config
         const streams = getStreamList();
-        streams.forEach(stream => {
-            if (stream.enabled) {
-                const playerElements = createPlayerContainer(stream);
-                if (playerElements) {
-                    mainContent.appendChild(playerElements.container);
-                    players[stream.url] = playerElements; // Store reference
-                }
-            }
-        });
-        reorderPlayers(); // Ensure correct order
-
-        // --- Event Listeners (Moved from IIFE/Original Snippet) ---
+        streams.forEach(stream => { if (stream.enabled) { const p = createPlayerContainer(stream); if (p) { mainContent.appendChild(p.container); players[stream.url] = p; } } });
+        reorderPlayers();
 
         // Sidebar Buttons
-        btnShowAll.addEventListener("click", () => {
-            console.log("Show All clicked");
-            getStreamList().forEach(s => {
-                // Only update if not already enabled
-                if (!s.enabled) updateStreamEnabled(s.url, true);
-            });
-        });
-        btnHideAll.addEventListener("click", () => {
-            console.log("Hide All clicked");
-            getStreamList().forEach(s => {
-                 // Only update if not already disabled
-                if (s.enabled) updateStreamEnabled(s.url, false);
-            });
-        });
+        btnShowAll.addEventListener("click", () => { getStreamList().forEach(s => { if (!s.enabled) updateStreamEnabled(s.url, true); }); });
+        btnHideAll.addEventListener("click", () => { getStreamList().forEach(s => { if (s.enabled) updateStreamEnabled(s.url, false); }); });
 
         // Modal Buttons & Backdrop
         btnAddUrls.addEventListener("click", openUrlModal);
-        modalBackdrop.addEventListener("click", closeUrlModal); // Close on backdrop click
+        modalBackdrop.addEventListener("click", closeUrlModal);
         saveUrlsBtn.addEventListener("click", saveUrlsAndClose);
 
-        // Escape key handler (combined)
-        window.addEventListener("keydown", e => {
-            if (e.key === "Escape") {
-                // Close modal if open
-                if (urlModal.style.display === "block") {
-                    closeUrlModal();
-                }
-                // Exit fullscreen if active
-                else if (document.fullscreenElement || document.webkitFullscreenElement) {
-                    exitFullScreen();
-                }
-            }
-        });
+        // Escape key handler
+        window.addEventListener("keydown", e => { if (e.key === "Escape") { if (urlModal.style.display === "block") closeUrlModal(); else if (document.querySelector('.player-fullscreen-mobile')) { const fsPlayer = document.querySelector('.player-fullscreen-mobile'); if (fsPlayer && players[fsPlayer.dataset.url]) exitPseudoFullscreen(fsPlayer, players[fsPlayer.dataset.url].video); } else if (document.fullscreenElement || document.webkitFullscreenElement) exitNativeFullScreen(); } });
 
-        // --- Mobile Sidebar Swipe & Toggle ---
-        if (isMobile) {
-            // Initial state: Hide sidebar, show toggle
-            sidebar.classList.add("hidden");
-            sidebarToggle.style.display = "block";
-
-            let touchStartX = null;
-            let touchEndX = null;
-            const swipeThreshold = 50; // Minimum pixels for a swipe
-
-            // Touch start on the sidebar itself (to detect swipe left)
-            sidebar.addEventListener("touchstart", e => {
-                touchStartX = e.changedTouches[0].screenX;
-            }, { passive: true });
-
-            sidebar.addEventListener("touchend", e => {
-                if (touchStartX === null) return;
-                touchEndX = e.changedTouches[0].screenX;
-                const deltaX = touchStartX - touchEndX; // Positive for swipe left
-
-                if (deltaX > swipeThreshold) {
-                    console.log("Swipe left detected on sidebar");
-                    sidebar.classList.add("hidden"); // Hide sidebar
-                    sidebarToggle.style.display = "block"; // Show toggle
-                }
-                touchStartX = null; // Reset start position
-            });
-
-            // Toggle button click
-            sidebarToggle.addEventListener("click", () => {
-                console.log("Sidebar toggle clicked");
-                sidebar.classList.remove("hidden"); // Show sidebar
-                sidebarToggle.style.display = "none"; // Hide toggle
-            });
-
-            // Touch on main content area to hide sidebar
-            mainContent.addEventListener("touchstart", (e) => {
-                // Only hide if the sidebar is currently visible
-                if (!sidebar.classList.contains("hidden")) {
-                    // Check if the touch is not on a player control that might need interaction
-                    if (!e.target.closest('button, input[type="range"], .progress-bar')) {
-                         console.log("Touch on main content, hiding sidebar");
-                         sidebar.classList.add("hidden");
-                         sidebarToggle.style.display = "block";
-                    }
-                }
-            }, { passive: true });
-        } // End if(isMobile)
-
+        // Mobile Sidebar Swipe & Toggle
+        if (IS_MOBILE) {
+            sidebar.classList.add("hidden"); sidebarToggle.style.display = "block";
+            let touchStartX = null; const swipeThreshold = 50;
+            sidebar.addEventListener("touchstart", e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+            sidebar.addEventListener("touchend", e => { if (touchStartX === null) return; const touchEndX = e.changedTouches[0].screenX; const deltaX = touchStartX - touchEndX; if (deltaX > swipeThreshold) { sidebar.classList.add("hidden"); sidebarToggle.style.display = "block"; } touchStartX = null; });
+            sidebarToggle.addEventListener("click", () => { sidebar.classList.remove("hidden"); sidebarToggle.style.display = "none"; });
+            mainContent.addEventListener("touchstart", (e) => { if (!sidebar.classList.contains("hidden") && !e.target.closest('button, input[type="range"], .progress-bar')) { sidebar.classList.add("hidden"); sidebarToggle.style.display = "block"; } }, { passive: true });
+        }
         console.log("App Initialized.");
     } // End initializeApp
 
     // --- Run Initialization ---
-    // Use DOMContentLoaded to ensure all elements are available
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeApp);
-    } else {
-        // DOMContentLoaded has already fired
-        initializeApp();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeApp); else initializeApp();
 
   </script>
 </body>
