@@ -195,8 +195,6 @@
       flex-shrink: 1; /* Allow shrinking if needed */
     }
 
-    /* Lint Fix 3: Removed empty ruleset */
-
     .player-container:fullscreen .canvas-wrapper canvas,
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
       width: 100% !important;
@@ -299,6 +297,34 @@
 
     /* ----- MOBILE ROOT SCROLL OVERRIDE ----- */
     html.mobile .container { height: 100vh !important; }
+
+    /* ------------ NEW: allow page scroll so mobile UI can hide (Fix 2) --------- */
+    html.mobile:not(.pseudo-fullscreen-mobile) {
+        position: static !important; /* Allow normal flow */
+        height: auto !important; /* Allow content height */
+        overflow-y: auto !important; /* Make HTML scrollable */
+        overflow-x: hidden !important; /* Prevent horizontal scroll */
+    }
+    html.mobile:not(.pseudo-fullscreen-mobile) body {
+        position: static !important; /* Allow normal flow */
+        height: auto !important;
+        overflow: visible !important; /* Let content determine scroll */
+        min-height: 100vh; /* Ensure body can be at least viewport height */
+    }
+    html.mobile:not(.pseudo-fullscreen-mobile) .container {
+        height: auto !important; /* Allow content height */
+        min-height: 100vh !important;
+        position: static !important; /* Allow normal flow */
+        display: block !important; /* Change from flex */
+    }
+    html.mobile:not(.pseudo-fullscreen-mobile) #main-content {
+        height: auto !important; /* Allow content height */
+        min-height: calc(100vh - 60px); /* Account for header padding */
+        overflow: visible !important; /* Let content determine scroll */
+        display: block !important; /* Change from flex */
+    }
+    /* ------------------------------------------------------------------------ */
+
 
     /* ------ MOBILE NON‑FULLSCREEN PLAYER ------ */
     html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .canvas-wrapper,
@@ -669,7 +695,8 @@
     function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) {
         let initialDistance = null; let initialScale = 1; let currentScale = 1;
         let initialMidpoint = null; let currentTranslateX = 0; let currentTranslateY = 0;
-        let lastTranslateX = 0; let lastTranslateY = 0;
+        // Fix 1: Use separate state for the *start* of the gesture's translation
+        let gestureStartX = 0; let gestureStartY = 0;
         let touchStartY = null; let touchStartTime = null; let isSwipingY = false; let isGesturing = false;
         let listeners = [];
         function addListener(element, type, handler, options) { element.addEventListener(type, handler, options); listeners.push({ element, type, handler, options }); }
@@ -706,9 +733,9 @@
                 const originY = initialMidpoint.y - videoRect.top;
                 video.style.transformOrigin = `${originX}px ${originY}px`;
 
-                // Store the current translation state when starting a new gesture
-                lastTranslateX = currentTranslateX;
-                lastTranslateY = currentTranslateY;
+                // Fix 1: Store the translation state *at the start* of this specific gesture
+                gestureStartX = currentTranslateX;
+                gestureStartY = currentTranslateY;
                 video.style.transition = 'none';
             }
         };
@@ -731,9 +758,9 @@
                 const dx = currentMidpoint.x - initialMidpoint.x;
                 const dy = currentMidpoint.y - initialMidpoint.y;
 
-                // Apply translation delta relative to the last stored state
-                currentTranslateX = lastTranslateX + dx;
-                currentTranslateY = lastTranslateY + dy;
+                // Fix 1: Apply translation delta relative to the start of *this* gesture
+                currentTranslateX = gestureStartX + dx;
+                currentTranslateY = gestureStartY + dy;
 
                 applyTransform();
             }
@@ -744,16 +771,14 @@
 
             if (e.touches.length < 2) { // End of two-finger gesture or single touch end
                 initialDistance = null; initialMidpoint = null;
-                // Fix 1: Store the final translation state *before* resetting scale/origin
-                lastTranslateX = currentTranslateX;
-                lastTranslateY = currentTranslateY;
+                // No need to store lastTranslate here anymore, gestureStartX/Y handles it
 
                 if (currentScale <= 1) { // If scale is back to 1 or less, reset fully
                     currentScale = 1;
                     currentTranslateX = 0;
                     currentTranslateY = 0;
-                    lastTranslateX = 0; // Reset stored state too
-                    lastTranslateY = 0;
+                    gestureStartX = 0; // Reset stored state too
+                    gestureStartY = 0;
                     video.style.transformOrigin = 'center center'; // Reset origin only when scale is 1
                     applyTransform(); // Apply the reset transform
                 } else {
@@ -831,3 +856,4 @@
   </script>
 </body>
 </html>
+
