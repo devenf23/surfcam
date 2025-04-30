@@ -298,30 +298,24 @@
     /* ----- MOBILE ROOT SCROLL OVERRIDE ----- */
     html.mobile .container { height: 100vh !important; }
 
-    /* ------------ NEW: allow page scroll so mobile UI can hide (Fix 2) --------- */
+    /* ------------ NEW: allow page scroll so mobile UI can hide --------- */
     html.mobile:not(.pseudo-fullscreen-mobile) {
-        position: static !important; /* Allow normal flow */
-        height: auto !important; /* Allow content height */
-        overflow-y: auto !important; /* Make HTML scrollable */
-        overflow-x: hidden !important; /* Prevent horizontal scroll */
+        position: static !important;
+        height: auto !important;
+        overflow-y: auto !important;
     }
     html.mobile:not(.pseudo-fullscreen-mobile) body {
-        position: static !important; /* Allow normal flow */
+        position: static !important;
         height: auto !important;
-        overflow: visible !important; /* Let content determine scroll */
-        min-height: 100vh; /* Ensure body can be at least viewport height */
+        overflow-y: visible !important;
     }
-    html.mobile:not(.pseudo-fullscreen-mobile) .container {
-        height: auto !important; /* Allow content height */
+    html.mobile:not(.pseudo-fullscreen-mobile) .container,
+    html.mobile:not(.pseudo-fullscreen-mobile) #main-content {
+        height: auto !important;
         min-height: 100vh !important;
-        position: static !important; /* Allow normal flow */
-        display: block !important; /* Change from flex */
     }
     html.mobile:not(.pseudo-fullscreen-mobile) #main-content {
-        height: auto !important; /* Allow content height */
-        min-height: calc(100vh - 60px); /* Account for header padding */
-        overflow: visible !important; /* Let content determine scroll */
-        display: block !important; /* Change from flex */
+        overflow-y: visible !important;
     }
     /* ------------------------------------------------------------------------ */
 
@@ -693,11 +687,24 @@
 
     // --- Mobile Pseudo-Fullscreen Gestures Setup ---
     function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) {
-        let initialDistance = null; let initialScale = 1; let currentScale = 1;
-        let initialMidpoint = null; let currentTranslateX = 0; let currentTranslateY = 0;
-        // Fix 1: Use separate state for the *start* of the gesture's translation
-        let gestureStartX = 0; let gestureStartY = 0;
-        let touchStartY = null; let touchStartTime = null; let isSwipingY = false; let isGesturing = false;
+        let initialDistance = null;
+        let initialScale = 1;
+        let currentScale = 1;
+
+        let initialMidpoint = null;
+        let initialLocalMidpoint = null;
+
+        let currentTranslateX = 0;
+        let currentTranslateY = 0;
+
+        let lastTranslateX = 0;
+        let lastTranslateY = 0;
+
+        let touchStartY = null;
+        let touchStartTime = null;
+        let isSwipingY = false;
+        let isGesturing = false;
+
         let listeners = [];
         function addListener(element, type, handler, options) { element.addEventListener(type, handler, options); listeners.push({ element, type, handler, options }); }
 
@@ -705,13 +712,16 @@
 
         function applyTransform() {
             currentScale = Math.max(1, Math.min(currentScale, 5));
+
             const videoRect = video.getBoundingClientRect();
-            const visualWidth = Math.min(videoRect.width, videoRect.height * (video.videoWidth / video.videoHeight));
-            const visualHeight = Math.min(videoRect.height, videoRect.width * (video.videoHeight / video.videoWidth));
-            const maxTranslateX = (visualWidth * (currentScale - 1)) / 2;
+            const visualWidth  = Math.min(videoRect.width,  videoRect.height * (video.videoWidth / video.videoHeight));
+            const visualHeight = Math.min(videoRect.height, videoRect.width  * (video.videoHeight / video.videoWidth));
+
+            const maxTranslateX = (visualWidth  * (currentScale - 1)) / 2;
             const maxTranslateY = (visualHeight * (currentScale - 1)) / 2;
             currentTranslateX = Math.max(-maxTranslateX, Math.min(maxTranslateX, currentTranslateX));
             currentTranslateY = Math.max(-maxTranslateY, Math.min(maxTranslateY, currentTranslateY));
+
             video.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
         }
 
@@ -720,22 +730,28 @@
             isGesturing = true;
 
             if (e.touches.length === 1) {
-                touchStartY = e.touches[0].clientY; touchStartTime = Date.now(); isSwipingY = false;
-            } else if (e.touches.length === 2) {
-                isSwipingY = false; touchStartY = null;
-                const touch1 = e.touches[0]; const touch2 = e.touches[1];
+                touchStartY  = e.touches[0].clientY;
+                touchStartTime = Date.now();
+                isSwipingY = false;
+            }
+            else if (e.touches.length === 2) {
+                isSwipingY = false;
+                touchStartY = null;
+
+                const [touch1, touch2] = e.touches;
                 initialDistance = getTouchDistance(touch1, touch2);
-                initialScale = currentScale; // Start from current scale
+                initialScale    = currentScale;
+
                 initialMidpoint = getTouchMidpoint(touch1, touch2);
 
-                const videoRect = video.getBoundingClientRect();
-                const originX = initialMidpoint.x - videoRect.left;
-                const originY = initialMidpoint.y - videoRect.top;
-                video.style.transformOrigin = `${originX}px ${originY}px`;
+                const rect   = video.getBoundingClientRect();
+                const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 
-                // Fix 1: Store the translation state *at the start* of this specific gesture
-                gestureStartX = currentTranslateX;
-                gestureStartY = currentTranslateY;
+                initialLocalMidpoint = {
+                    x: initialMidpoint.x - center.x,
+                    y: initialMidpoint.y - center.y
+                };
+
                 video.style.transition = 'none';
             }
         };
@@ -744,23 +760,29 @@
             if (!isGesturing || e.target.closest('.fullscreen-controls')) return;
 
             if (e.touches.length === 1 && touchStartY !== null) {
-                const currentY = e.touches[0].clientY; const deltaY = currentY - touchStartY; const deltaTime = Date.now() - touchStartTime;
-                if (!isSwipingY && (Math.abs(deltaY) > 10 || deltaTime > 100)) { isSwipingY = true; }
-            } else if (e.touches.length === 2 && initialDistance !== null) {
-                e.preventDefault(); isSwipingY = false;
-                const touch1 = e.touches[0]; const touch2 = e.touches[1];
-                const currentDistance = getTouchDistance(touch1, touch2);
-                const currentMidpoint = getTouchMidpoint(touch1, touch2);
+                const currentY = e.touches[0].clientY;
+                const deltaY   = currentY - touchStartY;
+                const deltaTime = Date.now() - touchStartTime;
+                if (!isSwipingY && (Math.abs(deltaY) > 10 || deltaTime > 100)) {
+                    isSwipingY = true;
+                }
+            }
+            else if (e.touches.length === 2 && initialDistance !== null) {
+                e.preventDefault();
 
-                const scaleFactor = currentDistance / initialDistance;
+                const [touch1, touch2] = e.touches;
+                const currentDistance = getTouchDistance(touch1, touch2);
+                const scaleFactor     = currentDistance / initialDistance;
+
                 currentScale = initialScale * scaleFactor;
 
-                const dx = currentMidpoint.x - initialMidpoint.x;
-                const dy = currentMidpoint.y - initialMidpoint.y;
+                const currentMid = getTouchMidpoint(touch1, touch2);
 
-                // Fix 1: Apply translation delta relative to the start of *this* gesture
-                currentTranslateX = gestureStartX + dx;
-                currentTranslateY = gestureStartY + dy;
+                const rect   = video.getBoundingClientRect();
+                const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+
+                currentTranslateX = (currentMid.x - center.x) - initialLocalMidpoint.x * currentScale;
+                currentTranslateY = (currentMid.y - center.y) - initialLocalMidpoint.y * currentScale;
 
                 applyTransform();
             }
@@ -769,57 +791,67 @@
         const handleTouchEnd = (e) => {
             if (!isGesturing) return;
 
-            if (e.touches.length < 2) { // End of two-finger gesture or single touch end
-                initialDistance = null; initialMidpoint = null;
-                // No need to store lastTranslate here anymore, gestureStartX/Y handles it
+            if (e.touches.length < 2) {
+                initialDistance       = null;
+                initialLocalMidpoint  = null;
+                lastTranslateX        = currentTranslateX;
+                lastTranslateY        = currentTranslateY;
 
-                if (currentScale <= 1) { // If scale is back to 1 or less, reset fully
-                    currentScale = 1;
+                if (currentScale <= 1) {
+                    currentScale      = 1;
                     currentTranslateX = 0;
                     currentTranslateY = 0;
-                    gestureStartX = 0; // Reset stored state too
-                    gestureStartY = 0;
-                    video.style.transformOrigin = 'center center'; // Reset origin only when scale is 1
-                    applyTransform(); // Apply the reset transform
-                } else {
-                     video.style.transformOrigin = 'center center'; // Reset origin after gesture
+                    lastTranslateX    = 0;
+                    lastTranslateY    = 0;
                 }
+                applyTransform();
             }
 
-            if (e.touches.length === 0 && isSwipingY && touchStartY !== null) { // End of single-finger swipe
-                const currentY = e.changedTouches[0].clientY; const deltaY = currentY - touchStartY; const deltaTime = Date.now() - touchStartTime; const swipeThreshold = 50;
-                console.log(`Swipe detected: deltaY=${deltaY}, deltaTime=${deltaTime}`);
-                if (Math.abs(deltaY) > swipeThreshold && deltaTime < 500) {
-                    const controlsAreOpen = container.classList.contains('controls-open');
-                    if (deltaY < 0) { // Swipe Up -> Show Controls
-                        console.log("Swipe Up -> Show Controls");
-                        if (controlsApi && controlsApi.showFsControls) controlsApi.showFsControls();
-                    } else { // Swipe Down
-                        if (controlsAreOpen) { // -> Hide Controls
-                            console.log("Swipe Down (Controls Open) -> Hide Controls");
-                            if (controlsApi && controlsApi.hideFsControls) controlsApi.hideFsControls();
-                        } else { // -> Exit Fullscreen
-                            console.log("Swipe Down (Controls Hidden) -> Exit Fullscreen");
+            if (e.touches.length === 0 && isSwipingY && touchStartY !== null) {
+                const currentY    = e.changedTouches[0].clientY;
+                const deltaY      = currentY - touchStartY;
+                const deltaTime   = Date.now() - touchStartTime;
+                const threshold   = 50;
+
+                if (Math.abs(deltaY) > threshold && deltaTime < 500) {
+                    const controlsOpen = container.classList.contains('controls-open');
+                    if (deltaY < 0) {
+                        controlsApi.showFsControls && controlsApi.showFsControls();
+                    } else {
+                        if (controlsOpen) {
+                            controlsApi.hideFsControls && controlsApi.hideFsControls();
+                        } else {
                             exitPseudoFullscreen(container, video);
                         }
                     }
                 }
             }
-            if (e.touches.length === 0) { touchStartY = null; touchStartTime = null; isSwipingY = false; isGesturing = false; }
+
+            if (e.touches.length === 0) {
+                touchStartY   = null;
+                touchStartTime = null;
+                isSwipingY    = false;
+                isGesturing   = false;
+            }
         };
 
         addListener(container, 'touchstart', handleTouchStart, { passive: false });
-        addListener(container, 'touchmove', handleTouchMove, { passive: false });
-        addListener(container, 'touchend', handleTouchEnd);
-        addListener(container, 'touchcancel', handleTouchEnd);
+        addListener(container, 'touchmove',  handleTouchMove,  { passive: false });
+        addListener(container, 'touchend',   handleTouchEnd);
+        addListener(container, 'touchcancel',handleTouchEnd);
 
-        applyTransform(); // Set initial state
+        applyTransform();
 
-        const cleanup = () => { console.log("Cleaning up pseudo fullscreen gesture listeners for:", container.dataset.url); listeners.forEach(({ element, type, handler, options }) => { element.removeEventListener(type, handler, options); }); listeners = []; video.style.transform = 'scale(1) translate(0px, 0px)'; video.style.transformOrigin = 'center center'; };
+        const cleanup = () => {
+            listeners.forEach(({ element, type, handler, options }) =>
+                element.removeEventListener(type, handler, options)
+            );
+            listeners = [];
+            video.style.transform          = 'scale(1) translate(0px, 0px)';
+            video.style.transformOrigin    = 'center center';
+        };
         return { cleanup };
     }
-
-
     // --- Modal Logic ---
     function openUrlModal() { /* ... (no changes) ... */ const streams = getStreamList(); urlInput.value = streams.map(s => s.url).join("\n"); modalBackdrop.style.display = "block"; urlModal.style.display = "block"; document.body.style.overflow = 'hidden'; }
     function closeUrlModal() { /* ... (no changes) ... */ modalBackdrop.style.display = "none"; urlModal.style.display = "none"; document.body.style.overflow = ''; }
