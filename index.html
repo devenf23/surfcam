@@ -7,441 +7,424 @@
   <style>
     /* ---------- GENERAL ---------- */
     html, body {
-      margin: 0; padding: 0; height: 100vh; font-family: Arial, sans-serif;
-      background: #222; color: #fff; overflow: hidden;
-      position: fixed; width: 100%;
+      margin: 0;
+      padding: 0;
+      height: 100vh; /* Full viewport height */
+      font-family: Arial, sans-serif;
+      background: #222;
+      color: #fff;
+      overflow: hidden; /* Prevent scroll on body by default */
+      position: fixed; /* Prevent pull-to-refresh/overscroll effects */
+      width: 100%;
     }
     .container {
-      display: flex; height: 100vh; width: 100%;
+      display: flex;
+      height: 100vh;
+      width: 100%; /* Ensure container takes full width */
     }
 
     /* ---------- SIDEBAR ---------- */
     #sidebar {
-      background: #444; width: 220px; padding: 20px;
-      box-sizing: border-box; overflow-y: auto;
-      transition: transform .3s ease; flex-shrink: 0; z-index: 1000;
-      -webkit-overflow-scrolling: touch;
+      background: #444;
+      width: 220px;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      transition: transform .3s ease;
+      flex-shrink: 0; /* Prevent sidebar from shrinking */
+      z-index: 1000; /* Keep sidebar above main content */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
-    #sidebar.hidden { transform: translateX(-100%); }
-    #btn-add-urls, .sideBtn, #urlModal button {
-      width: 100%; padding: 10px; margin-bottom: 10px;
-      font-size: 16px; cursor: pointer; border-radius: 8px;
-      border: 1px solid #666; background-color: #555; color: #fff;
+    #sidebar.hidden { /* Used by mobile swipe logic */
+       transform: translateX(-100%);
     }
-    #btn-add-urls:hover, .sideBtn:hover, #urlModal button:hover {
-      background-color: #666;
+    #btn-add-urls,
+    .sideBtn,
+    #urlModal button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid #666;
+      background-color: #555;
+      color: #fff;
     }
-    #sideButtons { display: flex; gap: 10px; }
-    .sideBtn { flex: 1; }
-    #streamList { margin-top: 10px; line-height: 1.2; }
-    .no-streams { font-style: italic; color: #bbb; }
+     #btn-add-urls:hover,
+    .sideBtn:hover,
+    #urlModal button:hover {
+        background-color: #666;
+    }
+    #sideButtons {
+      display: flex;
+      gap: 10px;
+    }
+    .sideBtn {
+      flex: 1;
+    }
+    #streamList {
+      margin-top: 10px;
+      line-height: 1.2;
+    }
+    .no-streams {
+      font-style: italic;
+      color: #bbb;
+    }
     .stream-item {
-      display: flex; align-items: center; margin-bottom: 5px;
-      padding: 5px; border-radius: 4px; transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+      padding: 5px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
     }
-    .stream-item.selecting { background-color: #666; }
-    .stream-item:hover { background-color: #555; }
+    .stream-item.selecting { /* Style for items being drag-selected */
+        background-color: #666;
+    }
+    .stream-item:hover {
+        background-color: #555;
+    }
     .stream-item label {
-      margin-left: 8px; cursor: pointer; user-select: none; flex-grow: 1;
+      margin-left: 8px;
+      cursor: pointer;
+      user-select: none; /* Prevent text selection during drag */
+      flex-grow: 1;
     }
-    .stream-item input[type="checkbox"] {
-      cursor: pointer; width: 18px; height: 18px; flex-shrink: 0;
-    }
+     .stream-item input[type="checkbox"] {
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+     }
+
 
     /* ---------- MAIN CONTENT ---------- */
     #main-content {
-      flex: 1; background: #333; padding: 20px; box-sizing: border-box;
-      display: flex; flex-wrap: wrap; gap: 20px; overflow: auto;
-      border-radius: 8px 0 0 8px; height: 100vh;
-      -webkit-overflow-scrolling: touch; align-content: flex-start;
+      flex: 1;
+      background: #333;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-wrap: wrap; /* Allows players to wrap on desktop */
+      gap: 20px;
+      overflow: auto; /* Enable scrolling for content */
+      border-radius: 8px 0 0 8px;
+      height: 100vh; /* Ensure it takes full viewport height */
+      -webkit-overflow-scrolling: touch;
+      align-content: flex-start; /* Prevent extra space in portrait desktop */
     }
     html.mobile #main-content {
-      flex-direction: column; align-items: center; flex-wrap: nowrap;
-      margin-left: 0; border-radius: 0; padding-top: 60px;
-      height: 100vh; overflow-y: scroll;
+      flex-direction: column; /* Stack players vertically */
+      align-items: center; /* Center players horizontally */
+      flex-wrap: nowrap; /* Prevent wrapping in mobile column view */
+      margin-left: 0;
+      border-radius: 0;
+      padding-top: 60px; /* Space for sidebar toggle */
+      height: 100vh;
+      overflow-y: scroll; /* Ensure vertical scrolling is enabled */
     }
 
     /* ---------- PLAYER CONTAINERS ---------- */
     .player-container {
-      background: #222; display: flex; flex-direction: column;
-      position: relative; box-sizing: border-box; border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3); flex-shrink: 0;
+      background: #222;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-sizing: border-box;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      /* overflow: hidden; */ /* Removed - allow controls below */
+      flex-shrink: 0;
     }
     .player-container.desktop {
-      width: 960px; max-width: 100%; margin-bottom: 20px;
+      width: 960px;
+      max-width: 100%;
+      margin-bottom: 20px; /* Consistent gap */
     }
     .player-container.mobile {
-      margin: 0 auto 20px; width: calc(100% - 40px);
-      max-width: 480px; border-radius: 12px; overflow: hidden;
+      margin: 0 auto 20px;
+      width: calc(100% - 40px); /* Adjust for main content padding */
+      max-width: 480px;
+      border-radius: 12px;
+      overflow: hidden; /* Keep hidden overflow for mobile */
     }
 
     /* --------- VIDEO & CANVAS --------- */
-    .canvas-wrapper {
-      position: relative; width: 100%; aspect-ratio: 16/9;
-      overflow: hidden; border-radius: 12px 12px 0 0; background: #000;
+    .canvas-wrapper { /* Desktop canvas */
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border-radius: 12px 12px 0 0; /* Round top corners only */
+      background-color: #000;
     }
     .canvas-wrapper canvas {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       display: block;
     }
-    /* Native Fullscreen */
+    /* Native Fullscreen (Desktop) */
     .player-container:fullscreen,
     .player-container:-webkit-full-screen {
-      width: 100% !important; height: 100% !important; max-width: none !important;
-      border-radius: 0 !important; box-shadow: none !important;
-      z-index: 2147483647; background: #000;
-      display: flex; flex-direction: column;
-      justify-content: center; align-items: center; overflow: hidden;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        z-index: 2147483647;
+        background-color: #000; /* Ensure black background */
+        display: flex; /* Use flex for centering wrapper */
+        flex-direction: column; /* Stack wrapper and controls */
+        justify-content: center;
+        align-items: center;
+        overflow: hidden; /* Hide anything outside viewport */
     }
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
-      width: 100% !important; height: auto !important;
-      max-height: calc(100vh - 60px); aspect-ratio: 16/9;
-      border-radius: 0; position: relative; flex-shrink: 1;
+      /* Ensure aspect ratio is maintained within fullscreen */
+      width: 100% !important; /* Fill width */
+      height: auto !important; /* Height adjusts */
+      max-height: calc(100vh - 60px); /* Limit height (leave space for controls ~50-60px) */
+      aspect-ratio: 16 / 9; /* Maintain aspect ratio */
+      border-radius: 0;
+      position: relative;
+      flex-shrink: 1; /* Allow shrinking if needed */
     }
+
     .player-container:fullscreen .canvas-wrapper canvas,
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
-      width: 100% !important; height: 100% !important;
+      width: 100% !important;
+      height: 100% !important;
     }
+
     .player-container.desktop .source-video {
       opacity: 0; position: absolute; top: -9999px; left: -9999px;
       width: 1px; height: 1px; pointer-events: none;
     }
+    /* Mobile Video (Not fullscreen) */
     .player-container.mobile .source-video {
-      width: 100%; height: auto; display: block;
-      border-radius: 12px 12px 0 0; background: #000;
+       width: 100%; height: auto; display: block;
+       border-radius: 12px 12px 0 0; background-color: #000;
     }
     .player-container.mobile .display-canvas { display: none; }
 
     /* ------ CONTROLS & OVERLAYS ------ */
     .controls-container {
-      position: relative; z-index: 2; background: #222;
-      border-radius: 0 0 12px 12px;
+      position: relative; /* Default: below video */
+      z-index: 2;
+      background: #222; /* Match player background */
+      border-radius: 0 0 12px 12px; /* Round bottom corners */
     }
     .control-bar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 8px 12px;
+      display: flex; align-items: center; gap: 10px; padding: 8px 12px;
     }
     .control-bar button {
-      padding: 6px 10px; cursor: pointer; background: #555; border: none;
-      color: #fff; border-radius: 6px; font-size: 14px;
-      transition: background-color 0.2s; flex-shrink: 0;
+      padding: 6px 10px; cursor: pointer; background-color: #555; border: none;
+      color: #fff; border-radius: 6px; font-size: 14px; transition: background-color 0.2s;
+      flex-shrink: 0;
     }
-    .control-bar button:hover { background: #666; }
-    .progress-bar {
-      position: relative; flex: 1 1 auto; height: 8px; background: #555;
-      border-radius: 8px; overflow: visible; margin: 0 10px; cursor: pointer;
-      min-width: 50px;
-    }
-    .progress-bar .buffered,
-    .progress-bar .played {
-      position: absolute; top: 0; bottom: 0; left: 0;
-      border-radius: 8px; pointer-events: none;
-    }
-    .progress-bar .buffered { background: #888; opacity: 0.7; width: 0%; }
-    .progress-bar .played { background: #4d90fe; z-index: 1; width: 0%; }
-    .progress-bar .thumb {
-      position: absolute; top: 50%; left: 0; width: 14px; height: 14px;
-      background: #fff; border-radius: 50%;
-      transform: translate(-50%,-50%); cursor: pointer; z-index: 2;
-      box-shadow: 0 0 5px rgba(0,0,0,0.5);
-      transition: transform 0.1s ease;
-    }
-    .progress-bar:hover .thumb {
-      transform: translate(-50%,-50%) scale(1.1);
-    }
+    .control-bar button:hover { background-color: #666; }
+
+    /* Custom progress bar */
+    .progress-bar { position: relative; flex: 1 1 auto; height: 8px; background: #555; border-radius: 8px; overflow: visible; margin: 0 10px; cursor: pointer; min-width: 50px; }
+    .progress-bar .buffered, .progress-bar .played { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 8px; pointer-events: none; }
+    .progress-bar .buffered { background: #888; width: 0%; opacity: 0.7; }
+    .progress-bar .played { background: #4d90fe; width: 0%; z-index: 1; }
+    .progress-bar .thumb { position: absolute; top: 50%; left: 0; width: 14px; height: 14px; background: #fff; border-radius: 50%; transform: translate(-50%,-50%); cursor: pointer; z-index: 2; box-shadow: 0 0 5px rgba(0, 0, 0, 0.5); transition: transform 0.1s ease; }
+    .progress-bar:hover .thumb { transform: translate(-50%, -50%) scale(1.1); }
+
     .disable-btn { background: #e74c3c; color: #fff; border: none; }
     .disable-btn:hover { background: #c0392b; }
     .title-bar {
-      text-align: center; padding: 5px 10px; font-size: 14px;
-      color: #eee; background: rgba(0,0,0,0.75);
+      text-align: center; padding: 5px 10px; font-size: 14px; color: #eee;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      background: rgba(0,0,0,0.75); /* Give title bar distinct background */
+      /* Round bottom only if it's the last element in controls-container */
       border-radius: 0 0 12px 12px;
     }
+    /* Adjust title bar if control bar is present (i.e., title is not last) */
     .control-bar + .title-bar {
-      border-radius: 0; border-top: 1px solid #444;
+        border-radius: 0; /* Remove rounding */
+        border-top: 1px solid #444; /* Add separator line above title */
+    }
+
+    /* Lint Fix 3: Removed empty ruleset */
+
+    /* Desktop Controls Overlay ONLY in Fullscreen */
+    .player-container:fullscreen .controls-container,
+    .player-container:-webkit-full-screen .controls-container {
+        position: relative; /* Change from absolute to relative to stack below */
+        bottom: auto; left: auto; right: auto; /* Reset positioning */
+        opacity: 1; /* Always visible */
+        transition: none; /* No transition needed */
+        border-radius: 0; /* No rounding */
+        background: #222; /* Match normal controls background */
+        pointer-events: auto;
+        width: 100%; /* Take full width of the flex item */
+        max-width: 800px; /* Limit width */
+        margin: 10px auto 0 auto; /* Add top margin, center horizontally */
+        border-radius: 8px; /* Add slight rounding */
+        flex-shrink: 0; /* Prevent shrinking */
+    }
+    .player-container:fullscreen .title-bar,
+    .player-container:-webkit-full-screen .title-bar {
+        border-radius: 0 0 8px 8px; /* Match container rounding */
+        border-top: 1px solid #444; /* Add separator */
     }
 
     /* ------- URL MODAL & BACKDROP ------- */
-    #modalBackdrop {
-      display: none; position: fixed; z-index: 1005;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
-    }
-    #urlModal {
-      display: none; position: fixed; z-index: 1010;
-      left: 50%; top: 50%; transform: translate(-50%,-50%);
-      width: 90%; max-width: 1200px; background: #555;
-      padding: 25px; box-sizing: border-box; border-radius: 12px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    }
-    #urlModal h3 {
-      margin-top: 0; text-align: center; color: #fff;
-      margin-bottom: 15px;
-    }
-    #urlModal textarea {
-      width: 100%; height: 400px; padding: 15px; font-size: 14px;
-      box-sizing: border-box; border-radius: 8px; border: 1px solid #666;
-      background: #f8f8f8; color: #333; margin-bottom: 15px;
-      resize: vertical; -webkit-overflow-scrolling: touch;
-    }
-    #urlModal button {
-      width: auto; padding: 12px 25px; font-size: 16px;
-      display: block; margin: 0 auto;
-    }
+    #modalBackdrop { display: none; position: fixed; z-index: 1005; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); }
+    #urlModal { display: none; position: fixed; z-index: 1010; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 90%; max-width: 1200px; background: #555; border: none; padding: 25px; box-sizing: border-box; border-radius: 12px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5); }
+    #urlModal h3 { margin-top: 0; text-align: center; color: #fff; margin-bottom: 15px; }
+    #urlModal textarea { width: 100%; height: 400px; padding: 15px; font-size: 14px; box-sizing: border-box; border-radius: 8px; border: 1px solid #666; background-color: #f8f8f8; color: #333; margin-bottom: 15px; resize: vertical; -webkit-overflow-scrolling: touch; }
+    #urlModal button { width: auto; padding: 12px 25px; font-size: 16px; display: block; margin: 0 auto; }
 
     /* ----- MOBILE SIDEBAR ----- */
-    html.mobile #urlModal {
-      width: 90vw; max-width: 400px; padding: 15px; font-size: 14px;
-    }
-    html.mobile #urlModal textarea {
-      height: 200px; padding: 10px; font-size: 14px;
-    }
-    html.mobile #sidebar {
-      position: fixed; top: 0; left: 0; height: 100%;
-      border-radius: 0 8px 8px 0; box-shadow: 3px 0 10px rgba(0,0,0,0.3);
-    }
+    html.mobile #urlModal { width: 90vw; max-width: 400px; padding: 15px; font-size: 14px; }
+    html.mobile #urlModal textarea { height: 200px; padding: 10px; font-size: 14px; }
+    html.mobile #sidebar { position: fixed; top: 0; left: 0; height: 100%; border-radius: 0 8px 8px 0; box-shadow: 3px 0 10px rgba(0,0,0,0.3); }
     #sidebarToggle {
-      display: none; position: fixed; top: 20px; left: 10px;
-      z-index: 1100; background: #444; border: none;
-      width: 40px; height: 40px; font-size: 20px;
-      line-height: 40px; text-align: center; color: #fff;
-      cursor: pointer; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      display: none; /* Shown via JS */ position: fixed; top: 20px; left: 10px; transform: none; z-index: 1100; background: #444; border: none;
+      /* Ensure circular shape */
+      width: 40px; height: 40px; padding: 0; /* Remove padding */
+      font-size: 20px; line-height: 40px; /* Center icon vertically */ text-align: center; /* Center icon horizontally */
+      color: #fff; cursor: pointer; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     }
 
     /* ----- MOBILE ROOT SCROLL OVERRIDE ----- */
-    html.mobile .container {
-      height: 100vh !important;
-    }
+    html.mobile .container { height: 100vh !important; }
 
-    /* ------ MOBILE NON-FULLSCREEN PLAYER ------ */
+    /* ----- NEW: allow only html/body scrolling on mobile when NOT pseudo-fullscreen ----- */
+    html.mobile:not(.pseudo-fullscreen-mobile) {
+      position: static !important;
+      overflow-y: auto !important;
+      height: auto !important;
+    }
+    html.mobile:not(.pseudo-fullscreen-mobile) body {
+      position: static !important;
+      overflow-y: visible !important;
+      height: auto !important;
+    }
+    html.mobile:not(.pseudo-fullscreen-mobile) .container,
+    html.mobile:not(.pseudo-fullscreen-mobile) #main-content {
+      height: auto !important;
+    }
+    html.mobile:not(.pseudo-fullscreen-mobile) #main-content {
+      overflow-y: visible !important;
+    }
+    /* ------------------------------------------------------------------------ */
+
+
+    /* ------ MOBILE NON‑FULLSCREEN PLAYER ------ */
     html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .canvas-wrapper,
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .display-canvas {
-      display: none !important;
-    }
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .controls-container {
-      display: block !important; position: relative;
-      background: #222; border-radius: 0 0 12px 12px; padding: 0;
-    }
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .display-canvas { display: none !important; }
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .controls-container { display: block !important; position: relative; background: #222; border-radius: 0 0 12px 12px; padding: 0; }
     html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .progress-bar,
     html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .reset-btn,
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .disable-btn {
-      display: none !important;
-    }
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .control-bar {
-      justify-content: space-between; padding: 8px 12px; background: none;
-    }
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .fs-btn-mobile {
-      display: inline-block;
-    }
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .disable-btn { display: none !important; }
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .control-bar { justify-content: space-between; padding: 8px 12px; background: none; }
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .fs-btn-mobile { display: inline-block; }
 
-    .video-title-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 12px; background: rgba(0,0,0,0.6);
-      color: #eee; font-size: 14px; border-bottom: 1px solid #444;
-    }
-    .fs-btn-mobile {
-      cursor: pointer; background: none; color: #fff; border: none;
-      padding: 4px 8px; font-size: 20px; line-height: 1; flex-shrink: 0;
-    }
-    .video-title-row span {
-      flex-grow: 1; text-align: center; margin: 0 10px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
+    .video-title-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(0,0,0,0.6); color: #eee; font-size: 14px; border-bottom: 1px solid #444; }
+    .fs-btn-mobile { cursor: pointer; background: none; color: #fff; border: none; padding: 4px 8px; font-size: 20px; line-height: 1; flex-shrink: 0; }
+    .video-title-row span { flex-grow: 1; text-align: center; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ---------- MOBILE PSEUDO-FULLSCREEN ---------- */
+    /* Fix 2: Apply scroll only to HTML for non-safari */
     html.pseudo-fullscreen-mobile {
-      position: relative; overflow: hidden !important; height: 100vh !important;
+        position: relative; /* Needed for fixed player */
+        overflow: hidden !important; /* Prevent scroll on html by default */
+        height: 100vh !important; /* Ensure html takes full height */
     }
     html.pseudo-fullscreen-mobile.non-safari {
-      overflow-y: scroll !important; height: auto !important;
-      min-height: 105vh;
+        overflow-y: scroll !important; /* Make ONLY HTML scrollable */
+        height: auto !important; /* Allow height to grow */
+        min-height: 105vh; /* Make slightly taller than viewport */
+        /* position: static !important; */ /* Let it be relative */
     }
+    /* Ensure body doesn't interfere with html scrolling */
     html.pseudo-fullscreen-mobile body {
-      overflow: visible !important; height: auto !important;
-      position: static !important; min-height: 105vh;
+        overflow: visible !important; /* Let content flow */
+        height: auto !important;
+        position: static !important; /* Ensure body flows normally */
+        min-height: 105vh; /* Match html min-height */
     }
-    html.pseudo-fullscreen-mobile .container {
-      height: auto !important; min-height: 105vh;
-      position: static !important; display: block !important;
-    }
-    html.pseudo-fullscreen-mobile #main-content {
-      height: auto !important; min-height: 105vh;
-      display: block !important;
-    }
-    .player-container.player-fullscreen-mobile {
-      position: fixed !important; top: 0; left: 0;
-      width: 100vw !important; height: 100vh !important;
-      max-width: none !important; margin: 0 !important;
-      border-radius: 0 !important; background: #000 !important;
-      z-index: 2000 !important; overflow: hidden;
-    }
-    .player-container.player-fullscreen-mobile .source-video {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      object-fit: contain; border-radius: 0;
-      transform-origin: center center;
-      transform: scale(1) translate(0px, 0px);
-      cursor: grab; will-change: transform;
-    }
-    .player-container.player-fullscreen-mobile .source-video:active {
-      cursor: grabbing;
-    }
+    /* Ensure container doesn't restrict height */
+     html.pseudo-fullscreen-mobile .container {
+         height: auto !important;
+         min-height: 105vh; /* Match html min-height */
+         position: static !important; /* Ensure container flows */
+         display: block !important; /* Change from flex */
+     }
+     /* Ensure main content doesn't restrict height */
+     html.pseudo-fullscreen-mobile #main-content {
+         height: auto !important;
+         min-height: 105vh; /* Match html min-height */
+         display: block !important; /* Change from flex */
+     }
+
+    .player-container.player-fullscreen-mobile { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; max-width: none !important; margin: 0 !important; border-radius: 0 !important; background-color: #000 !important; z-index: 2000 !important; overflow: hidden; }
+    .player-container.player-fullscreen-mobile .source-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; border-radius: 0; transform-origin: center center; transform: scale(1) translate(0px, 0px); cursor: grab; will-change: transform; }
+    .player-container.player-fullscreen-mobile .source-video:active { cursor: grabbing; }
     .player-container.player-fullscreen-mobile .video-title-row,
-    .player-container.player-fullscreen-mobile .controls-container:not(.fullscreen-controls) {
-      display: none !important;
-    }
-    .player-container.player-fullscreen-mobile .fullscreen-controls {
-      display: block !important;
-    }
+    .player-container.player-fullscreen-mobile .controls-container:not(.fullscreen-controls) { display: none !important; }
+    .player-container.player-fullscreen-mobile .fullscreen-controls { display: block !important; }
 
     /* Mobile Fullscreen Controls */
-    .fullscreen-controls {
-      display: none; position: absolute; bottom: -120px;
-      left: 50%; transform: translateX(-50%);
-      width: 90%; max-width: 500px; z-index: 2100;
-      transition: bottom 0.3s ease-in-out;
-      border-radius: 10px; background: rgba(0,0,0,0.8);
-      box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 10px);
-    }
-    .player-container.controls-open .fullscreen-controls {
-      bottom: 10px;
-    }
-    .fullscreen-controls .control-bar {
-      padding: 10px 15px; gap: 15px;
-    }
-    .fullscreen-controls .progress-bar {
-      display: flex !important;
-    }
+    .fullscreen-controls { display: none; position: absolute; bottom: -120px; /* Start hidden */ left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; z-index: 2100; transition: bottom 0.3s ease-in-out; border-radius: 10px; background-color: rgba(0, 0, 0, 0.8); box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 10px); }
+    .player-container.controls-open .fullscreen-controls { bottom: 10px; }
+    .fullscreen-controls .control-bar { padding: 10px 15px; gap: 15px; }
+    .fullscreen-controls .progress-bar { display: flex !important; }
 
     /* PWA Standalone Adjustments */
     @media all and (display-mode: standalone) {
-      html.mobile body {
-        padding-top: env(safe-area-inset-top, 0px);
-      }
-      html.mobile #sidebarToggle {
-        top: calc(20px + env(safe-area-inset-top, 0px));
-      }
-      html.mobile #main-content {
-        padding-top: 60px;
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-        height: calc(100vh - env(safe-area-inset-top, 0px));
-        box-sizing: border-box;
-      }
-      .player-container.controls-open .fullscreen-controls {
-        bottom: env(safe-area-inset-bottom, 10px);
-      }
+        html.mobile body { padding-top: env(safe-area-inset-top, 0px); }
+        html.mobile #sidebarToggle { top: calc(20px + env(safe-area-inset-top, 0px)); }
+        html.mobile #main-content { padding-top: 60px; padding-bottom: env(safe-area-inset-bottom, 0px); height: calc(100vh - env(safe-area-inset-top, 0px)); box-sizing: border-box; }
+        .player-container.controls-open .fullscreen-controls { bottom: env(safe-area-inset-bottom, 10px); }
     }
 
-    /* ------------ NEW: allow page scroll so mobile non-safari UI can hide --------- */
-    html.non-safari-mobile:not(.pseudo-fullscreen-mobile),
-    html.non-safari-mobile:not(.pseudo-fullscreen-mobile) body {
-      position: static !important;
-      height: auto !important;
-      overflow: auto !important;
-    }
-    html.non-safari-mobile:not(.pseudo-fullscreen-mobile) .container,
-    html.non-safari-mobile:not(.pseudo-fullscreen-mobile) #main-content {
-      height: auto !important;
-      min-height: 100vh !important;
-    }
-    html.non-safari-mobile:not(.pseudo-fullscreen-mobile) #main-content {
-      overflow: visible !important;
-    }
   </style>
 
   <script>
     // --- PWA Meta Tag Injection for Safari Mobile ---
-    (function(){
-      const ua = navigator.userAgent;
-      const isSafariMobile = /iPhone|iPad|iPod/.test(ua)
-        && /AppleWebKit/.test(ua)
-        && !/CriOS/.test(ua)
-        && !/FxiOS/.test(ua);
-      if(isSafariMobile){
-        const head = document.head;
-        const metas = [
-          {name:'apple-mobile-web-app-capable', content:'yes'},
-          {name:'apple-mobile-web-app-status-bar-style', content:'black-translucent'},
-          {name:'apple-mobile-web-app-title', content:'Live DVR'}
-        ];
-        metas.forEach(m=>{
-          const tag = document.createElement('meta');
-          tag.name = m.name;
-          tag.content = m.content;
-          head.appendChild(tag);
-        });
-        console.log("Safari Mobile detected: Added PWA meta tags.");
-      }
-    })();
+    (function() { /* ... PWA tags injection ... */ const ua = navigator.userAgent; const isSafariMobile = /iPhone|iPad|iPod/.test(ua) && /AppleWebKit/.test(ua) && !/CriOS/.test(ua) && !/FxiOS/.test(ua); if (isSafariMobile) { const head = document.head; let metaCapable = document.createElement('meta'); metaCapable.name = 'apple-mobile-web-app-capable'; metaCapable.content = 'yes'; head.appendChild(metaCapable); let metaStatusBarStyle = document.createElement('meta'); metaStatusBarStyle.name = 'apple-mobile-web-app-status-bar-style'; metaStatusBarStyle.content = 'black-translucent'; head.appendChild(metaStatusBarStyle); let metaTitle = document.createElement('meta'); metaTitle.name = 'apple-mobile-web-app-title'; metaTitle.content = 'Live DVR'; head.appendChild(metaTitle); console.log("Safari Mobile detected: Added PWA meta tags."); } })();
 
     // --- Global Flags & Detection ---
     const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    const IS_SAFARI_MOBILE = IS_MOBILE
-      && /iPhone|iPad|iPod/.test(navigator.userAgent)
-      && /AppleWebKit/.test(navigator.userAgent)
-      && !/CriOS/.test(navigator.userAgent)
-      && !/FxiOS/.test(navigator.userAgent);
-    if(IS_MOBILE){
-      document.documentElement.classList.add("mobile");
-      if(IS_SAFARI_MOBILE) document.documentElement.classList.add("safari-mobile");
-      else document.documentElement.classList.add("non-safari-mobile");
-    }
+    const IS_SAFARI_MOBILE = IS_MOBILE && /iPhone|iPad|iPod/.test(navigator.userAgent) && /AppleWebKit/.test(navigator.userAgent) && !/CriOS/.test(navigator.userAgent) && !/FxiOS/.test(navigator.userAgent);
+    if (IS_MOBILE) { document.documentElement.classList.add("mobile"); if (IS_SAFARI_MOBILE) { document.documentElement.classList.add("safari-mobile"); } else { document.documentElement.classList.add("non-safari-mobile"); } }
 
     // Spacebar handling (desktop)
-    let spaceHeld = false;
-    window.addEventListener("keydown", e => {
-      if(e.code==="Space"
-        && !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())
-      ){
-        e.preventDefault();
-        spaceHeld = true;
-      }
-    });
-    window.addEventListener("keyup", e => {
-      if(e.code==="Space") spaceHeld = false;
-    });
+    let spaceHeld = false; window.addEventListener("keydown", e => { if (e.code === "Space" && !["input","textarea","button"].includes(document.activeElement.tagName.toLowerCase())) { e.preventDefault(); spaceHeld = true; } }); window.addEventListener("keyup", e => { if (e.code === "Space") spaceHeld = false; });
 
     // Cursor auto-hide (desktop native fullscreen)
-    let cursorTimeout;
-    function showCursor(){ document.body.style.cursor = ""; }
-    function hideCursor(){ document.body.style.cursor = "none"; }
-    document.addEventListener("fullscreenchange", ()=>{
-      if(document.fullscreenElement){
-        showCursor();
-        clearTimeout(cursorTimeout);
-        cursorTimeout = setTimeout(hideCursor, 3000);
-      } else {
-        showCursor();
-        clearTimeout(cursorTimeout);
-      }
-    });
-    document.addEventListener("mousemove", ()=>{
-      if(document.fullscreenElement){
-        showCursor();
-        clearTimeout(cursorTimeout);
-        cursorTimeout = setTimeout(hideCursor, 3000);
-      }
-    });
+    let cursorTimeout; function showCursor() { document.body.style.cursor = ""; } function hideCursor() { document.body.style.cursor = "none"; } document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement) { showCursor(); clearTimeout(cursorTimeout); cursorTimeout = setTimeout(hideCursor, 3000); } else { showCursor(); clearTimeout(cursorTimeout); } }); document.addEventListener("mousemove", () => { if (document.fullscreenElement) { showCursor(); clearTimeout(cursorTimeout); cursorTimeout = setTimeout(hideCursor, 3000); } });
 
-    // Helper to hide browser UI (non-Safari mobile)
-    function hideBrowserUI(){
-      if(!window.matchMedia('(display-mode: standalone)').matches && !IS_SAFARI_MOBILE){
-        console.log("Attempting to hide browser UI (scrolling trick)...");
-        setTimeout(()=>{
-          const htmlScrollable = document.documentElement.scrollHeight > document.documentElement.clientHeight;
-          console.log(`ScrollTop Before: window=${window.scrollY}, html=${document.documentElement.scrollTop}, htmlScrollable=${htmlScrollable}`);
-          if(htmlScrollable){
-            document.documentElement.scrollTop = 1;
-          } else {
-            window.scrollTo(0,1);
-          }
-          setTimeout(()=>{
-            console.log(`ScrollTop After: window=${window.scrollY}, html=${document.documentElement.scrollTop}`);
-          },100);
-        },300);
-      } else {
-        console.log("Browser UI hiding skipped (PWA standalone or Safari).");
-      }
+    // Helper to hide browser UI (non-Safari mobile) - Reliability varies!
+    function hideBrowserUI() {
+      if (!window.matchMedia('(display-mode: standalone)').matches && !IS_SAFARI_MOBILE) {
+          console.log("Attempting to hide browser UI (scrolling trick)...");
+          // Try scrolling both window and html element with a longer delay
+          setTimeout(() => {
+              const htmlScrollable = document.documentElement.scrollHeight > document.documentElement.clientHeight;
+              console.log(`ScrollTop Before: window=${window.scrollY}, html=${document.documentElement.scrollTop}, htmlScrollable=${htmlScrollable}`);
+              // Try scrolling html first if it's scrollable, otherwise window
+              if (htmlScrollable) {
+                  document.documentElement.scrollTop = 1;
+              } else {
+                  window.scrollTo(0, 1);
+              }
+              // Check after a short delay if it worked
+              setTimeout(() => {
+                  console.log(`ScrollTop After: window=${window.scrollY}, html=${document.documentElement.scrollTop}`);
+              }, 100);
+          }, 300); // Increased delay further
+      } else { console.log("Browser UI hiding skipped (PWA standalone or Safari)."); }
     }
   </script>
 </head>
@@ -449,209 +432,487 @@
   <button id="sidebarToggle">&#x2630;</button>
   <div class="container">
     <div id="sidebar">
-      <!-- sidebar markup unchanged -->
       <button id="btn-add-urls">Add URLs</button>
       <div id="sideButtons">
         <button id="btn-show-all" class="sideBtn">Show All</button>
         <button id="btn-hide-all" class="sideBtn">Hide All</button>
       </div>
       <div id="streamList">
-        <p class="no-streams">Loading streams...</p>
+          <p class="no-streams">Loading streams...</p>
       </div>
     </div>
     <div id="main-content"></div>
   </div>
   <div id="modalBackdrop"></div>
   <div id="urlModal">
-    <h3>Paste Playlist URLs (one per line)</h3>
+    <h3 style="margin-top:0; text-align:center;">Paste Playlist URLs (one per line)</h3>
     <textarea id="urlInput" placeholder="https://…/playlist.m3u8"></textarea>
     <button id="saveUrls">Save and Close</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
-    // --- Fullscreen API, Storage Helpers, Stream & Player Logic, etc. (unchanged) ---
-    // --- Player Creation, Controls, HLS.js setup (unchanged) ---
+    // --- Fullscreen API Helpers ---
+    function enterNativeFullScreen(el) { /* ... (no changes) ... */ if (document.fullscreenElement || document.webkitFullscreenElement) return Promise.resolve(); const r = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen; if (r) return r.call(el).catch(err => console.error("Native Fullscreen request failed:", err)); else return Promise.reject("Native Fullscreen not supported"); }
+    function exitNativeFullScreen() { /* ... (no changes) ... */ if (!document.fullscreenElement && !document.webkitFullscreenElement) return Promise.resolve(); const e = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen; if (e) return e.call(document).catch(err => console.error("Exit Native Fullscreen failed:", err)); else return Promise.reject("Exit Native Fullscreen not supported"); }
 
-    // --- Mobile Pseudo-Fullscreen Gestures Setup ---
-    function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) {
+    // --- Constants and Settings ---
+    const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
+    const PLAYER_SETTINGS_KEY = "liveDvrPlayerSettings_v1";
+    const STREAM_CONFIGS_KEY = "liveDvrStreamConfigs_v1";
+
+    // --- Local Storage Helpers ---
+    function loadPlayerSettings(url) { /* ... (no changes) ... */ try { const allSettings = JSON.parse(localStorage.getItem(PLAYER_SETTINGS_KEY) || "{}"); return allSettings[url] || { zoomScale: 1, panX: 0, panY: 0 }; } catch (e) { console.error("LS Error:", e); return { zoomScale: 1, panX: 0, panY: 0 }; } }
+    function savePlayerSettings(url, data) { /* ... (no changes) ... */ try { let allSettings = JSON.parse(localStorage.getItem(PLAYER_SETTINGS_KEY) || "{}"); allSettings[url] = data; localStorage.setItem(PLAYER_SETTINGS_KEY, JSON.stringify(allSettings)); } catch (e) { console.error("LS Error:", e); } }
+    function getStreamList() { /* ... (no changes) ... */ try { const stored = localStorage.getItem(STREAM_CONFIGS_KEY); if (!stored) return []; const parsed = JSON.parse(stored); if (!Array.isArray(parsed) || !parsed.every(item => typeof item === 'object' && 'url' in item && 'enabled' in item)) { localStorage.removeItem(STREAM_CONFIGS_KEY); return []; } return parsed; } catch (e) { console.error("LS Error:", e); localStorage.removeItem(STREAM_CONFIGS_KEY); return []; } }
+    function saveStreamList(list) { /* ... (no changes) ... */ try { if (!Array.isArray(list) || !list.every(item => typeof item === 'object' && 'url' in item && 'enabled' in item)) return; localStorage.setItem(STREAM_CONFIGS_KEY, JSON.stringify(list)); } catch (e) { console.error("LS Error:", e); } }
+
+    // --- Utility Functions ---
+    function extractTitle(url){ /* ... (reverted to original) ... */ const m = url.match(/wc-([^\/]+)\/playlist/); return m ? m[1] : url; }
+    function clampPan(container) { /* ... (no changes - desktop canvas) ... */ const Z = container.zoomScale; const W = 960; const H = 540; if (Z <= 1) { container.panX = 0; container.panY = 0; return; } const mx = (W * (Z - 1)) / (2 * Z); const my = (H * (Z - 1)) / (2 * Z); container.panX = Math.min(mx, Math.max(-mx, container.panX)); container.panY = Math.min(my, Math.max(-my, container.panY)); }
+    function getTouchDistance(touch1, touch2) { /* ... (no changes) ... */ const dx = touch1.clientX - touch2.clientX; const dy = touch1.clientY - touch2.clientY; return Math.sqrt(dx * dx + dy * dy); }
+    function getTouchMidpoint(touch1, touch2) { /* ... (no changes) ... */ return { x: (touch1.clientX + touch2.clientX) / 2, y: (touch1.clientY + touch2.clientY) / 2 }; }
+
+    // --- DOM Elements ---
+    const sidebar = document.getElementById("sidebar"); const sidebarToggle = document.getElementById("sidebarToggle"); const streamListContainer = document.getElementById("streamList"); const mainContent = document.getElementById("main-content"); const modalBackdrop = document.getElementById("modalBackdrop"); const urlModal = document.getElementById("urlModal"); const urlInput = document.getElementById("urlInput"); const saveUrlsBtn = document.getElementById("saveUrls"); const btnAddUrls = document.getElementById("btn-add-urls"); const btnShowAll = document.getElementById("btn-show-all"); const btnHideAll = document.getElementById("btn-hide-all");
+
+    // --- State ---
+    const activeSidebarLabels = new Set(); let sidebarDragStartState = null; let isSidebarDragging = false; let players = {};
+
+    // --- Sidebar Logic ---
+    function updateStreamSidebar() { /* ... (no changes to function body) ... */ streamListContainer.innerHTML = ""; const streams = getStreamList(); if (!streams.length) { const p = document.createElement("p"); p.className = "no-streams"; p.textContent = "No streams added. Click 'Add URLs'."; streamListContainer.appendChild(p); } else { streams.forEach(stream => { const item = document.createElement("div"); item.className = "stream-item"; const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.checked = stream.enabled; checkbox.dataset.url = stream.url; checkbox.id = `cb-${encodeURIComponent(stream.url)}`; checkbox.addEventListener("change", (e) => { updateStreamEnabled(stream.url, e.target.checked); }); item.appendChild(checkbox); const label = document.createElement("label"); label.textContent = extractTitle(stream.url); label.htmlFor = checkbox.id; label.dataset.url = stream.url; label.addEventListener("mousedown", e => { if (e.button === 0) { e.preventDefault(); isSidebarDragging = true; sidebarDragStartState = checkbox.checked; activeSidebarLabels.clear(); activeSidebarLabels.add(label); item.classList.add('selecting'); } }); label.addEventListener("mouseenter", e => { if (isSidebarDragging && (e.buttons & 1)) { activeSidebarLabels.add(label); item.classList.add('selecting'); } }); item.addEventListener("mouseleave", () => {}); item.appendChild(label); streamListContainer.appendChild(item); }); } }
+    document.addEventListener("mouseup", (e) => { /* ... (no changes to function body) ... */ if (e.button === 0 && isSidebarDragging) { isSidebarDragging = false; const labelsToToggle = new Set(activeSidebarLabels); activeSidebarLabels.clear(); document.querySelectorAll('.stream-item.selecting').forEach(el => el.classList.remove('selecting')); if (labelsToToggle.size > 0) { const targetState = !sidebarDragStartState; labelsToToggle.forEach(label => { const url = label.dataset.url; const checkbox = document.getElementById(`cb-${encodeURIComponent(url)}`); if (checkbox) { checkbox.checked = targetState; updateStreamEnabled(url, targetState); } }); } sidebarDragStartState = null; } });
+    streamListContainer.addEventListener('contextmenu', (e) => { if (isSidebarDragging) e.preventDefault(); });
+
+    // --- Player Management ---
+    function reorderPlayers() { /* ... (no changes) ... */ const streams = getStreamList(); const sortedPlayers = Array.from(mainContent.children) .filter(el => el.classList.contains('player-container')) .sort((a, b) => { const indexA = streams.findIndex(s => s.url === a.dataset.url); const indexB = streams.findIndex(s => s.url === b.dataset.url); if (indexA === -1) return 1; if (indexB === -1) return -1; return indexA - indexB; }); sortedPlayers.forEach(playerElement => mainContent.appendChild(playerElement)); }
+    function updateStreamEnabled(url, enabled) { /* ... (no changes) ... */ let streams = getStreamList(); const streamIndex = streams.findIndex(s => s.url === url); if (streamIndex === -1) return; streams[streamIndex].enabled = enabled; saveStreamList(streams); const existingPlayerRef = players[url]; if (enabled) { if (!existingPlayerRef) { const playerElements = createPlayerContainer(streams[streamIndex]); if (playerElements) { mainContent.appendChild(playerElements.container); players[url] = playerElements; } } else { if (!existingPlayerRef.container.isConnected) mainContent.appendChild(existingPlayerRef.container); existingPlayerRef.container.style.display = "flex"; if (existingPlayerRef.hls && !existingPlayerRef.hls.media) existingPlayerRef.hls.attachMedia(existingPlayerRef.video); if (existingPlayerRef.hls) existingPlayerRef.hls.startLoad(); else if (existingPlayerRef.video.src && existingPlayerRef.video.paused) existingPlayerRef.video.play().catch(()=>{}); if (existingPlayerRef.video.autoplay || !existingPlayerRef.video.paused) existingPlayerRef.video.play().catch(()=>{}); } } else { if (existingPlayerRef) { if (existingPlayerRef.hls) existingPlayerRef.hls.destroy(); existingPlayerRef.video.pause(); existingPlayerRef.video.removeAttribute('src'); existingPlayerRef.video.load(); if (existingPlayerRef.animationFrameId) cancelAnimationFrame(existingPlayerRef.animationFrameId); if (existingPlayerRef.container.classList.contains('player-fullscreen-mobile')) { exitPseudoFullscreen(existingPlayerRef.container, existingPlayerRef.video); } existingPlayerRef.container.remove(); delete players[url]; } } reorderPlayers(); updateStreamSidebar(); }
+
+    // --- Player Creation ---
+    function createPlayerContainer(stream) {
+      if (!stream || !stream.enabled) return null;
+      const url = stream.url; const savedSettings = loadPlayerSettings(url);
+      const container = document.createElement("div");
+      container.className = `player-container ${IS_MOBILE ? "mobile" : "desktop"}`;
+      container.dataset.url = url;
+      container.zoomScale = savedSettings.zoomScale; container.panX = savedSettings.panX; container.panY = savedSettings.panY;
+      const video = document.createElement("video");
+      video.className = "source-video";
+      video.setAttribute("playsinline", ""); video.setAttribute("webkit-playsinline", "");
+      video.setAttribute("crossorigin", "anonymous");
+      video.muted = true; video.preload = "metadata"; video.autoplay = true;
+
+      let hlsInstance = null; let animationFrameId = null;
+
+      if (IS_MOBILE) {
+        video.controls = false;
+        const titleRow = document.createElement("div"); titleRow.className = "video-title-row";
+        const titleSpan = document.createElement("span"); titleSpan.textContent = extractTitle(url);
+        const fsBtnMobile = document.createElement("button"); fsBtnMobile.className = "fs-btn-mobile";
+        fsBtnMobile.innerHTML = "&#x26F6;"; fsBtnMobile.setAttribute("aria-label", "Enter Fullscreen");
+        titleRow.appendChild(titleSpan); titleRow.appendChild(fsBtnMobile); container.appendChild(titleRow);
+        container.appendChild(video);
+        const controlsContainerMobile = document.createElement("div"); controlsContainerMobile.className = "controls-container";
+        const controlBarMobile = document.createElement("div"); controlBarMobile.className = "control-bar";
+        const playPauseBtnMobile = document.createElement("button"); playPauseBtnMobile.textContent = "Play";
+        playPauseBtnMobile.setAttribute("aria-label", "Play/Pause");
+        controlBarMobile.appendChild(playPauseBtnMobile); controlsContainerMobile.appendChild(controlBarMobile); container.appendChild(controlsContainerMobile);
+
+        let lastTap = 0;
+        container.addEventListener("click", (e) => { if (e.target.closest('.controls-container')) return; const now = Date.now(); const timeSinceLastTap = now - lastTap; if (timeSinceLastTap < 350) { enterPseudoFullscreen(container, video); lastTap = 0; } else { if (video.paused) video.play().catch(()=>{}); else video.pause(); lastTap = now; } });
+        playPauseBtnMobile.addEventListener("click", (e) => { e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); });
+        fsBtnMobile.addEventListener("click", (e) => { e.stopPropagation(); enterPseudoFullscreen(container, video); });
+        video.addEventListener("play", () => playPauseBtnMobile.textContent = "Pause");
+        video.addEventListener("pause", () => playPauseBtnMobile.textContent = "Play");
+        video.addEventListener("ended", () => playPauseBtnMobile.textContent = "Play");
+        video.addEventListener('canplay', () => { if (video.paused) video.play().catch(e => console.log(`Autoplay/Canplay play failed for ${url}:`, e)); }, { once: true });
+
+      } else { // Desktop Setup
+        const canvasWrapper = document.createElement("div"); canvasWrapper.className = "canvas-wrapper"; container.appendChild(canvasWrapper);
+        const canvas = document.createElement("canvas"); canvas.className = "display-canvas"; canvas.width = 960; canvas.height = 540; canvasWrapper.appendChild(canvas);
+        const controlsContainer = document.createElement("div"); controlsContainer.className = "controls-container";
+        container.appendChild(controlsContainer); // Append controls container below canvas
+        container.appendChild(video); // Add hidden video last
+
+        const ctx = canvas.getContext("2d");
+        function renderCanvas() { /* ... (desktop render logic - no changes) ... */ if (video.readyState >= video.HAVE_METADATA && container.isConnected) { clampPan(container); ctx.save(); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height); if (video.videoWidth > 0 && video.videoHeight > 0) { const canvasAspect = canvas.width / canvas.height; const videoAspect = video.videoWidth / video.videoHeight; let drawWidth, drawHeight, offsetX, offsetY; if (canvasAspect > videoAspect) { drawHeight = canvas.height; drawWidth = drawHeight * videoAspect; offsetX = (canvas.width - drawWidth) / 2; offsetY = 0; } else { drawWidth = canvas.width; drawHeight = drawWidth / videoAspect; offsetX = 0; offsetY = (canvas.height - drawHeight) / 2; } const centerX = canvas.width / 2; const centerY = canvas.height / 2; ctx.translate(centerX, centerY); ctx.scale(container.zoomScale, container.zoomScale); ctx.translate(container.panX, container.panY); ctx.translate(-centerX, -centerY); try { ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight); } catch (e) { console.error("Draw Error:", e); } } else { ctx.fillStyle = '#555'; ctx.textAlign = 'center'; ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2); } ctx.restore(); } if (container.isConnected) animationFrameId = requestAnimationFrame(renderCanvas); else animationFrameId = null; }
+        video.addEventListener("canplay", () => { if (!animationFrameId && container.isConnected) renderCanvas(); });
+        video.addEventListener('emptied', () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null; });
+        video.addEventListener('error', () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null; });
+
+        // --- Desktop Interactions ---
+        let startX, startY, isDragging = false; canvasWrapper.addEventListener("mousedown", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (e.button === 0 && (spaceHeld || isFullscreen)) { startX = e.clientX; startY = e.clientY; isDragging = false; container.style.cursor = 'grabbing'; e.preventDefault(); } }); document.addEventListener("mousemove", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if ((e.buttons & 1) && (spaceHeld || isFullscreen) && typeof startX === 'number') { const dx = e.clientX - startX; const dy = e.clientY - startY; if (!isDragging && Math.hypot(dx, dy) > 5) isDragging = true; if (isDragging) { container.panX += dx / container.zoomScale; container.panY += dy / container.zoomScale; clampPan(container); savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY }); startX = e.clientX; startY = e.clientY; } } }); document.addEventListener("mouseup", e => { if (e.button === 0 && typeof startX === 'number') { container.style.cursor = ''; startX = null; startY = null; setTimeout(() => isDragging = false, 0); } }); canvasWrapper.addEventListener("wheel", e => { const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container; if (spaceHeld || isFullscreen) { e.preventDefault(); const rect = canvasWrapper.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top; const normX = mouseX / rect.width; const normY = mouseY / rect.height; const canvasX = normX * 960; const canvasY = normY * 540; const oldZoom = container.zoomScale; const zoomAmount = 0.15; let newZoom = oldZoom * (e.deltaY < 0 ? (1 + zoomAmount) : (1 / (1 + zoomAmount))); newZoom = Math.max(1, Math.min(5, newZoom)); if (newZoom !== oldZoom) { container.panX += (canvasX - 480) * (1 / newZoom - 1 / oldZoom); container.panY += (canvasY - 270) * (1 / newZoom - 1 / oldZoom); container.zoomScale = newZoom; clampPan(container); savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY }); } } }, { passive: false });
+        // Click/Double Click Listener - Attached to container
+        let clickTimeout = null; let lastClickTime = 0;
+        const handleDesktopClick = (e) => {
+            const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+            // Allow click anywhere in container when fullscreen, only on canvasWrapper when not
+            if (!isFullscreen && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) return;
+            if (e.button !== 0 || isDragging) return;
+
+            const now = Date.now();
+            if (now - lastClickTime < 300) { // Double click
+                clearTimeout(clickTimeout); lastClickTime = 0;
+                if (!isFullscreen) enterNativeFullScreen(container);
+                else exitNativeFullScreen();
+            } else { // Single click
+                clickTimeout = setTimeout(() => {
+                    // Only toggle play/pause if click was on canvasWrapper
+                    if (e.target === canvasWrapper || canvasWrapper.contains(e.target)) {
+                       if (video.paused) video.play().catch(()=>{}); else video.pause();
+                    }
+                }, 300);
+            }
+            lastClickTime = now;
+        };
+        container.addEventListener("click", handleDesktopClick);
+
+
+        // --- Desktop Controls ---
+        const controlBar = document.createElement("div"); controlBar.className = "control-bar"; controlsContainer.appendChild(controlBar);
+        const playPauseBtn = document.createElement("button"); playPauseBtn.textContent = video.paused ? "Play" : "Pause"; playPauseBtn.setAttribute("aria-label", "Play/Pause"); playPauseBtn.addEventListener("click", (e) => { e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); }); video.addEventListener("play", () => playPauseBtn.textContent = "Pause"); video.addEventListener("pause", () => playPauseBtn.textContent = "Play"); video.addEventListener("ended", () => playPauseBtn.textContent = "Play"); controlBar.appendChild(playPauseBtn);
+        const progressBar = document.createElement("div"); progressBar.className = "progress-bar"; const bufferedBar = document.createElement("div"); bufferedBar.className = "buffered"; const playedBar = document.createElement("div"); playedBar.className = "played"; const thumb = document.createElement("div"); thumb.className = "thumb"; progressBar.appendChild(bufferedBar); progressBar.appendChild(playedBar); progressBar.appendChild(thumb); controlBar.appendChild(progressBar); function updateProgressBar() { /* ... (no changes) ... */ const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) { const currentTime = video.currentTime; const buffered = video.buffered; let bufferedEnd = 0; try { for (let i = 0; i < buffered.length; i++) { if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) { bufferedEnd = buffered.end(i); break; } bufferedEnd = Math.max(bufferedEnd, buffered.end(i)); } } catch (err) {} const playedPercent = (currentTime / duration) * 100; const bufferedPercent = (bufferedEnd / duration) * 100; playedBar.style.width = `${Math.min(100, playedPercent)}%`; thumb.style.left = `${Math.min(100, playedPercent)}%`; bufferedBar.style.width = `${Math.min(100, bufferedPercent)}%`; } else { playedBar.style.width = '0%'; thumb.style.left = '0%'; bufferedBar.style.width = '0%'; } } video.addEventListener("timeupdate", updateProgressBar); video.addEventListener("progress", updateProgressBar); video.addEventListener("loadedmetadata", updateProgressBar); video.addEventListener("durationchange", updateProgressBar); let isSeeking = false; function seek(event) { /* ... (no changes) ... */ const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) { const progressBarRect = progressBar.getBoundingClientRect(); let clientX = event.clientX; if (event.type.startsWith('touch')) { if (event.touches.length > 0) clientX = event.touches[0].clientX; else if (event.changedTouches.length > 0) clientX = event.changedTouches[0].clientX; else return; } if (typeof clientX === 'undefined') return; const clickX = clientX - progressBarRect.left; let seekPercent = clickX / progressBarRect.width; seekPercent = Math.max(0, Math.min(1, seekPercent)); const seekTime = seekPercent * duration; let isSeekable = false; try { for (let i = 0; i < video.seekable.length; i++) { if (seekTime >= video.seekable.start(i) && seekTime <= video.seekable.end(i)) { isSeekable = true; break; } } } catch (e) { isSeekable = true; } if (isSeekable) { video.currentTime = seekTime; updateProgressBar(); } } } progressBar.addEventListener("mousedown", (e) => { if (e.button === 0) { isSeeking = true; document.body.style.userSelect = 'none'; seek(e); progressBar.style.cursor = 'grabbing'; } }); progressBar.addEventListener("touchstart", (e) => { isSeeking = true; document.body.style.webkitUserSelect = 'none'; seek(e); }, { passive: true }); document.addEventListener("mousemove", (e) => { if (isSeeking) seek(e); }); document.addEventListener("touchmove", (e) => { if (isSeeking) { e.preventDefault(); seek(e); } }, { passive: false }); document.addEventListener("mouseup", (e) => { if (e.button === 0 && isSeeking) { isSeeking = false; progressBar.style.cursor = 'pointer'; document.body.style.userSelect = ''; } }); document.addEventListener("touchend", (e) => { if (isSeeking) { isSeeking = false; document.body.style.webkitUserSelect = ''; } });
+        const fsBtnDesktop = document.createElement("button"); fsBtnDesktop.innerHTML = "&#x26F6;"; fsBtnDesktop.setAttribute("aria-label", "Enter/Exit Fullscreen"); fsBtnDesktop.addEventListener("click", (e) => { e.stopPropagation(); if (!document.fullscreenElement && !document.webkitFullscreenElement) enterNativeFullScreen(container); else exitNativeFullScreen(); }); controlBar.appendChild(fsBtnDesktop); function updateFsButtonIcon() { const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container; fsBtnDesktop.innerHTML = isFs ? "&#x2921;" : "&#x26F6;"; } document.addEventListener("fullscreenchange", updateFsButtonIcon); document.addEventListener("webkitfullscreenchange", updateFsButtonIcon);
+        const resetBtn = document.createElement("button"); resetBtn.textContent = "Reset"; resetBtn.setAttribute("aria-label", "Reset Pan & Zoom"); resetBtn.addEventListener("click", (e) => { e.stopPropagation(); container.zoomScale = 1; container.panX = 0; container.panY = 0; savePlayerSettings(url, { zoomScale: 1, panX: 0, panY: 0 }); }); controlBar.appendChild(resetBtn);
+        const disableBtn = document.createElement("button"); disableBtn.className = "disable-btn"; disableBtn.textContent = "✕"; disableBtn.setAttribute("aria-label", "Hide this stream"); disableBtn.addEventListener("click", (e) => { e.stopPropagation(); updateStreamEnabled(url, false); }); controlBar.appendChild(disableBtn);
+        // Title bar added after control bar
+        const titleBar = document.createElement("div"); titleBar.className = "title-bar"; titleBar.textContent = extractTitle(url); controlsContainer.appendChild(titleBar);
+
+      } // End Desktop Specific Setup
+
+      // --- HLS.js Setup ---
+      const preferNativeHls = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      const canPlayNativeHls = video.canPlayType("application/vnd.apple.mpegurl");
+      if (Hls.isSupported() && !preferNativeHls) {
+        hlsInstance = new Hls({ maxBufferLength: 60, maxMaxBufferLength: 120, liveSyncDurationCount: 3, fragLoadingTimeOut: 20000, manifestLoadingTimeOut: 20000, levelLoadingTimeOut: 20000, progressive: true,
+          loader: class extends Hls.DefaultConfig.loader { load(ctx, cfg, cb){ let u = ctx.url; while (u.startsWith(PROXY_PREFIX)) u = decodeURIComponent(u.slice(PROXY_PREFIX.length)); ctx.url = PROXY_PREFIX + encodeURIComponent(u); super.load(ctx, cfg, cb); } }
+        });
+        hlsInstance.loadSource(url); hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { if (video.autoplay || !video.paused) video.play().catch(()=>{}); });
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => { console.error(`HLS Error: ${data.type}, ${data.details}`, data); if (data.fatal) { switch (data.type) { case Hls.ErrorTypes.NETWORK_ERROR: setTimeout(() => { if (hlsInstance) hlsInstance.startLoad(); }, 2000); break; case Hls.ErrorTypes.MEDIA_ERROR: hlsInstance.recoverMediaError(); break; default: hlsInstance.destroy(); setTimeout(() => { if (players[url] && players[url].container.isConnected) updateStreamEnabled(url, true); }, 5000); break; } } });
+      } else if (canPlayNativeHls) { video.src = PROXY_PREFIX + encodeURIComponent(url); if (video.autoplay) video.play().catch(()=>{}); }
+      else { console.warn(`HLS not supported for ${url}`); const em = document.createElement('div'); em.textContent = 'HLS not supported'; em.style.cssText = 'color:red;text-align:center;padding:20px;'; container.appendChild(em); }
+
+      return { container, video, hls: hlsInstance, animationFrameId };
+    }
+
+    // --- Mobile Pseudo-Fullscreen ---
+    let pseudoFsCleanup = null;
+
+    function enterPseudoFullscreen(container, video) {
+        if (document.querySelector('.player-fullscreen-mobile')) return;
+        console.log("Entering Pseudo Fullscreen for:", container.dataset.url);
+        const htmlEl = document.documentElement;
+        htmlEl.classList.add("pseudo-fullscreen-mobile");
+        if (!IS_SAFARI_MOBILE) htmlEl.classList.add("non-safari");
+        container.classList.add("player-fullscreen-mobile");
+
+        if (video.paused) video.play().catch(e => console.log("Pseudo-FS entry play failed:", e));
+
+        const { cleanup: controlsCleanup, showFsControls, hideFsControls } = setupMobileFullscreenControls(container, video);
+        const { cleanup: gestureCleanup } = setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls); // Pass control functions
+        // Store controls API on player object for gesture handler access
+        if(players[container.dataset.url]) {
+            players[container.dataset.url].controlsApi = { showFsControls, hideFsControls };
+        }
+        pseudoFsCleanup = () => { if (controlsCleanup) controlsCleanup(); if (gestureCleanup) gestureCleanup(); if(players[container.dataset.url]) delete players[container.dataset.url].controlsApi; };
+        if (!IS_SAFARI_MOBILE) hideBrowserUI();
+    }
+
+    function exitPseudoFullscreen(container, video) {
+        if (!container || !container.classList.contains('player-fullscreen-mobile')) return;
+        console.log("Exiting Pseudo Fullscreen for:", container.dataset.url);
+        const htmlEl = document.documentElement;
+        if (pseudoFsCleanup) { pseudoFsCleanup(); pseudoFsCleanup = null; }
+        htmlEl.classList.remove("pseudo-fullscreen-mobile"); htmlEl.classList.remove("non-safari");
+        container.classList.remove("player-fullscreen-mobile"); container.classList.remove("controls-open");
+        video.style.transform = 'scale(1) translate(0px, 0px)'; video.style.transformOrigin = 'center center';
+        const fsControls = container.querySelector('.fullscreen-controls'); if (fsControls) fsControls.remove();
+        // Reset styles applied for non-safari UI hiding
+        document.body.style.height = ''; document.body.style.overflow = ''; document.body.style.position = '';
+        htmlEl.style.height = ''; htmlEl.style.overflow = ''; htmlEl.style.minHeight = '';
+    }
+
+    // --- Mobile Pseudo-Fullscreen Controls Setup ---
+    function setupMobileFullscreenControls(container, video) {
+         let fsControls = container.querySelector('.fullscreen-controls');
+         let controlsTimeout_fs; let isFsSeeking = false;
+         let listeners = [];
+         function addListener(element, type, handler, options) { element.addEventListener(type, handler, options); listeners.push({ element, type, handler, options }); }
+
+         // Define show/hide functions locally first
+         function showFsControls() { if (!fsControls || !container.classList.contains('player-fullscreen-mobile')) return; fsControls.style.bottom = `env(safe-area-inset-bottom, 10px)`; container.classList.add("controls-open"); clearTimeout(controlsTimeout_fs); }
+         function hideFsControls() { if (!fsControls || !container.classList.contains('player-fullscreen-mobile')) return; if (!isFsSeeking) { fsControls.style.bottom = '-120px'; container.classList.remove("controls-open"); } }
+
+         if (fsControls) { container.classList.remove("controls-open"); hideFsControls(); return { cleanup: fsControls.cleanupFsListeners || (() => {}), showFsControls, hideFsControls }; } // Return existing if present
+
+         console.log("Setting up mobile fullscreen controls UI for:", container.dataset.url);
+         fsControls = document.createElement("div"); fsControls.className = "controls-container fullscreen-controls";
+         const fsControlBar = document.createElement("div"); fsControlBar.className = "control-bar";
+         const fsPlayPauseBtn = document.createElement("button"); fsPlayPauseBtn.textContent = video.paused ? "Play" : "Pause"; fsControlBar.appendChild(fsPlayPauseBtn);
+         const fsProgressBar = document.createElement("div"); fsProgressBar.className = "progress-bar"; const fsBufferedBar = document.createElement("div"); fsBufferedBar.className = "buffered"; const fsPlayedBar = document.createElement("div"); fsPlayedBar.className = "played"; const fsThumb = document.createElement("div"); fsThumb.className = "thumb"; fsProgressBar.appendChild(fsBufferedBar); fsProgressBar.appendChild(fsPlayedBar); fsProgressBar.appendChild(fsThumb); fsControlBar.appendChild(fsProgressBar);
+         const fsExitBtn = document.createElement("button"); fsExitBtn.innerHTML = "&#x2921;"; fsControlBar.appendChild(fsExitBtn);
+         fsControls.appendChild(fsControlBar);
+         const fsTitleBar = document.createElement("div"); fsTitleBar.className = "title-bar"; fsTitleBar.textContent = extractTitle(container.dataset.url); fsControls.appendChild(fsTitleBar);
+         container.appendChild(fsControls);
+
+         // --- Control Logic & Listeners ---
+         const updateFsPlayButton = () => { fsPlayPauseBtn.textContent = video.paused ? "Play" : "Pause"; };
+         addListener(video, "play", updateFsPlayButton); addListener(video, "pause", updateFsPlayButton); addListener(video, "ended", updateFsPlayButton);
+         const updateFsProgressBar = () => { const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) { const currentTime = video.currentTime; const buffered = video.buffered; let bufferedEnd = 0; try { for (let i = 0; i < buffered.length; i++) { if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) { bufferedEnd = buffered.end(i); break; } bufferedEnd = Math.max(bufferedEnd, buffered.end(i)); } } catch (e) {} const playedPercent = (currentTime / duration) * 100; const bufferedPercent = (bufferedEnd / duration) * 100; fsPlayedBar.style.width = `${Math.min(100, playedPercent)}%`; fsThumb.style.left = `${Math.min(100, playedPercent)}%`; fsBufferedBar.style.width = `${Math.min(100, bufferedPercent)}%`; } else { fsPlayedBar.style.width = '0%'; fsThumb.style.left = '0%'; fsBufferedBar.style.width = '0%'; } };
+         addListener(video, "timeupdate", updateFsProgressBar); addListener(video, "progress", updateFsProgressBar); addListener(video, "loadedmetadata", updateFsProgressBar); addListener(video, "durationchange", updateFsProgressBar); updateFsProgressBar();
+         const fsSeek = (event) => { const duration = video.duration; if (!isNaN(duration) && duration > 0 && isFinite(duration)) { const progressBarRect = fsProgressBar.getBoundingClientRect(); let clientX = event.clientX; if (event.type.startsWith('touch')) { if (event.touches.length > 0) clientX = event.touches[0].clientX; else if (event.changedTouches.length > 0) clientX = event.changedTouches[0].clientX; else return; } if (typeof clientX === 'undefined') return; const clickX = clientX - progressBarRect.left; let seekPercent = clickX / progressBarRect.width; seekPercent = Math.max(0, Math.min(1, seekPercent)); const seekTime = seekPercent * duration; let isSeekable = false; try { for (let i = 0; i < video.seekable.length; i++) { if (seekTime >= video.seekable.start(i) && seekTime <= video.seekable.end(i)) { isSeekable = true; break; } } } catch (e) { isSeekable = true; } if (isSeekable) { video.currentTime = seekTime; updateFsProgressBar(); } } };
+         addListener(fsProgressBar, "mousedown", (e) => { if (e.button === 0) { isFsSeeking = true; fsSeek(e); fsProgressBar.style.cursor = 'grabbing'; } });
+         addListener(fsProgressBar, "touchstart", (e) => { isFsSeeking = true; fsSeek(e); }, { passive: true });
+         const handleFsMouseMove = (e) => { if (isFsSeeking) fsSeek(e); }; const handleFsTouchMove = (e) => { if (isFsSeeking) { e.preventDefault(); fsSeek(e); } }; const handleFsMouseUp = (e) => { if (e.button === 0 && isFsSeeking) { isFsSeeking = false; fsProgressBar.style.cursor = 'pointer'; } }; const handleFsTouchEnd = () => { if (isFsSeeking) isFsSeeking = false; };
+         addListener(window, "mousemove", handleFsMouseMove); addListener(window, "touchmove", handleFsTouchMove, { passive: false }); addListener(window, "mouseup", handleFsMouseUp); addListener(window, "touchend", handleFsTouchEnd);
+         addListener(fsPlayPauseBtn, "click", (e) => { e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); });
+         addListener(fsExitBtn, "click", (e) => { e.stopPropagation(); exitPseudoFullscreen(container, video); });
+
+         const handleControlsInteraction = (e) => { e.stopPropagation(); /* Prevent interfering with gestures */ };
+         addListener(fsControls, 'click', handleControlsInteraction); addListener(fsControls, 'touchstart', handleControlsInteraction, { passive: true });
+
+         // Controls start hidden by CSS `bottom: -120px`
+
+         // --- Cleanup Function ---
+         const cleanup = () => { console.log("Cleaning up fullscreen controls listeners for:", container.dataset.url); listeners.forEach(({ element, type, handler, options }) => { element.removeEventListener(type, handler, options); }); listeners = []; clearTimeout(controlsTimeout_fs); };
+         fsControls.cleanupFsListeners = cleanup;
+
+         // Store reference for gesture handler
+         players[container.dataset.url].controlsApi = { showFsControls, hideFsControls };
+
+         return { cleanup, showFsControls, hideFsControls };
+    }
+
+// --- Mobile Pseudo-Fullscreen Gestures Setup ---
+function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) {
       let initialDistance = null;
-      let initialScale = 1;
-      let currentScale = 1;
+      let initialScale    = 1;
+      let currentScale    = 1;
+
       let initialMidpoint = null;
-      let initialLocalMidpoint = { x: 0, y: 0 };
-      let lastTranslateX = 0;
-      let lastTranslateY = 0;
+      let initialLocalMid  = null;
+
+      // Capture rect once per gesture to avoid flicker:
+      let gestureRect     = null;
+
       let currentTranslateX = 0;
       let currentTranslateY = 0;
-      let touchStartY = null;
+      let lastTranslateX    = 0;
+      let lastTranslateY    = 0;
+
+      let touchStartY    = null;
       let touchStartTime = null;
-      let isSwipingY = false;
-      let isGesturing = false;
-      let isPanning = false;
-      let panStartX = 0, panStartY = 0, panLastX = 0, panLastY = 0;
+      let isSwipingY     = false;
+      let isGesturing    = false;
+
       const listeners = [];
-      function addListener(el, type, handler, opts) {
-        el.addEventListener(type, handler, opts);
-        listeners.push({ el, type, handler, opts });
+      function addListener(el, type, fn, opts) {
+        el.addEventListener(type, fn, opts);
+        listeners.push({ el, type, fn, opts });
       }
-      const controlsApi = (players[container.dataset.url] && players[container.dataset.url].controlsApi) || { showFsControls, hideFsControls };
+
+      const controlsApi = players[container.dataset.url]?.controlsApi || {
+        showFsControls, hideFsControls
+      };
 
       function applyTransform() {
+        // Clamp scale
         currentScale = Math.max(1, Math.min(currentScale, 5));
-        const rect = video.getBoundingClientRect();
-        const visW = Math.min(rect.width, rect.height * (video.videoWidth / video.videoHeight));
-        const visH = Math.min(rect.height, rect.width * (video.videoHeight / video.videoWidth));
-        const maxX = (visW * (currentScale - 1)) / 2;
-        const maxY = (visH * (currentScale - 1)) / 2;
+
+        // Use static gestureRect if in a pinch, else fresh rect
+        const rect = gestureRect || video.getBoundingClientRect();
+        // Compute visible video area (accounting for letterbox)
+        const visualW = Math.min(
+          rect.width,
+          rect.height * (video.videoWidth / video.videoHeight)
+        );
+        const visualH = Math.min(
+          rect.height,
+          rect.width * (video.videoHeight / video.videoWidth)
+        );
+        // Max translate so content never gaps
+        const maxX = (visualW * (currentScale - 1)) / 2;
+        const maxY = (visualH * (currentScale - 1)) / 2;
         currentTranslateX = Math.max(-maxX, Math.min(maxX, currentTranslateX));
         currentTranslateY = Math.max(-maxY, Math.min(maxY, currentTranslateY));
-        video.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+
+        video.style.transform = 
+          `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
       }
 
-      function handleStart(e) {
+      const handleTouchStart = (e) => {
         if (e.target.closest('.fullscreen-controls')) return;
         isGesturing = true;
-        if (e.touches.length === 1 && currentScale > 1) {
-          // One-finger pan
-          isPanning = true;
-          panStartX = e.touches[0].clientX;
-          panStartY = e.touches[0].clientY;
-          panLastX = currentTranslateX;
-          panLastY = currentTranslateY;
-        } else if (e.touches.length === 1) {
-          // Vertical swipe to show/hide controls / exit
+
+        if (e.touches.length === 1) {
+          // Potential swipe
           touchStartY = e.touches[0].clientY;
           touchStartTime = Date.now();
           isSwipingY = false;
-        } else if (e.touches.length === 2) {
-          // Pinch start
-          isPanning = false;
-          const [t1, t2] = [e.touches[0], e.touches[1]];
-          initialDistance = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-          initialScale = currentScale;
-          lastTranslateX = currentTranslateX;
-          lastTranslateY = currentTranslateY;
-          initialMidpoint = {
-            x: (t1.clientX + t2.clientX) / 2,
-            y: (t1.clientY + t2.clientY) / 2
-          };
-          const rect = video.getBoundingClientRect();
-          const centerX = rect.left + rect.width / 2;
-          const centerY = rect.top + rect.height / 2;
-          initialLocalMidpoint = {
-            x: initialMidpoint.x - centerX,
-            y: initialMidpoint.y - centerY
-          };
         }
-      }
+        else if (e.touches.length === 2) {
+          // Begin pinch
+          isSwipingY = false;
+          touchStartY = null;
 
-      function handleMove(e) {
-        if (!isGesturing || e.target.closest('.fullscreen-controls')) return;
-        if (isPanning && e.touches.length === 1) {
-          // Pan video
-          const dx = e.touches[0].clientX - panStartX;
-          const dy = e.touches[0].clientY - panStartY;
-          currentTranslateX = panLastX + dx;
-          currentTranslateY = panLastY + dy;
-          applyTransform();
-        } else if (e.touches.length === 1) {
+          const [t1, t2] = e.touches;
+          initialDistance = getTouchDistance(t1, t2);
+          initialScale    = currentScale;
+          initialMidpoint = getTouchMidpoint(t1, t2);
+
+          // Capture rectangle once
+          gestureRect = video.getBoundingClientRect();
+          const center = {
+            x: gestureRect.left + gestureRect.width / 2,
+            y: gestureRect.top  + gestureRect.height / 2
+          };
+          // Where within the video the pinch began
+          initialLocalMid = {
+            x: initialMidpoint.x - center.x,
+            y: initialMidpoint.y - center.y
+          };
+
+          video.style.transition = 'none';
+        }
+      };
+
+      const handleTouchMove = (e) => {
+        if (!isGesturing ||
+            e.target.closest('.fullscreen-controls')) return;
+
+        if (e.touches.length === 1 && touchStartY !== null) {
           // Detect vertical swipe
-          const deltaY = e.touches[0].clientY - touchStartY;
-          const deltaT = Date.now() - touchStartTime;
-          if (!isSwipingY && (Math.abs(deltaY) > 10 || deltaT > 100)) {
+          const dy = e.touches[0].clientY - touchStartY;
+          const dt = Date.now() - touchStartTime;
+          if (!isSwipingY && (Math.abs(dy) > 10 || dt > 100)) {
             isSwipingY = true;
           }
-        } else if (e.touches.length === 2) {
-          // Pinch zoom
+        }
+        else if (e.touches.length === 2 && initialDistance !== null) {
           e.preventDefault();
-          const [t1, t2] = [e.touches[0], e.touches[1]];
-          const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-          const factor = dist / initialDistance;
-          currentScale = initialScale * factor;
-          // Pivot around initialLocalMidpoint, blending from lastTranslate
-          currentTranslateX = lastTranslateX + (initialLocalMidpoint.x - lastTranslateX) * (1 - factor);
-          currentTranslateY = lastTranslateY + (initialLocalMidpoint.y - lastTranslateY) * (1 - factor);
+          const [t1, t2] = e.touches;
+          const curDist  = getTouchDistance(t1, t2);
+          currentScale  = initialScale * (curDist / initialDistance);
+
+          const curMid = getTouchMidpoint(t1, t2);
+          const center = {
+            x: gestureRect.left + gestureRect.width / 2,
+            y: gestureRect.top  + gestureRect.height / 2
+          };
+
+          // Translate so that the same point stays under the fingers
+          currentTranslateX =
+            (curMid.x - center.x) -
+            initialLocalMid.x * currentScale;
+          currentTranslateY =
+            (curMid.y - center.y) -
+            initialLocalMid.y * currentScale;
+
           applyTransform();
         }
-      }
+      };
 
-      function handleEnd(e) {
+      const handleTouchEnd = (e) => {
         if (!isGesturing) return;
+
+        // End of pinch
         if (e.touches.length < 2) {
-          // End of pinch or single-finger end
-          initialDistance = null;
+          initialDistance      = null;
+          initialLocalMid      = null;
+          gestureRect          = null;
+
+          lastTranslateX       = currentTranslateX;
+          lastTranslateY       = currentTranslateY;
           if (currentScale <= 1) {
-            currentScale = 1;
-            currentTranslateX = 0;
-            currentTranslateY = 0;
-            lastTranslateX = 0;
-            lastTranslateY = 0;
-          } else {
-            lastTranslateX = currentTranslateX;
-            lastTranslateY = currentTranslateY;
+            currentScale       = 1;
+            currentTranslateX  = 0;
+            currentTranslateY  = 0;
           }
           applyTransform();
         }
-        if (e.touches.length === 0 && isSwipingY) {
-          // Finish vertical swipe -> show/hide controls or exit
-          const deltaY = e.changedTouches[0].clientY - touchStartY;
-          const deltaT = Date.now() - touchStartTime;
-          if (Math.abs(deltaY) > 50 && deltaT < 500) {
+
+        // Single-finger swipe logic
+        if (
+          e.touches.length === 0 &&
+          isSwipingY &&
+          touchStartY !== null
+        ) {
+          const dy = e.changedTouches[0].clientY - touchStartY;
+          const dt = Date.now() - touchStartTime;
+          if (Math.abs(dy) > 50 && dt < 500) {
             const open = container.classList.contains('controls-open');
-            if (deltaY < 0) {
+            if (dy < 0) {
               controlsApi.showFsControls && controlsApi.showFsControls();
             } else {
-              if (open) controlsApi.hideFsControls && controlsApi.hideFsControls();
-              else exitPseudoFullscreen(container, video);
+              if (open) {
+                controlsApi.hideFsControls && controlsApi.hideFsControls();
+              } else {
+                exitPseudoFullscreen(container, video);
+              }
             }
           }
         }
+
         if (e.touches.length === 0) {
-          isGesturing = false;
-          isSwipingY = false;
-          isPanning = false;
+          touchStartY    = null;
+          isSwipingY     = false;
+          isGesturing    = false;
         }
-      }
+      };
 
-      addListener(container, 'touchstart', handleStart, { passive: false });
-      addListener(container, 'touchmove', handleMove, { passive: false });
-      addListener(container, 'touchend', handleEnd);
-      addListener(container, 'touchcancel', handleEnd);
+      addListener(container, 'touchstart',  handleTouchStart, { passive:false });
+      addListener(container, 'touchmove',   handleTouchMove,  { passive:false });
+      addListener(container, 'touchend',    handleTouchEnd);
+      addListener(container, 'touchcancel', handleTouchEnd);
 
+      // Initial transform application
       applyTransform();
 
       return {
-        cleanup() {
-          listeners.forEach(({ el, type, handler, opts }) =>
-            el.removeEventListener(type, handler, opts)
+        cleanup: () => {
+          listeners.forEach(({el, type, fn, opts}) =>
+            el.removeEventListener(type, fn, opts)
           );
+          // reset
           video.style.transform = 'scale(1) translate(0,0)';
-          video.style.transformOrigin = 'center center';
         }
       };
     }
+    // --- Modal Logic ---
+    function openUrlModal() { /* ... (no changes) ... */ const streams = getStreamList(); urlInput.value = streams.map(s => s.url).join("\n"); modalBackdrop.style.display = "block"; urlModal.style.display = "block"; document.body.style.overflow = 'hidden'; }
+    function closeUrlModal() { /* ... (no changes) ... */ modalBackdrop.style.display = "none"; urlModal.style.display = "none"; document.body.style.overflow = ''; }
+    function saveUrlsAndClose() { /* ... (no changes) ... */ const urls = urlInput.value.split("\n").map(line => line.trim()).filter(line => line.length > 0 && line.startsWith("http")); const existingStreams = getStreamList(); const newStreamList = []; const currentUrls = new Set(); urls.forEach(url => { currentUrls.add(url); const existing = existingStreams.find(s => s.url === url); newStreamList.push({ url: url, enabled: existing ? existing.enabled : true }); }); saveStreamList(newStreamList); Object.keys(players).forEach(playerUrl => { if (!currentUrls.has(playerUrl)) { updateStreamEnabled(playerUrl, false); } }); newStreamList.forEach(streamConfig => { updateStreamEnabled(streamConfig.url, streamConfig.enabled); }); closeUrlModal(); updateStreamSidebar(); reorderPlayers(); }
 
     // --- Initialization and Global Listeners ---
     function initializeApp() {
-      console.log("Initializing App…");
-      // … original sidebar / player setup …
+        console.log("Initializing App...");
+        updateStreamSidebar();
+        const streams = getStreamList();
+        streams.forEach(stream => { if (stream.enabled) { const p = createPlayerContainer(stream); if (p) { mainContent.appendChild(p.container); players[stream.url] = p; } } });
+        reorderPlayers();
 
-      // Hide browser UI on scroll (mobile non-Safari)
-      if (IS_MOBILE && !IS_SAFARI_MOBILE) {
-        window.addEventListener('scroll', hideBrowserUI, { passive: true });
-        document.documentElement.addEventListener('scroll', hideBrowserUI, { passive: true });
-      }
+        // Sidebar Buttons
+        btnShowAll.addEventListener("click", () => { getStreamList().forEach(s => { if (!s.enabled) updateStreamEnabled(s.url, true); }); });
+        btnHideAll.addEventListener("click", () => { getStreamList().forEach(s => { if (s.enabled) updateStreamEnabled(s.url, false); }); });
 
-      console.log("App Initialized.");
+        // Modal Buttons & Backdrop
+        btnAddUrls.addEventListener("click", openUrlModal);
+        modalBackdrop.addEventListener("click", closeUrlModal);
+        saveUrlsBtn.addEventListener("click", saveUrlsAndClose);
+
+        // Escape key handler
+        window.addEventListener("keydown", e => { if (e.key === "Escape") { if (urlModal.style.display === "block") closeUrlModal(); else if (document.querySelector('.player-fullscreen-mobile')) { const fsPlayer = document.querySelector('.player-fullscreen-mobile'); if (fsPlayer && players[fsPlayer.dataset.url]) exitPseudoFullscreen(fsPlayer, players[fsPlayer.dataset.url].video); } else if (document.fullscreenElement || document.webkitFullscreenElement) exitNativeFullScreen(); } });
+
+        // Mobile Sidebar Swipe & Toggle
+        if (IS_MOBILE) { sidebar.classList.add("hidden"); sidebarToggle.style.display = "block"; let touchStartX = null; const swipeThreshold = 50; sidebar.addEventListener("touchstart", e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true }); sidebar.addEventListener("touchend", e => { if (touchStartX === null) return; const touchEndX = e.changedTouches[0].screenX; const deltaX = touchStartX - touchEndX; if (deltaX > swipeThreshold) { sidebar.classList.add("hidden"); sidebarToggle.style.display = "block"; } touchStartX = null; }); sidebarToggle.addEventListener("click", () => { sidebar.classList.remove("hidden"); sidebarToggle.style.display = "none"; }); mainContent.addEventListener("touchstart", (e) => { if (!sidebar.classList.contains("hidden") && !e.target.closest('button, input[type="range"], .progress-bar')) { sidebar.classList.add("hidden"); sidebarToggle.style.display = "block"; } }, { passive: true }); }
+        console.log("App Initialized.");
     }
 
-    // Run initialization
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeApp);
-    } else {
-      initializeApp();
-    }
+    // --- Run Initialization ---
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeApp); else initializeApp();
+
   </script>
 </body>
 </html>
+
