@@ -155,6 +155,7 @@
         display: block; /* Ensure proper block display */
         width: 100%; /* Make video fill width */
         height: auto; /* Maintain aspect ratio */
+        aspect-ratio: 16 / 9; /* Add aspect ratio to reserve space */
         background: #000; /* Black background */
     }
     .player-container.mp4-player .controls-container {
@@ -219,6 +220,7 @@
         max-height: 100vh !important; /* Override non-fullscreen max-height */
         border-radius: 0;
         object-fit: contain; /* Maintain aspect ratio */
+        aspect-ratio: auto; /* Override non-fullscreen aspect-ratio */
     }
     /* Hide custom controls/title bar for MP4 in fullscreen */
     .player-container.mp4-player:fullscreen .controls-container,
@@ -356,7 +358,7 @@
     .video-title-row span { flex-grow: 1; text-align: center; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ---------- MOBILE PSEUDO-FULLSCREEN ---------- */
-    /* Fix 2: Apply scroll only to HTML for non-safari */
+    /* Apply scroll only to HTML for non-safari */
     html.pseudo-fullscreen-mobile {
         position: relative; /* Needed for fixed player */
         overflow: hidden !important; /* Prevent scroll on html by default */
