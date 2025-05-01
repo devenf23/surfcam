@@ -531,6 +531,8 @@
       if (isMp4) {
           container.classList.add('mp4-player'); // Add class for MP4 specific styles
           video.controls = true; // Use default controls for MP4
+          video.muted = false; // MP4 should not be muted by default with controls
+          video.autoplay = false; // Let user initiate play with controls
           video.src = PROXY_PREFIX + encodeURIComponent(url); // Set proxied source
           container.appendChild(video);
           // Add title bar below video for MP4
@@ -541,6 +543,14 @@
           titleBar.textContent = extractTitle(url);
           controlsContainer.appendChild(titleBar);
           container.appendChild(controlsContainer);
+
+          // Add error listener
+          video.addEventListener('error', (e) => {
+              console.error(`MP4 Video Error (${url}):`, e, video.error);
+              // Optionally display an error message to the user
+              titleBar.textContent = `Error: ${video.error?.message || 'Could not load video'}`;
+              titleBar.style.color = 'red';
+          });
 
           // Add fullscreen capability using pseudo-fullscreen on mobile double tap
           if (IS_MOBILE) {
