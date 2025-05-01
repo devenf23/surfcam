@@ -149,6 +149,24 @@
       border-radius: 12px;
       overflow: hidden; /* Keep hidden overflow for mobile */
     }
+    /* Container specifically for MP4 */
+    .player-container.mp4-player .source-video {
+        border-radius: 12px 12px 0 0; /* Round top corners for MP4 video */
+        display: block; /* Ensure proper block display */
+        width: 100%; /* Make video fill width */
+        height: auto; /* Maintain aspect ratio */
+        max-height: 540px; /* Limit height on desktop */
+        background: #000; /* Black background */
+    }
+    .player-container.mp4-player .controls-container {
+        /* Use default title bar style */
+        background: none; /* Remove dark background */
+    }
+    .player-container.mp4-player .title-bar {
+        border-radius: 0 0 12px 12px; /* Round bottom corners */
+        border-top: none; /* No top border needed */
+    }
+
 
     /* --------- VIDEO & CANVAS --------- */
     .canvas-wrapper { /* Desktop canvas */
@@ -183,23 +201,32 @@
         align-items: center;
         overflow: hidden; /* Hide anything outside viewport */
     }
+    /* Canvas in Fullscreen */
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
-      /* Ensure aspect ratio is maintained within fullscreen */
-      width: 100% !important; /* Fill width */
-      height: auto !important; /* Height adjusts */
-      max-height: calc(100vh - 60px); /* Limit height (leave space for controls ~50-60px) */
-      aspect-ratio: 16 / 9; /* Maintain aspect ratio */
-      border-radius: 0;
-      position: relative;
-      flex-shrink: 1; /* Allow shrinking if needed */
+      width: 100% !important; height: auto !important;
+      max-height: calc(100vh - 60px); aspect-ratio: 16 / 9;
+      border-radius: 0; position: relative; flex-shrink: 1;
     }
-
     .player-container:fullscreen .canvas-wrapper canvas,
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
-      width: 100% !important;
-      height: 100% !important;
+      width: 100% !important; height: 100% !important;
     }
+    /* MP4 Video in Fullscreen (Uses default controls) */
+    .player-container.mp4-player:fullscreen .source-video,
+    .player-container.mp4-player:-webkit-full-screen .source-video {
+        width: 100% !important; /* Take full width */
+        height: 100% !important; /* Take full height */
+        max-height: 100vh !important; /* Override non-fullscreen max-height */
+        border-radius: 0;
+        object-fit: contain; /* Maintain aspect ratio */
+    }
+    /* Hide custom controls/title bar for MP4 in fullscreen */
+    .player-container.mp4-player:fullscreen .controls-container,
+    .player-container.mp4-player:-webkit-full-screen .controls-container {
+        display: none !important;
+    }
+
 
     .player-container.desktop .source-video {
       opacity: 0; position: absolute; top: -9999px; left: -9999px;
@@ -252,28 +279,17 @@
         border-top: 1px solid #444; /* Add separator line above title */
     }
 
-    /* Lint Fix 3: Removed empty ruleset */
-
-    /* Desktop Controls Overlay ONLY in Fullscreen */
-    .player-container:fullscreen .controls-container,
-    .player-container:-webkit-full-screen .controls-container {
-        position: relative; /* Change from absolute to relative to stack below */
-        bottom: auto; left: auto; right: auto; /* Reset positioning */
-        opacity: 1; /* Always visible */
-        transition: none; /* No transition needed */
-        border-radius: 0; /* No rounding */
-        background: #222; /* Match normal controls background */
-        pointer-events: auto;
-        width: 100%; /* Take full width of the flex item */
-        max-width: 800px; /* Limit width */
-        margin: 10px auto 0 auto; /* Add top margin, center horizontally */
-        border-radius: 8px; /* Add slight rounding */
-        flex-shrink: 0; /* Prevent shrinking */
+    /* Desktop Controls ONLY in Fullscreen (for HLS/Canvas) */
+    .player-container:not(.mp4-player):fullscreen .controls-container,
+    .player-container:not(.mp4-player):-webkit-full-screen .controls-container {
+        position: relative; bottom: auto; left: auto; right: auto;
+        opacity: 1; transition: none; border-radius: 0; background: #222;
+        pointer-events: auto; width: 100%; max-width: 800px;
+        margin: 10px auto 0 auto; border-radius: 8px; flex-shrink: 0;
     }
-    .player-container:fullscreen .title-bar,
-    .player-container:-webkit-full-screen .title-bar {
-        border-radius: 0 0 8px 8px; /* Match container rounding */
-        border-top: 1px solid #444; /* Add separator */
+    .player-container:not(.mp4-player):fullscreen .title-bar,
+    .player-container:not(.mp4-player):-webkit-full-screen .title-bar {
+        border-radius: 0 0 8px 8px; border-top: 1px solid #444;
     }
 
     /* ------- URL MODAL & BACKDROP ------- */
@@ -298,7 +314,7 @@
     /* ----- MOBILE ROOT SCROLL OVERRIDE ----- */
     html.mobile .container { height: 100vh !important; }
 
-    /* ------------ NEW: allow page scroll so mobile UI can hide (Fix 2) --------- */
+    /* ------------ Allow page scroll so mobile UI can hide (Non-Pseudo-FS) --------- */
     html.mobile:not(.pseudo-fullscreen-mobile) {
         position: static !important; /* Allow normal flow */
         height: auto !important; /* Allow content height */
@@ -510,8 +526,52 @@
       video.muted = true; video.preload = "metadata"; video.autoplay = true;
 
       let hlsInstance = null; let animationFrameId = null;
+      const isMp4 = url.toLowerCase().endsWith('.mp4'); // Check if MP4
 
-      if (IS_MOBILE) {
+      if (isMp4) {
+          container.classList.add('mp4-player'); // Add class for MP4 specific styles
+          video.controls = true; // Use default controls for MP4
+          video.src = PROXY_PREFIX + encodeURIComponent(url); // Set proxied source
+          container.appendChild(video);
+          // Add title bar below video for MP4
+          const controlsContainer = document.createElement("div");
+          controlsContainer.className = "controls-container"; // Use this for styling consistency
+          const titleBar = document.createElement("div");
+          titleBar.className = "title-bar";
+          titleBar.textContent = extractTitle(url);
+          controlsContainer.appendChild(titleBar);
+          container.appendChild(controlsContainer);
+
+          // Add fullscreen capability using pseudo-fullscreen on mobile double tap
+          if (IS_MOBILE) {
+              let lastTap = 0;
+              container.addEventListener("click", (e) => {
+                  if (e.target.closest('video[controls]')) return; // Ignore clicks on controls
+                  const now = Date.now();
+                  if (now - lastTap < 350) {
+                      enterPseudoFullscreen(container, video);
+                      lastTap = 0;
+                  } else {
+                      lastTap = now;
+                  }
+              });
+          } else {
+              // Desktop native fullscreen on double click
+              let lastTap = 0;
+              container.addEventListener("click", (e) => {
+                 if (e.target.closest('video[controls]')) return; // Ignore clicks on controls
+                 const now = Date.now();
+                 if (now - lastTap < 300) {
+                    if (!document.fullscreenElement && !document.webkitFullscreenElement) enterNativeFullScreen(container);
+                    else exitNativeFullScreen();
+                    lastTap = 0;
+                 } else {
+                    lastTap = now;
+                 }
+              });
+          }
+
+      } else if (IS_MOBILE) { // HLS on Mobile
         video.controls = false;
         const titleRow = document.createElement("div"); titleRow.className = "video-title-row";
         const titleSpan = document.createElement("span"); titleSpan.textContent = extractTitle(url);
@@ -534,7 +594,7 @@
         video.addEventListener("ended", () => playPauseBtnMobile.textContent = "Play");
         video.addEventListener('canplay', () => { if (video.paused) video.play().catch(e => console.log(`Autoplay/Canplay play failed for ${url}:`, e)); }, { once: true });
 
-      } else { // Desktop Setup
+      } else { // HLS on Desktop (Canvas)
         const canvasWrapper = document.createElement("div"); canvasWrapper.className = "canvas-wrapper"; container.appendChild(canvasWrapper);
         const canvas = document.createElement("canvas"); canvas.className = "display-canvas"; canvas.width = 960; canvas.height = 540; canvasWrapper.appendChild(canvas);
         const controlsContainer = document.createElement("div"); controlsContainer.className = "controls-container";
@@ -587,18 +647,20 @@
 
       } // End Desktop Specific Setup
 
-      // --- HLS.js Setup ---
-      const preferNativeHls = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      const canPlayNativeHls = video.canPlayType("application/vnd.apple.mpegurl");
-      if (Hls.isSupported() && !preferNativeHls) {
-        hlsInstance = new Hls({ maxBufferLength: 60, maxMaxBufferLength: 120, liveSyncDurationCount: 3, fragLoadingTimeOut: 20000, manifestLoadingTimeOut: 20000, levelLoadingTimeOut: 20000, progressive: true,
-          loader: class extends Hls.DefaultConfig.loader { load(ctx, cfg, cb){ let u = ctx.url; while (u.startsWith(PROXY_PREFIX)) u = decodeURIComponent(u.slice(PROXY_PREFIX.length)); ctx.url = PROXY_PREFIX + encodeURIComponent(u); super.load(ctx, cfg, cb); } }
-        });
-        hlsInstance.loadSource(url); hlsInstance.attachMedia(video);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { if (video.autoplay || !video.paused) video.play().catch(()=>{}); });
-        hlsInstance.on(Hls.Events.ERROR, (event, data) => { console.error(`HLS Error: ${data.type}, ${data.details}`, data); if (data.fatal) { switch (data.type) { case Hls.ErrorTypes.NETWORK_ERROR: setTimeout(() => { if (hlsInstance) hlsInstance.startLoad(); }, 2000); break; case Hls.ErrorTypes.MEDIA_ERROR: hlsInstance.recoverMediaError(); break; default: hlsInstance.destroy(); setTimeout(() => { if (players[url] && players[url].container.isConnected) updateStreamEnabled(url, true); }, 5000); break; } } });
-      } else if (canPlayNativeHls) { video.src = PROXY_PREFIX + encodeURIComponent(url); if (video.autoplay) video.play().catch(()=>{}); }
-      else { console.warn(`HLS not supported for ${url}`); const em = document.createElement('div'); em.textContent = 'HLS not supported'; em.style.cssText = 'color:red;text-align:center;padding:20px;'; container.appendChild(em); }
+      // --- HLS.js Setup (Only if not MP4) ---
+      if (!isMp4) {
+          const preferNativeHls = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          const canPlayNativeHls = video.canPlayType("application/vnd.apple.mpegurl");
+          if (Hls.isSupported() && !preferNativeHls) {
+            hlsInstance = new Hls({ maxBufferLength: 60, maxMaxBufferLength: 120, liveSyncDurationCount: 3, fragLoadingTimeOut: 20000, manifestLoadingTimeOut: 20000, levelLoadingTimeOut: 20000, progressive: true,
+              loader: class extends Hls.DefaultConfig.loader { load(ctx, cfg, cb){ let u = ctx.url; while (u.startsWith(PROXY_PREFIX)) u = decodeURIComponent(u.slice(PROXY_PREFIX.length)); ctx.url = PROXY_PREFIX + encodeURIComponent(u); super.load(ctx, cfg, cb); } }
+            });
+            hlsInstance.loadSource(url); hlsInstance.attachMedia(video);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { if (video.autoplay || !video.paused) video.play().catch(()=>{}); });
+            hlsInstance.on(Hls.Events.ERROR, (event, data) => { console.error(`HLS Error: ${data.type}, ${data.details}`, data); if (data.fatal) { switch (data.type) { case Hls.ErrorTypes.NETWORK_ERROR: setTimeout(() => { if (hlsInstance) hlsInstance.startLoad(); }, 2000); break; case Hls.ErrorTypes.MEDIA_ERROR: hlsInstance.recoverMediaError(); break; default: hlsInstance.destroy(); setTimeout(() => { if (players[url] && players[url].container.isConnected) updateStreamEnabled(url, true); }, 5000); break; } } });
+          } else if (canPlayNativeHls) { video.src = PROXY_PREFIX + encodeURIComponent(url); if (video.autoplay) video.play().catch(()=>{}); }
+          else { console.warn(`HLS not supported for ${url}`); const em = document.createElement('div'); em.textContent = 'HLS not supported'; em.style.cssText = 'color:red;text-align:center;padding:20px;'; container.appendChild(em); }
+      }
 
       return { container, video, hls: hlsInstance, animationFrameId };
     }
@@ -610,19 +672,37 @@
         if (document.querySelector('.player-fullscreen-mobile')) return;
         console.log("Entering Pseudo Fullscreen for:", container.dataset.url);
         const htmlEl = document.documentElement;
+        const isMp4 = container.classList.contains('mp4-player');
+
         htmlEl.classList.add("pseudo-fullscreen-mobile");
         if (!IS_SAFARI_MOBILE) htmlEl.classList.add("non-safari");
         container.classList.add("player-fullscreen-mobile");
 
         if (video.paused) video.play().catch(e => console.log("Pseudo-FS entry play failed:", e));
 
-        const { cleanup: controlsCleanup, showFsControls, hideFsControls } = setupMobileFullscreenControls(container, video);
-        const { cleanup: gestureCleanup } = setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls); // Pass control functions
-        // Store controls API on player object for gesture handler access
-        if(players[container.dataset.url]) {
-            players[container.dataset.url].controlsApi = { showFsControls, hideFsControls };
+        // Only setup custom controls/gestures for non-MP4 videos
+        let controlsCleanup = null;
+        let gestureCleanup = null;
+        if (!isMp4) {
+            const controls = setupMobileFullscreenControls(container, video);
+            const gestures = setupPseudoFullscreenGestures(container, video, controls.showFsControls, controls.hideFsControls);
+            controlsCleanup = controls.cleanup;
+            gestureCleanup = gestures.cleanup;
+            // Store controls API on player object for gesture handler access
+            if(players[container.dataset.url]) {
+                players[container.dataset.url].controlsApi = { showFsControls: controls.showFsControls, hideFsControls: controls.hideFsControls };
+            }
+        } else {
+             // For MP4, ensure default controls are visible if needed (though usually handled by browser in FS)
+             video.controls = true;
         }
-        pseudoFsCleanup = () => { if (controlsCleanup) controlsCleanup(); if (gestureCleanup) gestureCleanup(); if(players[container.dataset.url]) delete players[container.dataset.url].controlsApi; };
+
+        pseudoFsCleanup = () => {
+            if (controlsCleanup) controlsCleanup();
+            if (gestureCleanup) gestureCleanup();
+            if(players[container.dataset.url]) delete players[container.dataset.url].controlsApi;
+        };
+
         if (!IS_SAFARI_MOBILE) hideBrowserUI();
     }
 
@@ -630,11 +710,25 @@
         if (!container || !container.classList.contains('player-fullscreen-mobile')) return;
         console.log("Exiting Pseudo Fullscreen for:", container.dataset.url);
         const htmlEl = document.documentElement;
+        const isMp4 = container.classList.contains('mp4-player');
+
         if (pseudoFsCleanup) { pseudoFsCleanup(); pseudoFsCleanup = null; }
         htmlEl.classList.remove("pseudo-fullscreen-mobile"); htmlEl.classList.remove("non-safari");
-        container.classList.remove("player-fullscreen-mobile"); container.classList.remove("controls-open");
-        video.style.transform = 'scale(1) translate(0px, 0px)'; video.style.transformOrigin = 'center center';
-        const fsControls = container.querySelector('.fullscreen-controls'); if (fsControls) fsControls.remove();
+        container.classList.remove("player-fullscreen-mobile");
+        container.classList.remove("controls-open"); // Ensure controls state is reset
+
+        // Reset video transform only if it's not an MP4 (MP4 doesn't use transform)
+        if (!isMp4) {
+            video.style.transform = 'scale(1) translate(0px, 0px)';
+            video.style.transformOrigin = 'center center';
+        } else {
+            video.controls = true; // Ensure default controls are re-enabled
+        }
+
+        // Remove custom fullscreen controls only if they exist (i.e., not MP4)
+        const fsControls = container.querySelector('.fullscreen-controls');
+        if (fsControls) fsControls.remove();
+
         // Reset styles applied for non-safari UI hiding
         document.body.style.height = ''; document.body.style.overflow = ''; document.body.style.position = '';
         htmlEl.style.height = ''; htmlEl.style.overflow = ''; htmlEl.style.minHeight = '';
@@ -693,212 +787,212 @@
 
     // --- Mobile Pseudo-Fullscreen Gestures Setup (User Provided Fix) ---
     function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) {
-        let initialDistance = null;
-        let initialScale    = 1;
-        let currentScale    = 1;
+      let initialDistance = null;
+      let initialScale    = 1;
+      let currentScale    = 1;
 
-        let initialMidpoint = null;
-        let initialLocalMid  = null; // Midpoint relative to video center
+      let initialMidpoint = null;
+      let initialLocalMid  = null; // Midpoint relative to video center
 
-        // Capture rect once per gesture to avoid flicker:
-        let gestureRect     = null;
+      // Capture rect once per gesture to avoid flicker:
+      let gestureRect     = null;
 
-        let currentTranslateX = 0;
-        let currentTranslateY = 0;
-        // Use gestureStartXY to track translation relative to the start of the gesture
-        let gestureStartX     = 0;
-        let gestureStartY     = 0;
+      let currentTranslateX = 0;
+      let currentTranslateY = 0;
+      // Use gestureStartXY to track translation relative to the start of the gesture
+      let gestureStartX     = 0;
+      let gestureStartY     = 0;
 
-        let touchStartY    = null;
-        let touchStartTime = null;
-        let isSwipingY     = false;
-        let isGesturing    = false;
+      let touchStartY    = null;
+      let touchStartTime = null;
+      let isSwipingY     = false;
+      let isGesturing    = false;
 
-        const listeners = [];
-        function addListener(el, type, fn, opts) {
-            el.addEventListener(type, fn, opts);
-            listeners.push({ el, type, fn, opts });
+      const listeners = [];
+      function addListener(el, type, fn, opts) {
+        el.addEventListener(type, fn, opts);
+        listeners.push({ el, type, fn, opts });
+      }
+
+      const controlsApi = players[container.dataset.url]?.controlsApi || {
+        showFsControls, hideFsControls
+      };
+
+      function applyTransform() {
+        // Clamp scale
+        currentScale = Math.max(1, Math.min(currentScale, 5));
+
+        // Use static gestureRect if in a pinch, else fresh rect
+        const rect = gestureRect || video.getBoundingClientRect();
+        // Compute visible video area (accounting for letterbox)
+        const visualW = Math.min(
+          rect.width,
+          rect.height * (video.videoWidth / video.videoHeight)
+        );
+        const visualH = Math.min(
+          rect.height,
+          rect.width * (video.videoHeight / video.videoWidth)
+        );
+        // Max translate so content never gaps
+        const maxX = (visualW * (currentScale - 1)) / 2;
+        const maxY = (visualH * (currentScale - 1)) / 2;
+        currentTranslateX = Math.max(-maxX, Math.min(maxX, currentTranslateX));
+        currentTranslateY = Math.max(-maxY, Math.min(maxY, currentTranslateY));
+
+        video.style.transform =
+          `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+      }
+
+      const handleTouchStart = (e) => {
+        if (e.target.closest('.fullscreen-controls')) return;
+        isGesturing = true;
+
+        if (e.touches.length === 1) {
+          // Potential swipe
+          touchStartY = e.touches[0].clientY;
+          touchStartTime = Date.now();
+          isSwipingY = false;
+        }
+        else if (e.touches.length === 2) {
+          // Begin pinch
+          isSwipingY = false;
+          touchStartY = null;
+
+          const [t1, t2] = e.touches;
+          initialDistance = getTouchDistance(t1, t2);
+          initialScale    = currentScale; // Start scale from current state
+          initialMidpoint = getTouchMidpoint(t1, t2);
+
+          // Capture rectangle once
+          gestureRect = video.getBoundingClientRect();
+          const center = {
+            x: gestureRect.left + gestureRect.width / 2,
+            y: gestureRect.top  + gestureRect.height / 2
+          };
+          // Where within the video the pinch began (relative to center)
+          initialLocalMid = {
+            x: initialMidpoint.x - center.x,
+            y: initialMidpoint.y - center.y
+          };
+
+          // Store translation state at the beginning of the gesture
+          gestureStartX = currentTranslateX;
+          gestureStartY = currentTranslateY;
+
+          video.style.transition = 'none'; // Disable transitions during gesture
+        }
+      };
+
+      const handleTouchMove = (e) => {
+        if (!isGesturing ||
+            e.target.closest('.fullscreen-controls')) return;
+
+        if (e.touches.length === 1 && touchStartY !== null) {
+          // Detect vertical swipe
+          const dy = e.touches[0].clientY - touchStartY;
+          const dt = Date.now() - touchStartTime;
+          if (!isSwipingY && (Math.abs(dy) > 10 || dt > 100)) {
+            isSwipingY = true;
+          }
+        }
+        else if (e.touches.length === 2 && initialDistance !== null) {
+          e.preventDefault(); // Prevent default page zoom/scroll
+          const [t1, t2] = e.touches;
+          const curDist  = getTouchDistance(t1, t2);
+          currentScale  = initialScale * (curDist / initialDistance); // Calculate new scale based on initial
+
+          const curMid = getTouchMidpoint(t1, t2);
+          const center = {
+            x: gestureRect.left + gestureRect.width / 2,
+            y: gestureRect.top  + gestureRect.height / 2
+          };
+
+          // Calculate translation: start position + delta from midpoint movement + adjustment for scale origin
+          // Translate based on how far the midpoint moved from its initial position
+          const deltaX = curMid.x - initialMidpoint.x;
+          const deltaY = curMid.y - initialMidpoint.y;
+
+          // Adjust translation based on where the pinch started relative to the center, scaled
+          // This keeps the point under the initial pinch centered as scale changes
+          currentTranslateX = gestureStartX + deltaX - (initialLocalMid.x * (currentScale - initialScale));
+          currentTranslateY = gestureStartY + deltaY - (initialLocalMid.y * (currentScale - initialScale));
+
+
+          applyTransform();
+        }
+      };
+
+      const handleTouchEnd = (e) => {
+        if (!isGesturing) return;
+
+        // End of pinch
+        if (e.touches.length < 2) {
+          initialDistance      = null;
+          initialLocalMid      = null;
+          gestureRect          = null; // Clear cached rect
+
+          // Don't reset lastTranslateX/Y here, let it persist
+          if (currentScale <= 1) {
+            currentScale       = 1;
+            currentTranslateX  = 0;
+            currentTranslateY  = 0;
+            // Reset gesture start as well if scale is 1
+            gestureStartX      = 0;
+            gestureStartY      = 0;
+          }
+          applyTransform(); // Apply final clamped transform
         }
 
-        const controlsApi = players[container.dataset.url]?.controlsApi || {
-            showFsControls, hideFsControls
-        };
-
-        function applyTransform() {
-            // Clamp scale
-            currentScale = Math.max(1, Math.min(currentScale, 5));
-
-            // Use static gestureRect if in a pinch, else fresh rect
-            const rect = gestureRect || video.getBoundingClientRect();
-            // Compute visible video area (accounting for letterbox)
-            const visualW = Math.min(
-                rect.width,
-                rect.height * (video.videoWidth / video.videoHeight)
-            );
-            const visualH = Math.min(
-                rect.height,
-                rect.width * (video.videoHeight / video.videoWidth)
-            );
-            // Max translate so content never gaps
-            const maxX = (visualW * (currentScale - 1)) / 2;
-            const maxY = (visualH * (currentScale - 1)) / 2;
-            currentTranslateX = Math.max(-maxX, Math.min(maxX, currentTranslateX));
-            currentTranslateY = Math.max(-maxY, Math.min(maxY, currentTranslateY));
-
-            video.style.transform =
-                `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+        // Single-finger swipe logic
+        if (
+          e.touches.length === 0 &&
+          isSwipingY &&
+          touchStartY !== null
+        ) {
+          const dy = e.changedTouches[0].clientY - touchStartY;
+          const dt = Date.now() - touchStartTime;
+          if (Math.abs(dy) > 50 && dt < 500) { // Swipe threshold
+            const open = container.classList.contains('controls-open');
+            if (dy < 0) { // Swipe Up
+              controlsApi.showFsControls && controlsApi.showFsControls();
+            } else { // Swipe Down
+              if (open) {
+                controlsApi.hideFsControls && controlsApi.hideFsControls();
+              } else {
+                exitPseudoFullscreen(container, video);
+              }
+            }
+          }
         }
 
-        const handleTouchStart = (e) => {
-            if (e.target.closest('.fullscreen-controls')) return;
-            isGesturing = true;
+        if (e.touches.length === 0) { // Reset flags when all touches are up
+          touchStartY    = null;
+          touchStartTime = null;
+          isSwipingY     = false;
+          isGesturing    = false;
+        }
+      };
 
-            if (e.touches.length === 1) {
-                // Potential swipe
-                touchStartY = e.touches[0].clientY;
-                touchStartTime = Date.now();
-                isSwipingY = false;
-            }
-            else if (e.touches.length === 2) {
-                // Begin pinch
-                isSwipingY = false;
-                touchStartY = null;
+      addListener(container, 'touchstart',  handleTouchStart, { passive:false });
+      addListener(container, 'touchmove',   handleTouchMove,  { passive:false });
+      addListener(container, 'touchend',    handleTouchEnd);
+      addListener(container, 'touchcancel', handleTouchEnd);
 
-                const [t1, t2] = e.touches;
-                initialDistance = getTouchDistance(t1, t2);
-                initialScale    = currentScale; // Start scale from current state
-                initialMidpoint = getTouchMidpoint(t1, t2);
+      // Initial transform application
+      applyTransform();
 
-                // Capture rectangle once
-                gestureRect = video.getBoundingClientRect();
-                const center = {
-                    x: gestureRect.left + gestureRect.width / 2,
-                    y: gestureRect.top  + gestureRect.height / 2
-                };
-                // Where within the video the pinch began (relative to center)
-                initialLocalMid = {
-                    x: initialMidpoint.x - center.x,
-                    y: initialMidpoint.y - center.y
-                };
-
-                // Store translation state at the beginning of the gesture
-                gestureStartX = currentTranslateX;
-                gestureStartY = currentTranslateY;
-
-                video.style.transition = 'none'; // Disable transitions during gesture
-            }
-        };
-
-        const handleTouchMove = (e) => {
-            if (!isGesturing ||
-                e.target.closest('.fullscreen-controls')) return;
-
-            if (e.touches.length === 1 && touchStartY !== null) {
-                // Detect vertical swipe
-                const dy = e.touches[0].clientY - touchStartY;
-                const dt = Date.now() - touchStartTime;
-                if (!isSwipingY && (Math.abs(dy) > 10 || dt > 100)) {
-                    isSwipingY = true;
-                }
-            }
-            else if (e.touches.length === 2 && initialDistance !== null) {
-                e.preventDefault(); // Prevent default page zoom/scroll
-                const [t1, t2] = e.touches;
-                const curDist  = getTouchDistance(t1, t2);
-                currentScale  = initialScale * (curDist / initialDistance); // Calculate new scale based on initial
-
-                const curMid = getTouchMidpoint(t1, t2);
-                const center = {
-                    x: gestureRect.left + gestureRect.width / 2,
-                    y: gestureRect.top  + gestureRect.height / 2
-                };
-
-                // Calculate translation: start position + delta from midpoint movement + adjustment for scale origin
-                // Translate based on how far the midpoint moved from its initial position
-                const deltaX = curMid.x - initialMidpoint.x;
-                const deltaY = curMid.y - initialMidpoint.y;
-
-                // Adjust translation based on where the pinch started relative to the center, scaled
-                // This keeps the point under the initial pinch centered as scale changes
-                currentTranslateX = gestureStartX + deltaX - (initialLocalMid.x * (currentScale - initialScale));
-                currentTranslateY = gestureStartY + deltaY - (initialLocalMid.y * (currentScale - initialScale));
-
-
-                applyTransform();
-            }
-        };
-
-        const handleTouchEnd = (e) => {
-            if (!isGesturing) return;
-
-            // End of pinch
-            if (e.touches.length < 2) {
-                initialDistance      = null;
-                initialLocalMid      = null;
-                gestureRect          = null; // Clear cached rect
-
-                // Don't reset lastTranslateX/Y here, let it persist
-                if (currentScale <= 1) {
-                    currentScale       = 1;
-                    currentTranslateX  = 0;
-                    currentTranslateY  = 0;
-                    // Reset gesture start as well if scale is 1
-                    gestureStartX      = 0;
-                    gestureStartY      = 0;
-                }
-                applyTransform(); // Apply final clamped transform
-            }
-
-            // Single-finger swipe logic
-            if (
-                e.touches.length === 0 &&
-                isSwipingY &&
-                touchStartY !== null
-            ) {
-                const dy = e.changedTouches[0].clientY - touchStartY;
-                const dt = Date.now() - touchStartTime;
-                if (Math.abs(dy) > 50 && dt < 500) { // Swipe threshold
-                    const open = container.classList.contains('controls-open');
-                    if (dy < 0) { // Swipe Up
-                        controlsApi.showFsControls && controlsApi.showFsControls();
-                    } else { // Swipe Down
-                        if (open) {
-                            controlsApi.hideFsControls && controlsApi.hideFsControls();
-                        } else {
-                            exitPseudoFullscreen(container, video);
-                        }
-                    }
-                }
-            }
-
-            if (e.touches.length === 0) { // Reset flags when all touches are up
-                touchStartY    = null;
-                touchStartTime = null;
-                isSwipingY     = false;
-                isGesturing    = false;
-            }
-        };
-
-        addListener(container, 'touchstart',  handleTouchStart, { passive:false });
-        addListener(container, 'touchmove',   handleTouchMove,  { passive:false });
-        addListener(container, 'touchend',    handleTouchEnd);
-        addListener(container, 'touchcancel', handleTouchEnd);
-
-        // Initial transform application
-        applyTransform();
-
-        return {
-            cleanup: () => {
-                console.log("Cleaning up pseudo fullscreen gesture listeners for:", container.dataset.url);
-                listeners.forEach(({el, type, fn, opts}) =>
-                    el.removeEventListener(type, fn, opts)
-                );
-                listeners = [];
-                // reset
-                video.style.transform = 'scale(1) translate(0,0)';
-                video.style.transformOrigin = 'center center';
-            }
-        };
+      return {
+        cleanup: () => {
+          console.log("Cleaning up pseudo fullscreen gesture listeners for:", container.dataset.url);
+          listeners.forEach(({el, type, fn, opts}) =>
+            el.removeEventListener(type, fn, opts)
+          );
+          listeners = [];
+          // reset
+          video.style.transform = 'scale(1) translate(0,0)';
+          video.style.transformOrigin = 'center center';
+        }
+      };
     }
 
 
