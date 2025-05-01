@@ -298,23 +298,30 @@
     /* ----- MOBILE ROOT SCROLL OVERRIDE ----- */
     html.mobile .container { height: 100vh !important; }
 
-    /* ----- NEW: allow only html/body scrolling on mobile when NOT pseudo-fullscreen ----- */
+    /* ------------ NEW: allow page scroll so mobile UI can hide (Fix 2) --------- */
     html.mobile:not(.pseudo-fullscreen-mobile) {
-      position: static !important;
-      overflow-y: auto !important;
-      height: auto !important;
+        position: static !important; /* Allow normal flow */
+        height: auto !important; /* Allow content height */
+        overflow-y: auto !important; /* Make HTML scrollable */
+        overflow-x: hidden !important; /* Prevent horizontal scroll */
     }
     html.mobile:not(.pseudo-fullscreen-mobile) body {
-      position: static !important;
-      overflow-y: visible !important;
-      height: auto !important;
+        position: static !important; /* Allow normal flow */
+        height: auto !important;
+        overflow: visible !important; /* Let content determine scroll */
+        min-height: 100vh; /* Ensure body can be at least viewport height */
     }
-    html.mobile:not(.pseudo-fullscreen-mobile) .container,
-    html.mobile:not(.pseudo-fullscreen-mobile) #main-content {
-      height: auto !important;
+    html.mobile:not(.pseudo-fullscreen-mobile) .container {
+        height: auto !important; /* Allow content height */
+        min-height: 100vh !important;
+        position: static !important; /* Allow normal flow */
+        display: block !important; /* Change from flex */
     }
     html.mobile:not(.pseudo-fullscreen-mobile) #main-content {
-      overflow-y: visible !important;
+        height: auto !important; /* Allow content height */
+        min-height: calc(100vh - 60px); /* Account for header padding */
+        overflow: visible !important; /* Let content determine scroll */
+        display: block !important; /* Change from flex */
     }
     /* ------------------------------------------------------------------------ */
 
@@ -684,201 +691,217 @@
          return { cleanup, showFsControls, hideFsControls };
     }
 
-// --- Mobile Pseudo-Fullscreen Gestures Setup ---
-function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) {
-      let initialDistance = null;
-      let initialScale    = 1;
-      let currentScale    = 1;
+    // --- Mobile Pseudo-Fullscreen Gestures Setup (User Provided Fix) ---
+    function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsControls) {
+        let initialDistance = null;
+        let initialScale    = 1;
+        let currentScale    = 1;
 
-      let initialMidpoint = null;
-      let initialLocalMid  = null;
+        let initialMidpoint = null;
+        let initialLocalMid  = null; // Midpoint relative to video center
 
-      // Capture rect once per gesture to avoid flicker:
-      let gestureRect     = null;
+        // Capture rect once per gesture to avoid flicker:
+        let gestureRect     = null;
 
-      let currentTranslateX = 0;
-      let currentTranslateY = 0;
-      let lastTranslateX    = 0;
-      let lastTranslateY    = 0;
+        let currentTranslateX = 0;
+        let currentTranslateY = 0;
+        // Use gestureStartXY to track translation relative to the start of the gesture
+        let gestureStartX     = 0;
+        let gestureStartY     = 0;
 
-      let touchStartY    = null;
-      let touchStartTime = null;
-      let isSwipingY     = false;
-      let isGesturing    = false;
+        let touchStartY    = null;
+        let touchStartTime = null;
+        let isSwipingY     = false;
+        let isGesturing    = false;
 
-      const listeners = [];
-      function addListener(el, type, fn, opts) {
-        el.addEventListener(type, fn, opts);
-        listeners.push({ el, type, fn, opts });
-      }
-
-      const controlsApi = players[container.dataset.url]?.controlsApi || {
-        showFsControls, hideFsControls
-      };
-
-      function applyTransform() {
-        // Clamp scale
-        currentScale = Math.max(1, Math.min(currentScale, 5));
-
-        // Use static gestureRect if in a pinch, else fresh rect
-        const rect = gestureRect || video.getBoundingClientRect();
-        // Compute visible video area (accounting for letterbox)
-        const visualW = Math.min(
-          rect.width,
-          rect.height * (video.videoWidth / video.videoHeight)
-        );
-        const visualH = Math.min(
-          rect.height,
-          rect.width * (video.videoHeight / video.videoWidth)
-        );
-        // Max translate so content never gaps
-        const maxX = (visualW * (currentScale - 1)) / 2;
-        const maxY = (visualH * (currentScale - 1)) / 2;
-        currentTranslateX = Math.max(-maxX, Math.min(maxX, currentTranslateX));
-        currentTranslateY = Math.max(-maxY, Math.min(maxY, currentTranslateY));
-
-        video.style.transform = 
-          `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
-      }
-
-      const handleTouchStart = (e) => {
-        if (e.target.closest('.fullscreen-controls')) return;
-        isGesturing = true;
-
-        if (e.touches.length === 1) {
-          // Potential swipe
-          touchStartY = e.touches[0].clientY;
-          touchStartTime = Date.now();
-          isSwipingY = false;
-        }
-        else if (e.touches.length === 2) {
-          // Begin pinch
-          isSwipingY = false;
-          touchStartY = null;
-
-          const [t1, t2] = e.touches;
-          initialDistance = getTouchDistance(t1, t2);
-          initialScale    = currentScale;
-          initialMidpoint = getTouchMidpoint(t1, t2);
-
-          // Capture rectangle once
-          gestureRect = video.getBoundingClientRect();
-          const center = {
-            x: gestureRect.left + gestureRect.width / 2,
-            y: gestureRect.top  + gestureRect.height / 2
-          };
-          // Where within the video the pinch began
-          initialLocalMid = {
-            x: initialMidpoint.x - center.x,
-            y: initialMidpoint.y - center.y
-          };
-
-          video.style.transition = 'none';
-        }
-      };
-
-      const handleTouchMove = (e) => {
-        if (!isGesturing ||
-            e.target.closest('.fullscreen-controls')) return;
-
-        if (e.touches.length === 1 && touchStartY !== null) {
-          // Detect vertical swipe
-          const dy = e.touches[0].clientY - touchStartY;
-          const dt = Date.now() - touchStartTime;
-          if (!isSwipingY && (Math.abs(dy) > 10 || dt > 100)) {
-            isSwipingY = true;
-          }
-        }
-        else if (e.touches.length === 2 && initialDistance !== null) {
-          e.preventDefault();
-          const [t1, t2] = e.touches;
-          const curDist  = getTouchDistance(t1, t2);
-          currentScale  = initialScale * (curDist / initialDistance);
-
-          const curMid = getTouchMidpoint(t1, t2);
-          const center = {
-            x: gestureRect.left + gestureRect.width / 2,
-            y: gestureRect.top  + gestureRect.height / 2
-          };
-
-          // Translate so that the same point stays under the fingers
-          currentTranslateX =
-            (curMid.x - center.x) -
-            initialLocalMid.x * currentScale;
-          currentTranslateY =
-            (curMid.y - center.y) -
-            initialLocalMid.y * currentScale;
-
-          applyTransform();
-        }
-      };
-
-      const handleTouchEnd = (e) => {
-        if (!isGesturing) return;
-
-        // End of pinch
-        if (e.touches.length < 2) {
-          initialDistance      = null;
-          initialLocalMid      = null;
-          gestureRect          = null;
-
-          lastTranslateX       = currentTranslateX;
-          lastTranslateY       = currentTranslateY;
-          if (currentScale <= 1) {
-            currentScale       = 1;
-            currentTranslateX  = 0;
-            currentTranslateY  = 0;
-          }
-          applyTransform();
+        const listeners = [];
+        function addListener(el, type, fn, opts) {
+            el.addEventListener(type, fn, opts);
+            listeners.push({ el, type, fn, opts });
         }
 
-        // Single-finger swipe logic
-        if (
-          e.touches.length === 0 &&
-          isSwipingY &&
-          touchStartY !== null
-        ) {
-          const dy = e.changedTouches[0].clientY - touchStartY;
-          const dt = Date.now() - touchStartTime;
-          if (Math.abs(dy) > 50 && dt < 500) {
-            const open = container.classList.contains('controls-open');
-            if (dy < 0) {
-              controlsApi.showFsControls && controlsApi.showFsControls();
-            } else {
-              if (open) {
-                controlsApi.hideFsControls && controlsApi.hideFsControls();
-              } else {
-                exitPseudoFullscreen(container, video);
-              }
+        const controlsApi = players[container.dataset.url]?.controlsApi || {
+            showFsControls, hideFsControls
+        };
+
+        function applyTransform() {
+            // Clamp scale
+            currentScale = Math.max(1, Math.min(currentScale, 5));
+
+            // Use static gestureRect if in a pinch, else fresh rect
+            const rect = gestureRect || video.getBoundingClientRect();
+            // Compute visible video area (accounting for letterbox)
+            const visualW = Math.min(
+                rect.width,
+                rect.height * (video.videoWidth / video.videoHeight)
+            );
+            const visualH = Math.min(
+                rect.height,
+                rect.width * (video.videoHeight / video.videoWidth)
+            );
+            // Max translate so content never gaps
+            const maxX = (visualW * (currentScale - 1)) / 2;
+            const maxY = (visualH * (currentScale - 1)) / 2;
+            currentTranslateX = Math.max(-maxX, Math.min(maxX, currentTranslateX));
+            currentTranslateY = Math.max(-maxY, Math.min(maxY, currentTranslateY));
+
+            video.style.transform =
+                `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+        }
+
+        const handleTouchStart = (e) => {
+            if (e.target.closest('.fullscreen-controls')) return;
+            isGesturing = true;
+
+            if (e.touches.length === 1) {
+                // Potential swipe
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+                isSwipingY = false;
             }
-          }
-        }
+            else if (e.touches.length === 2) {
+                // Begin pinch
+                isSwipingY = false;
+                touchStartY = null;
 
-        if (e.touches.length === 0) {
-          touchStartY    = null;
-          isSwipingY     = false;
-          isGesturing    = false;
-        }
-      };
+                const [t1, t2] = e.touches;
+                initialDistance = getTouchDistance(t1, t2);
+                initialScale    = currentScale; // Start scale from current state
+                initialMidpoint = getTouchMidpoint(t1, t2);
 
-      addListener(container, 'touchstart',  handleTouchStart, { passive:false });
-      addListener(container, 'touchmove',   handleTouchMove,  { passive:false });
-      addListener(container, 'touchend',    handleTouchEnd);
-      addListener(container, 'touchcancel', handleTouchEnd);
+                // Capture rectangle once
+                gestureRect = video.getBoundingClientRect();
+                const center = {
+                    x: gestureRect.left + gestureRect.width / 2,
+                    y: gestureRect.top  + gestureRect.height / 2
+                };
+                // Where within the video the pinch began (relative to center)
+                initialLocalMid = {
+                    x: initialMidpoint.x - center.x,
+                    y: initialMidpoint.y - center.y
+                };
 
-      // Initial transform application
-      applyTransform();
+                // Store translation state at the beginning of the gesture
+                gestureStartX = currentTranslateX;
+                gestureStartY = currentTranslateY;
 
-      return {
-        cleanup: () => {
-          listeners.forEach(({el, type, fn, opts}) =>
-            el.removeEventListener(type, fn, opts)
-          );
-          // reset
-          video.style.transform = 'scale(1) translate(0,0)';
-        }
-      };
+                video.style.transition = 'none'; // Disable transitions during gesture
+            }
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isGesturing ||
+                e.target.closest('.fullscreen-controls')) return;
+
+            if (e.touches.length === 1 && touchStartY !== null) {
+                // Detect vertical swipe
+                const dy = e.touches[0].clientY - touchStartY;
+                const dt = Date.now() - touchStartTime;
+                if (!isSwipingY && (Math.abs(dy) > 10 || dt > 100)) {
+                    isSwipingY = true;
+                }
+            }
+            else if (e.touches.length === 2 && initialDistance !== null) {
+                e.preventDefault(); // Prevent default page zoom/scroll
+                const [t1, t2] = e.touches;
+                const curDist  = getTouchDistance(t1, t2);
+                currentScale  = initialScale * (curDist / initialDistance); // Calculate new scale based on initial
+
+                const curMid = getTouchMidpoint(t1, t2);
+                const center = {
+                    x: gestureRect.left + gestureRect.width / 2,
+                    y: gestureRect.top  + gestureRect.height / 2
+                };
+
+                // Calculate translation: start position + delta from midpoint movement + adjustment for scale origin
+                // Translate based on how far the midpoint moved from its initial position
+                const deltaX = curMid.x - initialMidpoint.x;
+                const deltaY = curMid.y - initialMidpoint.y;
+
+                // Adjust translation based on where the pinch started relative to the center, scaled
+                // This keeps the point under the initial pinch centered as scale changes
+                currentTranslateX = gestureStartX + deltaX - (initialLocalMid.x * (currentScale - initialScale));
+                currentTranslateY = gestureStartY + deltaY - (initialLocalMid.y * (currentScale - initialScale));
+
+
+                applyTransform();
+            }
+        };
+
+        const handleTouchEnd = (e) => {
+            if (!isGesturing) return;
+
+            // End of pinch
+            if (e.touches.length < 2) {
+                initialDistance      = null;
+                initialLocalMid      = null;
+                gestureRect          = null; // Clear cached rect
+
+                // Don't reset lastTranslateX/Y here, let it persist
+                if (currentScale <= 1) {
+                    currentScale       = 1;
+                    currentTranslateX  = 0;
+                    currentTranslateY  = 0;
+                    // Reset gesture start as well if scale is 1
+                    gestureStartX      = 0;
+                    gestureStartY      = 0;
+                }
+                applyTransform(); // Apply final clamped transform
+            }
+
+            // Single-finger swipe logic
+            if (
+                e.touches.length === 0 &&
+                isSwipingY &&
+                touchStartY !== null
+            ) {
+                const dy = e.changedTouches[0].clientY - touchStartY;
+                const dt = Date.now() - touchStartTime;
+                if (Math.abs(dy) > 50 && dt < 500) { // Swipe threshold
+                    const open = container.classList.contains('controls-open');
+                    if (dy < 0) { // Swipe Up
+                        controlsApi.showFsControls && controlsApi.showFsControls();
+                    } else { // Swipe Down
+                        if (open) {
+                            controlsApi.hideFsControls && controlsApi.hideFsControls();
+                        } else {
+                            exitPseudoFullscreen(container, video);
+                        }
+                    }
+                }
+            }
+
+            if (e.touches.length === 0) { // Reset flags when all touches are up
+                touchStartY    = null;
+                touchStartTime = null;
+                isSwipingY     = false;
+                isGesturing    = false;
+            }
+        };
+
+        addListener(container, 'touchstart',  handleTouchStart, { passive:false });
+        addListener(container, 'touchmove',   handleTouchMove,  { passive:false });
+        addListener(container, 'touchend',    handleTouchEnd);
+        addListener(container, 'touchcancel', handleTouchEnd);
+
+        // Initial transform application
+        applyTransform();
+
+        return {
+            cleanup: () => {
+                console.log("Cleaning up pseudo fullscreen gesture listeners for:", container.dataset.url);
+                listeners.forEach(({el, type, fn, opts}) =>
+                    el.removeEventListener(type, fn, opts)
+                );
+                listeners = [];
+                // reset
+                video.style.transform = 'scale(1) translate(0,0)';
+                video.style.transformOrigin = 'center center';
+            }
+        };
     }
+
+
     // --- Modal Logic ---
     function openUrlModal() { /* ... (no changes) ... */ const streams = getStreamList(); urlInput.value = streams.map(s => s.url).join("\n"); modalBackdrop.style.display = "block"; urlModal.style.display = "block"; document.body.style.overflow = 'hidden'; }
     function closeUrlModal() { /* ... (no changes) ... */ modalBackdrop.style.display = "none"; urlModal.style.display = "none"; document.body.style.overflow = ''; }
@@ -915,4 +938,3 @@ function setupPseudoFullscreenGestures(container, video, showFsControls, hideFsC
   </script>
 </body>
 </html>
-
