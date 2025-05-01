@@ -155,7 +155,8 @@
         display: block; /* Ensure proper block display */
         width: 100%; /* Make video fill width */
         height: auto; /* Maintain aspect ratio */
-        aspect-ratio: 16 / 9; /* Add aspect ratio to reserve space */
+        /* aspect-ratio: 16 / 9; */ /* Removed aspect-ratio */
+        min-height: 150px; /* Add min-height as fallback */
         background: #000; /* Black background */
     }
     .player-container.mp4-player .controls-container {
@@ -221,6 +222,7 @@
         border-radius: 0;
         object-fit: contain; /* Maintain aspect ratio */
         aspect-ratio: auto; /* Override non-fullscreen aspect-ratio */
+        min-height: auto; /* Remove min-height in fullscreen */
     }
     /* Hide custom controls/title bar for MP4 in fullscreen */
     .player-container.mp4-player:fullscreen .controls-container,
