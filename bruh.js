@@ -78982,9 +78982,9 @@ object-assign
                 // })
             };
             return {
-                hasAdFreePermissions: false,
-                hasAdFreeCamPermissions: false,
-                hasAdSupportedCamPermissions: false,
+                hasAdFreePermissions: true,
+                hasAdFreeCamPermissions: true,
+                hasAdSupportedCamPermissions: true,
                 hasBuoySpectraPermissions: true,
                 hasCamInsightPermissions: false,
                 hasCamRewindPermissions: true,
