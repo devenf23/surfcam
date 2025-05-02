@@ -155,7 +155,6 @@
         display: block; /* Ensure proper block display */
         width: 100%; /* Make video fill width */
         height: auto; /* Maintain aspect ratio */
-        /* aspect-ratio: 16 / 9; */ /* Removed aspect-ratio */
         min-height: 150px; /* Add min-height as fallback */
         background: #000; /* Black background */
     }
@@ -230,7 +229,7 @@
         display: none !important;
     }
 
-
+    /* Apply CSS fix exactly as provided */
     .player-container.desktop:not(.mp4-player) .source-video {
       opacity: 0;
       position: absolute;
@@ -240,6 +239,7 @@
       height: 1px;
       pointer-events: none;
     }
+
     /* Mobile Video (Not fullscreen) */
     .player-container.mobile .source-video {
        width: 100%; height: auto; display: block;
