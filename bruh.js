@@ -78987,7 +78987,7 @@ object-assign
                 hasAdSupportedCamPermissions: false,
                 hasBuoySpectraPermissions: true,
                 hasCamInsightPermissions: true,
-                hasCamRewindPermissions: false,
+                hasCamRewindPermissions: true,
                 hasCoreForecastPermissions: false,
                 hasCustomForecastPermissions: false,
                 hasExtendedTidesPermissions: false,
