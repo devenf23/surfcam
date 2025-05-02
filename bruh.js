@@ -78976,7 +78976,7 @@ object-assign
         }
         , ], function(t, e, n) {
             var r = function(e) {
-                return true
+                return false
                 // return null == t ? void 0 : t.find(function(t) {
                 //     return (null == t ? void 0 : t.name) === e
                 // })
@@ -78989,7 +78989,6 @@ object-assign
                 hasCamInsightPermissions: e || !!r(a.r.CAM_INSIGHTS),
                 hasCamRewindPermissions: !!r(a.r.CAM_REWINDS),
                 hasCoreForecastPermissions: false,
-                // hasCoreForecastPermissions: !!r(a.r.CORE_16DAY_FORECAST),
                 hasCustomForecastPermissions: !!r(a.r.CUSTOM_FORECAST),
                 hasExtendedTidesPermissions: !!r(a.r.EXTENDED_TIDES),
                 hasExtendedChartLayerPermissions: !!r(a.r.EXTENDED_CHART_LAYERS),
@@ -79005,6 +79004,28 @@ object-assign
                 hasSwellSpectraPermissions: !!r(a.r.SWELL_SPECTRA),
                 hasWaveConsistencyPermissions: !!r(a.r.WAVE_CONSISTENCY),
                 hasWaveEnergyPermissions: !!r(a.r.WAVE_ENERGY)
+                // hasAdFreePermissions: n || !!r(a.r.AD_FREE),
+                // hasAdFreeCamPermissions: !!r(a.r.AD_FREE_CAMS),
+                // hasAdSupportedCamPermissions: !!r(a.r.AD_SUPPORTED_CAMS),
+                // hasBuoySpectraPermissions: !!r(a.r.BUOY_SPECTRA),
+                // hasCamInsightPermissions: e || !!r(a.r.CAM_INSIGHTS),
+                // hasCamRewindPermissions: !!r(a.r.CAM_REWINDS),
+                // // hasCoreForecastPermissions: !!r(a.r.CORE_16DAY_FORECAST),
+                // hasCustomForecastPermissions: !!r(a.r.CUSTOM_FORECAST),
+                // hasExtendedTidesPermissions: !!r(a.r.EXTENDED_TIDES),
+                // hasExtendedChartLayerPermissions: !!r(a.r.EXTENDED_CHART_LAYERS),
+                // hasGraphRewindPermissions: e || !!r(a.r.GRAPH_REWINDS),
+                // hasHistoricForecastPermissions: !!r(a.r.HISTORIC_FORECAST),
+                // hasMultiCamPermissions: !!r(a.r.MULTI_CAM),
+                // hasLineupForecastPermissions: !!r(a.r.LINEUP),
+                // hasLiveWindPermissions: !!r(a.r.LIVE_WIND),
+                // hasPremiumCamPermissions: !!r(a.r.HIGH_VALUE_CAMERA_ACCESS),
+                // hasPremiumAnalysisPermissions: !!r(a.r.PREMIUM_ANALYSIS),
+                // hasSmartClipsPermissions: e || !!r(a.r.SMART_CLIPS),
+                // hasSurfReportPermissions: !!r(a.r.SURF_REPORT_TEXT),
+                // hasSwellSpectraPermissions: !!r(a.r.SWELL_SPECTRA),
+                // hasWaveConsistencyPermissions: !!r(a.r.WAVE_CONSISTENCY),
+                // hasWaveEnergyPermissions: !!r(a.r.WAVE_ENERGY)
             }
         })
           , m = (0,
