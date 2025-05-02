@@ -78988,7 +78988,7 @@ object-assign
                 hasBuoySpectraPermissions: true,
                 hasCamInsightPermissions: true,
                 hasCamRewindPermissions: true,
-                hasCoreForecastPermissions: false,
+                hasCoreForecastPermissions: true,
                 hasCustomForecastPermissions: true,
                 hasExtendedTidesPermissions: true,
                 hasExtendedChartLayerPermissions: true,
