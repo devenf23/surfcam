@@ -78985,7 +78985,7 @@ object-assign
                 hasAdFreePermissions: false,
                 hasAdFreeCamPermissions: false,
                 hasAdSupportedCamPermissions: false,
-                hasBuoySpectraPermissions: false,
+                hasBuoySpectraPermissions: true,
                 hasCamInsightPermissions: true,
                 hasCamRewindPermissions: false,
                 hasCoreForecastPermissions: false,
