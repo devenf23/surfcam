@@ -1255,47 +1255,77 @@
             </ul>`;
           container.appendChild(rightSidebar); // Add sidebar to main container
 
-          // Preload images for canvas
+          // --- Preload images for canvas ---
+          // Jack's
           const jacksMinorImg = new Image();
           jacksMinorImg.src = "https://devenf23.github.io/surfcam/privates/Jack's/Jack's_minor.png";
           const jacksTextImg = new Image();
           jacksTextImg.src = "https://devenf23.github.io/surfcam/privates/Jack's/Jack's_text.png";
           const jacksMaskImg = new Image();
           jacksMaskImg.src = "https://devenf23.github.io/surfcam/privates/Jack's/Jack's_major.png";
+          // Pleasure Point
+          const ppMinorImg = new Image();
+          ppMinorImg.src = "https://devenf23.github.io/surfcam/privates/pp/pp_minor.png";
+          const ppTextImg = new Image();
+          ppTextImg.src = "https://devenf23.github.io/surfcam/privates/pp/pp_text.png";
+          const ppMaskImg = new Image();
+          ppMaskImg.src = "https://devenf23.github.io/surfcam/privates/pp/pp_major.png";
 
-          // track which overlays to draw
+          // --- Track which overlays to draw ---
           // Assign to the 'currentOverlays' variable specific to this scope
           currentOverlays = {
+            // Jack's
+            mask: false,
             minor: false,
-            text:  false,
-            mask:  false,
+            text: false,
+            imgMask: jacksMaskImg,
             imgMinor: jacksMinorImg,
-            imgText:  jacksTextImg,
-            imgMask:  jacksMaskImg
+            imgText: jacksTextImg,
+            // Pleasure Point
+            pp_mask: false,
+            pp_minor: false,
+            pp_text: false,
+            imgPpMask: ppMaskImg,
+            imgPpMinor: ppMinorImg,
+            imgPpText: ppTextImg
           };
           // Add this state to the player object being returned
           playerObject.overlays = currentOverlays;
 
-          // toggle the sidebar
+          // --- Toggle the sidebar ---
           overlayIcon.addEventListener('click', e => {
             e.stopPropagation(); // Prevent container click handler
             rightSidebar.classList.toggle('visible');
           });
 
-          // hook the Jack's checkbox
+          // --- Hook the checkboxes ---
+          // Jack's Checkbox
           const jacksCheckbox = rightSidebar.querySelector(`#${createSafeId('cb-jacks', url)}`);
           if (jacksCheckbox) {
               jacksCheckbox.addEventListener('change', e => {
                 const on = e.target.checked;
-                // Update the state object directly
                 if (currentOverlays) {
+                    currentOverlays.mask = on;
                     currentOverlays.minor = on;
-                    currentOverlays.text  = on;
-                    currentOverlays.mask  = on;
+                    currentOverlays.text = on;
                 }
               });
           } else {
               console.error(`Could not find Jack's checkbox with ID: ${createSafeId('cb-jacks', url)}`);
+          }
+          // Pleasure Point Checkbox
+          const ppCheckbox = rightSidebar.querySelector(`#${createSafeId('cb-pp', url)}`);
+          if (ppCheckbox) {
+              ppCheckbox.addEventListener('change', e => {
+                const on = e.target.checked;
+                if (currentOverlays) {
+                    currentOverlays.pp_mask = on;
+                    currentOverlays.pp_minor = on;
+                    currentOverlays.pp_text = on;
+                }
+              });
+          } else {
+              console.error(`Could not find Pleasure Point checkbox with ID: ${createSafeId('cb-pp', url)}`);
           }
 
           // Close sidebar if clicking outside
@@ -1356,8 +1386,14 @@
                 // 1. Draw the base video frame first
                 ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
 
-                // 2. Apply mask if enabled (Corrected logic)
-                if (overlayState && overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) {
+                // 2. Apply mask(s) if enabled (Corrected logic)
+                // Check if *any* mask is active and its image is ready
+                const isAnyMaskActive = overlayState && (
+                    (overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) ||
+                    (overlayState.pp_mask && overlayState.imgPpMask.complete && overlayState.imgPpMask.naturalWidth > 0)
+                );
+
+                if (isAnyMaskActive) {
                   // Save context state before applying mask effect
                   ctx.save();
 
@@ -1365,11 +1401,17 @@
                   ctx.fillStyle = 'rgba(0,0,0,0.4)';
                   ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
 
-                  // Use 'destination-out' to punch the mask shape out of the darkening layer
+                  // Use 'destination-out' to punch the mask shape(s) out of the darkening layer
                   ctx.globalCompositeOperation = 'destination-out';
 
-                  // Draw the mask image. Where the mask is opaque, the darkening layer becomes transparent.
-                  ctx.drawImage(overlayState.imgMask, offsetX, offsetY, drawWidth, drawHeight);
+                  // Draw Jack's mask if active and ready
+                  if (overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) {
+                    ctx.drawImage(overlayState.imgMask, offsetX, offsetY, drawWidth, drawHeight);
+                  }
+                  // Draw PP mask if active and ready
+                  if (overlayState.pp_mask && overlayState.imgPpMask.complete && overlayState.imgPpMask.naturalWidth > 0) {
+                    ctx.drawImage(overlayState.imgPpMask, offsetX, offsetY, drawWidth, drawHeight);
+                  }
 
                   // Restore context (back to default 'source-over' composite operation)
                   ctx.restore();
@@ -1377,11 +1419,19 @@
 
                 // 3. Draw minor/text overlays on top (if enabled)
                 if (overlayState) {
+                    // Jack's minor/text
                     if (overlayState.minor && overlayState.imgMinor.complete && overlayState.imgMinor.naturalWidth > 0) {
                        ctx.drawImage(overlayState.imgMinor, offsetX, offsetY, drawWidth, drawHeight);
                     }
                     if (overlayState.text && overlayState.imgText.complete && overlayState.imgText.naturalWidth > 0) {
                        ctx.drawImage(overlayState.imgText, offsetX, offsetY, drawWidth, drawHeight);
+                    }
+                    // PP minor/text
+                    if (overlayState.pp_minor && overlayState.imgPpMinor.complete && overlayState.imgPpMinor.naturalWidth > 0) {
+                       ctx.drawImage(overlayState.imgPpMinor, offsetX, offsetY, drawWidth, drawHeight);
+                    }
+                    if (overlayState.pp_text && overlayState.imgPpText.complete && overlayState.imgPpText.naturalWidth > 0) {
+                       ctx.drawImage(overlayState.imgPpText, offsetX, offsetY, drawWidth, drawHeight);
                     }
                 }
 
