@@ -16,6 +16,18 @@
       overflow: hidden;
       position: fixed;
       width: 100%;
+      /* Prevent text selection globally except inputs/textareas */
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+    /* Allow text selection in inputs/textareas */
+    input, textarea {
+      user-select: text;
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
     }
     .container {
       display: flex;
@@ -34,6 +46,11 @@
       flex-shrink: 0;
       z-index: 1000;
       -webkit-overflow-scrolling: touch;
+      /* Allow selection in sidebar */
+      user-select: auto;
+      -webkit-user-select: auto;
+      -moz-user-select: auto;
+      -ms-user-select: auto;
     }
     #sidebar.hidden {
        transform: translateX(-100%);
@@ -88,7 +105,8 @@
     .stream-item label {
       margin-left: 8px;
       cursor: pointer;
-      user-select: none;
+      user-select: none; /* Keep labels non-selectable */
+      -webkit-user-select: none;
       flex-grow: 1;
     }
     .stream-item input[type="checkbox"] {
@@ -155,6 +173,9 @@
       aspect-ratio: 16 / 9;
       min-height: 150px;
       background: #000;
+      /* Allow selection for native controls if needed */
+      user-select: auto;
+      -webkit-user-select: auto;
     }
     .player-container.mp4-player .controls-container {
       background: none;
@@ -172,6 +193,12 @@
       overflow: hidden;
       border-radius: 12px 12px 0 0;
       background-color: #000;
+      /* Prevent text cursor on canvas */
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      cursor: default; /* Default cursor, changes on drag */
     }
     .canvas-wrapper canvas {
       position: absolute;
@@ -181,7 +208,6 @@
       height: 100%;
       display: block;
     }
-    /* ← Insert this right after your `.canvas-wrapper canvas { … }` block */
     /* Hide the actual <video> in desktop (non-mp4) players */
     .player-container.desktop:not(.mp4-player) .source-video {
       opacity: 0;
@@ -191,6 +217,8 @@
       width: 1px;
       height: 1px;
       pointer-events: none;
+      user-select: none; /* Ensure hidden video isn't selectable */
+      -webkit-user-select: none;
     }
 
     /* Native Fullscreen (Desktop) */
@@ -649,6 +677,11 @@
       box-sizing: border-box;
       color: white;
       overflow-y: auto;
+      /* Allow selection within overlay sidebar */
+      user-select: auto;
+      -webkit-user-select: auto;
+      -moz-user-select: auto;
+      -ms-user-select: auto;
     }
     .player-container.desktop .right-sidebar.visible {
       transform: translateX(0);
@@ -678,15 +711,12 @@
     .player-container.desktop .right-sidebar label {
       cursor: pointer;
       flex-grow: 1;
+      /* Prevent selection of labels */
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    /* ↓ Remove the entire “.image-overlay” and “.mask-overlay” sections */
-    /*–– delete these ––
-    .player-container.desktop .image-overlay { … }
-    .player-container.desktop .image-overlay.visible { … }
-    .player-container.desktop .mask-overlay { … }
-    .player-container.desktop .mask-overlay.visible { … }
-    ––*/
+    /* Removed old overlay styles */
 
   </style>
 
@@ -989,7 +1019,7 @@
           const built = createPlayerContainer(streams[idx]);
           if (built) {
             mainContent.appendChild(built.container);
-            players[url] = built;
+            players[url] = built; // Store the built player object
           }
         } else {
           if (!existing.container.isConnected) mainContent.appendChild(existing.container);
@@ -1007,6 +1037,7 @@
           existing.video.removeAttribute('src');
           existing.video.load();
           if (existing.animationFrameId) cancelAnimationFrame(existing.animationFrameId);
+          existing.animationFrameId = null; // Explicitly nullify
           if (existing.container.classList.contains('player-fullscreen-mobile')) {
             exitPseudoFullscreen(existing.container, existing.video);
           }
@@ -1043,6 +1074,11 @@
       let animationFrameId = null;
       const isMp4 = url.toLowerCase().endsWith('.mp4');
       const title = extractTitle(url);
+
+      // --- Player object to be returned ---
+      // We define it here so we can add properties like overlays later
+      const playerObject = { container, video, hls: hlsInstance, animationFrameId: null };
+
 
       if (isMp4) {
         // --- MP4 Player Setup (Desktop & Mobile) ---
@@ -1191,8 +1227,8 @@
         controlsContainer.className = "controls-container";
         container.appendChild(controlsContainer);
 
-        // Store the overlays state directly on the player object if it's 'privates'
-        let overlays = null;
+        // Initialize overlays state for this player instance
+        let currentOverlays = null; // Use a different name to avoid confusion
 
         /* --- Privates Overlays Setup (Canvas-based) --- */
         if (title === 'privates') {
@@ -1226,7 +1262,8 @@
           jacksMaskImg.src = "https://devenf23.github.io/surfcam/privates/Jack's/Jack's_major.png";
 
           // track which overlays to draw
-          overlays = { // Assign to the outer 'overlays' variable
+          // Assign to the 'currentOverlays' variable specific to this scope
+          currentOverlays = {
             minor: false,
             text:  false,
             mask:  false,
@@ -1234,6 +1271,8 @@
             imgText:  jacksTextImg,
             imgMask:  jacksMaskImg
           };
+          // Add this state to the player object being returned
+          playerObject.overlays = currentOverlays;
 
           // toggle the sidebar
           overlayIcon.addEventListener('click', e => {
@@ -1246,10 +1285,12 @@
           if (jacksCheckbox) {
               jacksCheckbox.addEventListener('change', e => {
                 const on = e.target.checked;
-                overlays.minor = on;
-                overlays.text  = on;
-                overlays.mask  = on;
-                // No need to toggle classes, renderCanvas will handle drawing
+                // Update the state object directly
+                if (currentOverlays) {
+                    currentOverlays.minor = on;
+                    currentOverlays.text  = on;
+                    currentOverlays.mask  = on;
+                }
               });
           } else {
               console.error(`Could not find Jack's checkbox with ID: ${createSafeId('cb-jacks', url)}`);
@@ -1272,7 +1313,8 @@
         const ctx = canvas.getContext("2d");
 
         // --- Canvas Rendering Loop ---
-        function renderCanvas() {
+        // Pass the specific overlay state for this player into the function
+        function renderCanvas(overlayState) {
           // Ensure video has data and container is still in DOM
           if (video.readyState >= video.HAVE_METADATA && container.isConnected) {
             clampPan(container); // Apply pan limits
@@ -1312,24 +1354,25 @@
                 // draw the live-DVR frame
                 ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
 
-                // Check if this is the 'privates' player and overlays are defined
-                if (overlays) {
+                // Check if overlayState was passed and is valid
+                if (overlayState) {
                   // darken outside the “Jack’s major” mask, then punch it out
-                  if (overlays.mask && overlays.imgMask.complete && overlays.imgMask.naturalWidth > 0) {
+                  // Use overlayState passed into the function
+                  if (overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) {
                     ctx.save(); // Save state before masking
                     ctx.fillStyle = 'rgba(0,0,0,0.4)'; // Semi-transparent black
                     ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight); // Cover the video area
                     ctx.globalCompositeOperation = 'destination-out'; // Punch hole
-                    ctx.drawImage(overlays.imgMask, offsetX, offsetY, drawWidth, drawHeight);
+                    ctx.drawImage(overlayState.imgMask, offsetX, offsetY, drawWidth, drawHeight);
                     ctx.restore(); // Restore composite operation and fillStyle
                   }
 
                   // draw the minor/text overlays on top
-                  if (overlays.minor && overlays.imgMinor.complete && overlays.imgMinor.naturalWidth > 0) {
-                     ctx.drawImage(overlays.imgMinor, offsetX, offsetY, drawWidth, drawHeight);
+                  if (overlayState.minor && overlayState.imgMinor.complete && overlayState.imgMinor.naturalWidth > 0) {
+                     ctx.drawImage(overlayState.imgMinor, offsetX, offsetY, drawWidth, drawHeight);
                   }
-                  if (overlays.text && overlays.imgText.complete && overlays.imgText.naturalWidth > 0) {
-                     ctx.drawImage(overlays.imgText, offsetX, offsetY, drawWidth, drawHeight);
+                  if (overlayState.text && overlayState.imgText.complete && overlayState.imgText.naturalWidth > 0) {
+                     ctx.drawImage(overlayState.imgText, offsetX, offsetY, drawWidth, drawHeight);
                   }
                 }
 
@@ -1355,26 +1398,29 @@
 
           // Continue animation loop if the player is still active
           if (container.isConnected) {
-            animationFrameId = requestAnimationFrame(renderCanvas);
+            // Pass the current overlay state into the next frame request
+            playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
           } else {
-            animationFrameId = null; // Stop loop if container removed
+            playerObject.animationFrameId = null; // Stop loop if container removed
           }
         }
 
         // Start rendering when video can play
         video.addEventListener("canplay", () => {
-          if (!animationFrameId && container.isConnected) {
-            renderCanvas(); // Start the loop
+          // Check if already rendering and container is connected
+          if (!playerObject.animationFrameId && container.isConnected) {
+             renderCanvas(currentOverlays); // Start the loop, passing initial overlay state
           }
-        });
+        }, { once: true }); // Use once to avoid multiple starts if event fires again
+
         // Stop rendering if video becomes empty or errors
         video.addEventListener('emptied', () => {
-          if (animationFrameId) cancelAnimationFrame(animationFrameId);
-          animationFrameId = null;
+          if (playerObject.animationFrameId) cancelAnimationFrame(playerObject.animationFrameId);
+          playerObject.animationFrameId = null;
         });
         video.addEventListener('error', () => {
-          if (animationFrameId) cancelAnimationFrame(animationFrameId);
-          animationFrameId = null;
+          if (playerObject.animationFrameId) cancelAnimationFrame(playerObject.animationFrameId);
+          playerObject.animationFrameId = null;
           // Optionally clear canvas or show error state
            const ctx = canvas.getContext("2d");
            ctx.fillStyle = '#333';
@@ -1385,7 +1431,7 @@
            ctx.fillText('Video Error', canvas.width/2, canvas.height/2);
         });
 
-        /* --- Desktop interactions: Pan/Zoom/Click --- */
+        /* --- Desktop interactions: Pan/Zoom/Click (No changes needed here) --- */
         let startX, startY, isDragging = false;
         // Mousedown: Initiate drag panning (if space held or fullscreen)
         canvasWrapper.addEventListener("mousedown", e => {
@@ -1502,7 +1548,7 @@
         };
         container.addEventListener("click", handleDesktopClick);
 
-        /* --- Desktop Controls Bar --- */
+        /* --- Desktop Controls Bar (No changes needed here) --- */
         const controlBar = document.createElement("div");
         controlBar.className = "control-bar";
         controlsContainer.appendChild(controlBar);
@@ -1700,7 +1746,7 @@
         tb.textContent = title;
         controlsContainer.appendChild(tb);
 
-        /* --- Auto-hide controls in fullscreen --- */
+        /* --- Auto-hide controls in fullscreen (No changes needed here) --- */
         let hideControlsTimeout = null;
         function showControlsTemporarily() {
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
@@ -1770,6 +1816,7 @@
               }
             }
           });
+          playerObject.hls = hlsInstance; // Add hls instance to player object
 
           hlsInstance.loadSource(url); // Load the original (non-proxied) URL
           hlsInstance.attachMedia(video); // Attach HLS.js to the video element
@@ -1794,13 +1841,16 @@
                 case Hls.ErrorTypes.MEDIA_ERROR:
                   // Try to recover from media errors
                   console.log("Media error, attempting recovery...");
-                  hlsInstance.recoverMediaError();
+                  if (hlsInstance) hlsInstance.recoverMediaError();
                   break;
                 default:
                   // For other fatal errors, destroy and potentially recreate
                   console.log("Unrecoverable HLS error, destroying instance.");
-                  hlsInstance.destroy();
-                  hlsInstance = null; // Clear instance variable
+                  if (hlsInstance) {
+                      hlsInstance.destroy();
+                      hlsInstance = null; // Clear instance variable
+                      playerObject.hls = null;
+                  }
                   // Optional: Schedule a full player rebuild after a longer delay
                   setTimeout(() => {
                     // Check if player still exists and is enabled before recreating
@@ -1845,12 +1895,7 @@
         }
       }
 
-      // Return the created elements and HLS instance
-      // Add the overlays state if it was created for this player
-      const playerObject = { container, video, hls: hlsInstance, animationFrameId };
-      if (overlays) {
-          playerObject.overlays = overlays;
-      }
+      // Return the fully constructed player object
       return playerObject;
     }
 
