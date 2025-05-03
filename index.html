@@ -921,7 +921,7 @@
     let activeSidebarLabels = new Set();
     let sidebarDragStartState = null;
     let isSidebarDragging = false;
-    let players = {}; // Store player instances { url: { container, video, hls, animationFrameId, overlays?, ... } }
+    let players = {}; // Store player instances { url: { container, video, hls, animationFrameId, overlays?, offscreenCanvas?, ... } }
 
     function updateStreamSidebar() {
       streamListContainer.innerHTML = "";
@@ -1040,6 +1040,11 @@
           existing.video.load();
           if (existing.animationFrameId) cancelAnimationFrame(existing.animationFrameId);
           existing.animationFrameId = null; // Explicitly nullify
+          // Clean up offscreen canvas if it exists
+          if (existing.offscreenCanvas) {
+              existing.offscreenCanvas.width = 0; // Release memory
+              existing.offscreenCanvas = null;
+          }
           if (existing.container.classList.contains('player-fullscreen-mobile')) {
             exitPseudoFullscreen(existing.container, existing.video);
           }
@@ -1078,8 +1083,16 @@
       const title = extractTitle(url);
 
       // --- Player object to be returned ---
-      // We define it here so we can add properties like overlays later
-      const playerObject = { container, video, hls: hlsInstance, animationFrameId: null };
+      // Define it here so we can add properties like overlays, offscreenCanvas later
+      const playerObject = {
+          container,
+          video,
+          hls: hlsInstance,
+          animationFrameId: null,
+          overlays: null,        // Will hold overlay state if applicable
+          offscreenCanvas: null, // Will hold the offscreen canvas for masking
+          offscreenCtx: null     // Context for the offscreen canvas
+      };
 
 
       if (isMp4) {
@@ -1225,6 +1238,13 @@
         canvas.height = 540;
         canvasWrapper.appendChild(canvas);
 
+        // Create offscreen canvas for masking operations
+        playerObject.offscreenCanvas = document.createElement('canvas');
+        playerObject.offscreenCanvas.width = canvas.width;
+        playerObject.offscreenCanvas.height = canvas.height;
+        playerObject.offscreenCtx = playerObject.offscreenCanvas.getContext('2d');
+
+
         const controlsContainer = document.createElement("div");
         controlsContainer.className = "controls-container";
         container.appendChild(controlsContainer);
@@ -1342,7 +1362,8 @@
         // Append video element (hidden by CSS, used as source for canvas)
         container.appendChild(video);
 
-        const ctx = canvas.getContext("2d");
+        const mainCtx = canvas.getContext("2d"); // Context for visible canvas
+        const offscreenCtx = playerObject.offscreenCtx; // Context for offscreen canvas
 
         // --- Canvas Rendering Loop ---
         // Pass the specific overlay state for this player into the function
@@ -1351,118 +1372,132 @@
           if (video.readyState >= video.HAVE_METADATA && container.isConnected) {
             clampPan(container); // Apply pan limits
 
-            ctx.save(); // Save default context state
-            ctx.fillStyle = '#000'; // Black background for base layer
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+            // --- Calculate draw dimensions (same as before) ---
+            let drawWidth, drawHeight, offsetX, offsetY;
             if (video.videoWidth > 0 && video.videoHeight > 0) {
-              // Calculate drawing dimensions to maintain aspect ratio (letterboxing/pillarboxing)
-              const canvasAspect = canvas.width / canvas.height;
-              const videoAspect = video.videoWidth / video.videoHeight;
-              let drawWidth, drawHeight, offsetX, offsetY;
-
-              if (canvasAspect > videoAspect) { // Canvas wider than video -> pillarbox
-                drawHeight = canvas.height;
-                drawWidth = drawHeight * videoAspect;
-                offsetX = (canvas.width - drawWidth) / 2;
-                offsetY = 0;
-              } else { // Canvas taller than video -> letterbox
-                drawWidth = canvas.width;
-                drawHeight = drawWidth / videoAspect;
-                offsetX = 0;
-                offsetY = (canvas.height - drawHeight) / 2;
-              }
-
-              // Apply pan and zoom transformations centered on the canvas
-              const centerX = canvas.width / 2;
-              const centerY = canvas.height / 2;
-              ctx.translate(centerX, centerY);
-              ctx.scale(container.zoomScale, container.zoomScale);
-              ctx.translate(container.panX, container.panY);
-              ctx.translate(-centerX, -centerY);
-
-              // --- Draw Video and Overlays ---
-              try {
-                // 1. Draw the base video frame first
-                ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
-
-                // 2. Apply mask(s) if enabled (Corrected logic)
-                // Check if *any* mask is active and its image is ready
-                const isAnyMaskActive = overlayState && (
-                    (overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) ||
-                    (overlayState.pp_mask && overlayState.imgPpMask.complete && overlayState.imgPpMask.naturalWidth > 0)
-                );
-
-                if (isAnyMaskActive) {
-                  // Save context state before applying mask effect
-                  ctx.save();
-
-                  // Draw the darkening overlay covering the whole video area
-                  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                  ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
-
-                  // Use 'destination-out' to punch the mask shape(s) out of the darkening layer
-                  ctx.globalCompositeOperation = 'destination-out';
-
-                  // Draw Jack's mask if active and ready
-                  if (overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) {
-                    ctx.drawImage(overlayState.imgMask, offsetX, offsetY, drawWidth, drawHeight);
-                  }
-                  // Draw PP mask if active and ready
-                  if (overlayState.pp_mask && overlayState.imgPpMask.complete && overlayState.imgPpMask.naturalWidth > 0) {
-                    ctx.drawImage(overlayState.imgPpMask, offsetX, offsetY, drawWidth, drawHeight);
-                  }
-
-                  // Restore context (back to default 'source-over' composite operation)
-                  ctx.restore();
+                const canvasAspect = canvas.width / canvas.height;
+                const videoAspect = video.videoWidth / video.videoHeight;
+                if (canvasAspect > videoAspect) {
+                    drawHeight = canvas.height;
+                    drawWidth = drawHeight * videoAspect;
+                    offsetX = (canvas.width - drawWidth) / 2;
+                    offsetY = 0;
+                } else {
+                    drawWidth = canvas.width;
+                    drawHeight = drawWidth / videoAspect;
+                    offsetX = 0;
+                    offsetY = (canvas.height - drawHeight) / 2;
                 }
+            } else {
+                // Handle case where video dimensions aren't ready yet
+                mainCtx.save();
+                mainCtx.fillStyle = '#555';
+                mainCtx.textAlign = 'center';
+                mainCtx.font = '16px Arial';
+                mainCtx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
+                mainCtx.restore();
+                // Request next frame and exit early
+                if (container.isConnected) {
+                    playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
+                } else {
+                    playerObject.animationFrameId = null;
+                }
+                return;
+            }
 
-                // 3. Draw minor/text overlays on top (if enabled)
+            // --- Apply pan/zoom transformations to the main canvas ---
+            mainCtx.save(); // Save default state of main canvas
+            mainCtx.fillStyle = '#000'; // Base black background
+            mainCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            mainCtx.translate(centerX, centerY);
+            mainCtx.scale(container.zoomScale, container.zoomScale);
+            mainCtx.translate(container.panX, container.panY);
+            mainCtx.translate(-centerX, -centerY);
+
+            // --- Draw Video and Overlays using Offscreen Canvas for Masking ---
+            try {
+                // 1. Draw the raw video frame onto the main canvas
+                mainCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+
+                // 2. Check if any mask needs to be applied
+                const isJacksMaskActive = overlayState && overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0;
+                const isPPMaskActive = overlayState && overlayState.pp_mask && overlayState.imgPpMask.complete && overlayState.imgPpMask.naturalWidth > 0;
+                const isAnyMaskActive = isJacksMaskActive || isPPMaskActive;
+
+                if (isAnyMaskActive && offscreenCtx) {
+                    // --- Prepare masked video on offscreen canvas ---
+                    offscreenCtx.save();
+                    // Clear offscreen canvas
+                    offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // Draw the combined mask shape onto offscreen canvas
+                    // Where masks overlap, the area will be kept.
+                    if (isJacksMaskActive) {
+                        offscreenCtx.drawImage(overlayState.imgMask, offsetX, offsetY, drawWidth, drawHeight);
+                    }
+                    if (isPPMaskActive) {
+                        // Use source-over initially if Jack's wasn't drawn, otherwise use lighter to combine alpha
+                        offscreenCtx.globalCompositeOperation = isJacksMaskActive ? 'lighter' : 'source-over';
+                        offscreenCtx.drawImage(overlayState.imgPpMask, offsetX, offsetY, drawWidth, drawHeight);
+                    }
+
+                    // Use 'source-in': Draw video, keeping only where it overlaps the mask shape(s) drawn above
+                    offscreenCtx.globalCompositeOperation = 'source-in';
+                    offscreenCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+
+                    offscreenCtx.restore(); // Restore offscreen context state
+
+                    // --- Draw onto main canvas ---
+                    // Draw the darkening layer over the full video area on main canvas
+                    mainCtx.fillStyle = 'rgba(0,0,0,0.4)';
+                    mainCtx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
+
+                    // Draw the result from the offscreen canvas (video clipped to mask)
+                    // This effectively replaces the darkened area inside the mask with the video
+                    mainCtx.drawImage(playerObject.offscreenCanvas, 0, 0);
+
+                }
+                // else: No mask active, video already drawn in step 1.
+
+                // 3. Draw minor/text overlays on top (if enabled) - on main canvas
                 if (overlayState) {
                     // Jack's minor/text
                     if (overlayState.minor && overlayState.imgMinor.complete && overlayState.imgMinor.naturalWidth > 0) {
-                       ctx.drawImage(overlayState.imgMinor, offsetX, offsetY, drawWidth, drawHeight);
+                       mainCtx.drawImage(overlayState.imgMinor, offsetX, offsetY, drawWidth, drawHeight);
                     }
                     if (overlayState.text && overlayState.imgText.complete && overlayState.imgText.naturalWidth > 0) {
-                       ctx.drawImage(overlayState.imgText, offsetX, offsetY, drawWidth, drawHeight);
+                       mainCtx.drawImage(overlayState.imgText, offsetX, offsetY, drawWidth, drawHeight);
                     }
                     // PP minor/text
                     if (overlayState.pp_minor && overlayState.imgPpMinor.complete && overlayState.imgPpMinor.naturalWidth > 0) {
-                       ctx.drawImage(overlayState.imgPpMinor, offsetX, offsetY, drawWidth, drawHeight);
+                       mainCtx.drawImage(overlayState.imgPpMinor, offsetX, offsetY, drawWidth, drawHeight);
                     }
                     if (overlayState.pp_text && overlayState.imgPpText.complete && overlayState.imgPpText.naturalWidth > 0) {
-                       ctx.drawImage(overlayState.imgPpText, offsetX, offsetY, drawWidth, drawHeight);
+                       mainCtx.drawImage(overlayState.imgPpText, offsetX, offsetY, drawWidth, drawHeight);
                     }
                 }
 
-              } catch (e) {
+            } catch (e) {
                 console.error("Canvas Draw Error:", e);
-                // Optionally draw an error message on canvas
-                ctx.fillStyle = 'red';
-                ctx.textAlign = 'center';
-                ctx.fillText('Render Error', canvas.width/2, canvas.height/2);
-              }
-              // --- End Draw Video and Overlays ---
-
-            } else {
-              // Video dimensions not available yet, show loading
-              ctx.fillStyle = '#555';
-              ctx.textAlign = 'center';
-              ctx.font = '16px Arial';
-              ctx.fillText('Loading...', canvas.width/2, canvas.height/2);
+                mainCtx.fillStyle = 'red';
+                mainCtx.textAlign = 'center';
+                mainCtx.fillText('Render Error', canvas.width / 2, canvas.height / 2);
             }
 
-            ctx.restore(); // Restore context to default state (removes pan/zoom)
+            mainCtx.restore(); // Restore main canvas context (removes pan/zoom)
           }
 
           // Continue animation loop if the player is still active
           if (container.isConnected) {
-            // Pass the current overlay state into the next frame request
             playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
           } else {
             playerObject.animationFrameId = null; // Stop loop if container removed
           }
         }
+
 
         // Start rendering when video can play
         video.addEventListener("canplay", () => {
@@ -1481,13 +1516,17 @@
           if (playerObject.animationFrameId) cancelAnimationFrame(playerObject.animationFrameId);
           playerObject.animationFrameId = null;
           // Optionally clear canvas or show error state
-           const ctx = canvas.getContext("2d");
+           const ctx = mainCtx; // Use main context
+           ctx.save();
+           // Clear transforms before drawing error message
+           ctx.setTransform(1, 0, 0, 1, 0, 0);
            ctx.fillStyle = '#333';
            ctx.fillRect(0, 0, canvas.width, canvas.height);
            ctx.fillStyle = 'red';
            ctx.textAlign = 'center';
            ctx.font = '16px Arial';
            ctx.fillText('Video Error', canvas.width/2, canvas.height/2);
+           ctx.restore();
         });
 
         /* --- Desktop interactions: Pan/Zoom/Click (No changes needed here) --- */
