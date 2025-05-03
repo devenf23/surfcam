@@ -130,7 +130,7 @@
       background: #222;
       display: flex;
       flex-direction: column;
-      position: relative;
+      position: relative; /* Needed for absolute positioning inside */
       box-sizing: border-box;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -170,7 +170,7 @@
 
     /* --------- VIDEO & CANVAS --------- */
     .canvas-wrapper { /* Desktop canvas */
-      position: relative;
+      position: relative; /* Needed for absolute positioning inside */
       width: 100%;
       aspect-ratio: 16 / 9;
       overflow: hidden;
@@ -215,13 +215,9 @@
     /* MP4 Video in Fullscreen (Uses default controls) */
     .player-container.mp4-player:fullscreen .source-video,
     .player-container.mp4-player:-webkit-full-screen .source-video {
-        width: 100% !important; /* Take full width */
-        height: 100% !important; /* Take full height */
-        max-height: 100vh !important; /* Override non-fullscreen max-height */
-        border-radius: 0;
-        object-fit: contain; /* Maintain aspect ratio */
-        aspect-ratio: auto; /* Override non-fullscreen aspect-ratio */
-        min-height: auto; /* Remove min-height in fullscreen */
+        width: 100% !important; height: 100% !important;
+        max-height: 100vh !important; border-radius: 0;
+        object-fit: contain; aspect-ratio: auto; min-height: auto;
     }
     /* Hide custom controls/title bar for MP4 in fullscreen */
     .player-container.mp4-player:fullscreen .controls-container,
@@ -229,7 +225,6 @@
         display: none !important;
     }
 
-    /* Apply CSS fix exactly as provided */
     .player-container.desktop:not(.mp4-player) .source-video {
       opacity: 0;
       position: absolute;
@@ -419,6 +414,113 @@
         .player-container.controls-open .fullscreen-controls { bottom: env(safe-area-inset-bottom, 10px); }
     }
 
+    /* --- Privates Player Overlays (Desktop Only) --- */
+    .player-container.desktop .overlay-icon {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10; /* Above canvas, below controls if they overlay */
+        background: rgba(0,0,0,0.5);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        font-size: 18px;
+        line-height: 30px;
+        text-align: center;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+    .player-container.desktop .overlay-icon:hover {
+        opacity: 1;
+    }
+    .player-container.desktop .right-sidebar {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 100%;
+        background: rgba(50, 50, 50, 0.9);
+        z-index: 20; /* Above icon */
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        padding: 15px;
+        box-sizing: border-box;
+        color: white;
+        overflow-y: auto;
+    }
+    .player-container.desktop .right-sidebar.visible {
+        transform: translateX(0);
+    }
+    .player-container.desktop .right-sidebar h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        text-align: center;
+        border-bottom: 1px solid #666;
+        padding-bottom: 5px;
+    }
+    .player-container.desktop .right-sidebar ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .player-container.desktop .right-sidebar li {
+        margin-bottom: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+    .player-container.desktop .right-sidebar input[type="checkbox"] {
+        margin-right: 8px;
+        cursor: pointer;
+    }
+    .player-container.desktop .right-sidebar label {
+        cursor: pointer;
+        flex-grow: 1;
+    }
+
+    .player-container.desktop .image-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%; /* Cover the canvas wrapper */
+        z-index: 5; /* Above canvas, below icon/sidebar */
+        pointer-events: none; /* Allow clicks through */
+        display: none; /* Hidden by default */
+        object-fit: contain; /* Adjust as needed */
+    }
+     .player-container.desktop .image-overlay.visible {
+         display: block;
+     }
+
+    .player-container.desktop .mask-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 4; /* Below image overlays */
+        background-color: rgba(0, 0, 0, 0.5); /* Darkening effect */
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        mask-image: url('/privates/jack\'s/Jack\'s_major.png');
+        -webkit-mask-image: url('/privates/jack\'s/Jack\'s_major.png');
+        mask-size: contain; /* Adjust as needed */
+        -webkit-mask-size: contain;
+        mask-repeat: no-repeat;
+        -webkit-mask-repeat: no-repeat;
+        mask-position: center;
+        -webkit-mask-position: center;
+        display: none; /* Hidden by default */
+        pointer-events: none;
+    }
+     .player-container.desktop .mask-overlay.visible {
+         display: block;
+     }
+
   </style>
 
   <script>
@@ -535,6 +637,7 @@
 
       let hlsInstance = null; let animationFrameId = null;
       const isMp4 = url.toLowerCase().endsWith('.mp4'); // Check if MP4
+      const streamTitle = extractTitle(url); // Get title early
 
       if (isMp4) {
           container.classList.add('mp4-player'); // Add class for MP4 specific styles
@@ -548,7 +651,7 @@
           controlsContainer.className = "controls-container"; // Use this for styling consistency
           const titleBar = document.createElement("div");
           titleBar.className = "title-bar";
-          titleBar.textContent = extractTitle(url);
+          titleBar.textContent = streamTitle;
           controlsContainer.appendChild(titleBar);
           container.appendChild(controlsContainer);
 
@@ -592,7 +695,7 @@
       } else if (IS_MOBILE) { // HLS on Mobile
         video.controls = false;
         const titleRow = document.createElement("div"); titleRow.className = "video-title-row";
-        const titleSpan = document.createElement("span"); titleSpan.textContent = extractTitle(url);
+        const titleSpan = document.createElement("span"); titleSpan.textContent = streamTitle;
         const fsBtnMobile = document.createElement("button"); fsBtnMobile.className = "fs-btn-mobile";
         fsBtnMobile.innerHTML = "&#x26F6;"; fsBtnMobile.setAttribute("aria-label", "Enter Fullscreen");
         titleRow.appendChild(titleSpan); titleRow.appendChild(fsBtnMobile); container.appendChild(titleRow);
@@ -617,6 +720,73 @@
         const canvas = document.createElement("canvas"); canvas.className = "display-canvas"; canvas.width = 960; canvas.height = 540; canvasWrapper.appendChild(canvas);
         const controlsContainer = document.createElement("div"); controlsContainer.className = "controls-container";
         container.appendChild(controlsContainer); // Append controls container below canvas
+
+        // --- Add Overlays for "privates" ---
+        if (streamTitle === 'privates') {
+            // Overlay Icon Button
+            const overlayIcon = document.createElement('button');
+            overlayIcon.className = 'overlay-icon';
+            overlayIcon.innerHTML = '⚙️'; // Gear icon
+            overlayIcon.title = 'Spot Overlays';
+            canvasWrapper.appendChild(overlayIcon); // Add to canvas wrapper
+
+            // Right Sidebar
+            const rightSidebar = document.createElement('div');
+            rightSidebar.className = 'right-sidebar'; // Initially hidden by CSS transform
+            rightSidebar.innerHTML = `
+                <h4>Spot Features</h4>
+                <ul>
+                    <li><input type="checkbox" id="cb-pp-${url}" data-spot="pp"><label for="cb-pp-${url}">Pleasure Point</label></li>
+                    <li><input type="checkbox" id="cb-jacks-${url}" data-spot="jacks"><label for="cb-jacks-${url}">Jack's</label></li>
+                    <li><input type="checkbox" id="cb-hook-${url}" data-spot="hook"><label for="cb-hook-${url}">The Hook</label></li>
+                    <li><input type="checkbox" id="cb-sharks-${url}" data-spot="sharks"><label for="cb-sharks-${url}">Sharks</label></li>
+                    <li><input type="checkbox" id="cb-inbetweens-${url}" data-spot="inbetweens"><label for="cb-inbetweens-${url}">In-betweens</label></li>
+                    <li><input type="checkbox" id="cb-privates-${url}" data-spot="privates"><label for="cb-privates-${url}">Privates</label></li>
+                </ul>
+            `;
+            container.appendChild(rightSidebar); // Append to main container
+
+            // Image Overlays (inside canvasWrapper)
+            const jacksMinor = document.createElement('img');
+            jacksMinor.className = 'image-overlay jacks-minor';
+            jacksMinor.src = '/privates/jack\'s/Jack\'s_minor.png';
+            jacksMinor.alt = "Jack's Minor Overlay";
+            canvasWrapper.appendChild(jacksMinor);
+
+            const jacksText = document.createElement('img');
+            jacksText.className = 'image-overlay jacks-text';
+            jacksText.src = '/privates/jack\'s/Jack\'s_text.png';
+            jacksText.alt = "Jack's Text Overlay";
+            canvasWrapper.appendChild(jacksText);
+
+            // Mask Overlay (inside canvasWrapper)
+            const maskOverlay = document.createElement('div');
+            maskOverlay.className = 'mask-overlay jacks-major-mask';
+            canvasWrapper.appendChild(maskOverlay);
+
+            // Event Listeners
+            overlayIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                rightSidebar.classList.toggle('visible');
+            });
+
+            const jacksCheckbox = rightSidebar.querySelector('#cb-jacks-' + url);
+            jacksCheckbox.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                jacksMinor.classList.toggle('visible', isChecked);
+                jacksText.classList.toggle('visible', isChecked);
+                maskOverlay.classList.toggle('visible', isChecked);
+            });
+
+            // Close sidebar on outside click
+            container.addEventListener('click', (e) => {
+                if (rightSidebar.classList.contains('visible') && !rightSidebar.contains(e.target) && e.target !== overlayIcon) {
+                    rightSidebar.classList.remove('visible');
+                }
+            });
+        }
+        // --- End Overlays ---
+
         container.appendChild(video); // Add hidden video last
 
         const ctx = canvas.getContext("2d");
@@ -632,6 +802,8 @@
         const handleDesktopClick = (e) => {
             const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
             // Allow click anywhere in container when fullscreen, only on canvasWrapper when not
+            // Also ignore clicks on the overlay icon or right sidebar
+            if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar')) return;
             if (!isFullscreen && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) return;
             if (e.button !== 0 || isDragging) return;
 
@@ -661,7 +833,7 @@
         const resetBtn = document.createElement("button"); resetBtn.textContent = "Reset"; resetBtn.setAttribute("aria-label", "Reset Pan & Zoom"); resetBtn.addEventListener("click", (e) => { e.stopPropagation(); container.zoomScale = 1; container.panX = 0; container.panY = 0; savePlayerSettings(url, { zoomScale: 1, panX: 0, panY: 0 }); }); controlBar.appendChild(resetBtn);
         const disableBtn = document.createElement("button"); disableBtn.className = "disable-btn"; disableBtn.textContent = "✕"; disableBtn.setAttribute("aria-label", "Hide this stream"); disableBtn.addEventListener("click", (e) => { e.stopPropagation(); updateStreamEnabled(url, false); }); controlBar.appendChild(disableBtn);
         // Title bar added after control bar
-        const titleBar = document.createElement("div"); titleBar.className = "title-bar"; titleBar.textContent = extractTitle(url); controlsContainer.appendChild(titleBar);
+        const titleBar = document.createElement("div"); titleBar.className = "title-bar"; titleBar.textContent = streamTitle; controlsContainer.appendChild(titleBar);
 
       } // End Desktop Specific Setup
 
