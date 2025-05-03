@@ -307,12 +307,12 @@
         border-radius: 8px; /* Add slight rounding */
         background: rgba(0,0,0,0.75); /* Overlay background */
         pointer-events: none; /* Ignore mouse when hidden */
-        width: auto; /* Allow natural width based on content */
-        max-width: 90%; /* Limit width */
+        width: 90%; /* Fix 2: Stretch horizontally */
+        max-width: 800px; /* Limit width */
         margin: 0; /* Reset margin */
         flex-shrink: 0; /* Prevent shrinking */
     }
-    /* Fix 2: Show controls on hover */
+    /* Fix 2: Show controls on hover near bottom */
     .player-container:not(.mp4-player):fullscreen:hover .controls-container,
     .player-container:not(.mp4-player):-webkit-full-screen:hover .controls-container {
         opacity: 1;
@@ -457,8 +457,12 @@
         width: 30px;
         height: 30px;
         font-size: 18px;
-        line-height: 30px;
-        text-align: center;
+        /* Fix 4: Use flexbox for centering */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* line-height: 30px; */ /* Replaced by flex */
+        /* text-align: center; */ /* Replaced by flex */
         cursor: pointer;
         opacity: 0.7;
         transition: opacity 0.2s;
@@ -535,15 +539,15 @@
         z-index: 4; /* Below image overlays */
         /* Fix 1: Lighter background, slight blur */
         background-color: rgba(0, 0, 0, 0.3); /* Less dark */
-        backdrop-filter: blur(2px); /* Less blur */
-        -webkit-backdrop-filter: blur(2px);
-        /* Fix 1: Use mask-composite to subtract */
+        /* Fix 1: Add slight blur for feathering */
+        filter: blur(2px);
+        -webkit-filter: blur(2px);
         /* Standard mask properties */
         mask-image: url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png');
         mask-size: contain;
         mask-repeat: no-repeat;
         mask-position: center;
-        /* Invert the mask effect (show overlay *outside* the image) */
+        /* Fix 1: Invert the mask effect (show overlay *outside* the image) */
         mask-composite: exclude;
         /* Webkit equivalents */
         -webkit-mask-image: url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png');
@@ -884,6 +888,46 @@
         const disableBtn = document.createElement("button"); disableBtn.className = "disable-btn"; disableBtn.textContent = "✕"; disableBtn.setAttribute("aria-label", "Hide this stream"); disableBtn.addEventListener("click", (e) => { e.stopPropagation(); updateStreamEnabled(url, false); }); controlBar.appendChild(disableBtn);
         // Title bar added after control bar
         const titleBar = document.createElement("div"); titleBar.className = "title-bar"; titleBar.textContent = streamTitle; controlsContainer.appendChild(titleBar);
+
+        // --- Desktop Controls Auto-Hide (Fullscreen Only) ---
+        // Fix 2: Reinstate auto-hide logic for fullscreen
+        let hideControlsTimeout = null;
+        function showControlsTemporarily() {
+            const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+            if (!isFullscreen) return; // Only run in fullscreen
+            controlsContainer.style.opacity = '1';
+            controlsContainer.style.pointerEvents = 'auto'; // Make controls interactive
+            clearTimeout(hideControlsTimeout);
+            // Schedule hide only when in fullscreen and video is playing
+            if (!video.paused) {
+                hideControlsTimeout = setTimeout(() => {
+                    controlsContainer.style.opacity = '0';
+                    controlsContainer.style.pointerEvents = 'none'; // Prevent interaction when hidden
+                }, 3000); // Hide after 3 seconds of inactivity
+            }
+        }
+        // Show controls on mouse move within the container or when entering fullscreen/pausing
+        container.addEventListener('mousemove', showControlsTemporarily);
+        container.addEventListener('mouseenter', showControlsTemporarily); // Show when mouse enters
+        video.addEventListener('pause', showControlsTemporarily); // Keep visible when paused
+        video.addEventListener('play', showControlsTemporarily); // Start timer when playing
+
+         // Initial state setup based on fullscreen
+         function setInitialControlsVisibility() {
+             const isFullscreen = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+             if (isFullscreen) {
+                 showControlsTemporarily(); // Show initially then start timer
+             } else {
+                 // Ensure controls are visible when not in fullscreen (handled by default CSS now)
+                 controlsContainer.style.opacity = '1';
+                 controlsContainer.style.pointerEvents = 'auto';
+                 clearTimeout(hideControlsTimeout);
+             }
+         }
+         document.addEventListener("fullscreenchange", setInitialControlsVisibility);
+         document.addEventListener("webkitfullscreenchange", setInitialControlsVisibility);
+         // setInitialControlsVisibility(); // Initial visibility handled by default CSS
+
 
       } // End Desktop Specific Setup
 
