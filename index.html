@@ -942,6 +942,7 @@
     function createPlayerContainer(stream){
       if (!stream || !stream.enabled) return null;
       const url = stream.url;
+      const streamTitle = extractTitle(url);
       const saved = loadPlayerSettings(url);
       const container = document.createElement("div");
       container.className = `player-container ${IS_MOBILE?"mobile":"desktop"}`;
