@@ -1353,34 +1353,26 @@
 
               // --- Draw Video and Overlays ---
               try {
-                // 1. Draw the base video frame
+                // 1. Draw the base video frame first
                 ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
 
-                // 2. Apply mask if enabled
+                // 2. Apply mask if enabled (Corrected logic)
                 if (overlayState && overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) {
                   // Save context state before applying mask effect
                   ctx.save();
 
-                  // Draw the mask image itself (this defines the shape)
+                  // Draw the darkening overlay covering the whole video area
+                  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                  ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
+
+                  // Use 'destination-out' to punch the mask shape out of the darkening layer
+                  ctx.globalCompositeOperation = 'destination-out';
+
+                  // Draw the mask image. Where the mask is opaque, the darkening layer becomes transparent.
                   ctx.drawImage(overlayState.imgMask, offsetX, offsetY, drawWidth, drawHeight);
 
-                  // Use 'source-in' to keep the part of the video *inside* the mask shape
-                  ctx.globalCompositeOperation = 'source-in';
-
-                  // Redraw the video frame. Only the parts overlapping the mask's opaque pixels will remain.
-                  ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
-
-                  // Restore context (removes source-in)
+                  // Restore context (back to default 'source-over' composite operation)
                   ctx.restore();
-
-                  // Now, draw the darkening overlay *behind* the clipped video
-                  ctx.save();
-                  ctx.fillStyle = 'rgba(0,0,0,0.4)'; // Semi-transparent black
-                  // Use 'destination-over' to draw behind existing content
-                  ctx.globalCompositeOperation = 'destination-over';
-                  // Fill the entire video area. This will only be visible where the clipped video isn't.
-                  ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
-                  ctx.restore(); // Restore context
                 }
 
                 // 3. Draw minor/text overlays on top (if enabled)
