@@ -147,11 +147,13 @@
       background: #222;
       display: flex;
       flex-direction: column;
-      position: relative;
+      position: relative; /* Needed for absolute positioning of children */
       box-sizing: border-box;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       flex-shrink: 0;
+      /* Add overflow hidden to clip the sidebar */
+      overflow: hidden;
     }
     .player-container.desktop {
       width: 960px;
@@ -163,7 +165,7 @@
       width: calc(100% - 40px);
       max-width: 480px;
       border-radius: 12px;
-      overflow: hidden;
+      overflow: hidden; /* Already had overflow hidden */
     }
     .player-container.mp4-player .source-video {
       border-radius: 12px 12px 0 0;
@@ -190,7 +192,7 @@
       position: relative;
       width: 100%;
       aspect-ratio: 16 / 9;
-      overflow: hidden;
+      overflow: hidden; /* Keep overflow hidden here too */
       border-radius: 12px 12px 0 0;
       background-color: #000;
       /* Prevent text cursor on canvas */
@@ -235,7 +237,7 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
+      overflow: hidden; /* Ensure overflow hidden in fullscreen too */
     }
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
@@ -666,12 +668,12 @@
     .player-container.desktop .right-sidebar {
       position: absolute;
       top: 0;
-      right: 0;
+      right: 0; /* Start position off-screen */
       width: 200px;
       height: 100%;
       background: rgba(50, 50, 50, 0.9);
       z-index: 20;
-      transform: translateX(100%);
+      transform: translateX(100%); /* Hide by translating */
       transition: transform 0.3s ease;
       padding: 15px;
       box-sizing: border-box;
@@ -684,7 +686,7 @@
       -ms-user-select: auto;
     }
     .player-container.desktop .right-sidebar.visible {
-      transform: translateX(0);
+      transform: translateX(0); /* Show by translating back */
     }
     .player-container.desktop .right-sidebar h4 {
       margin-top: 0;
@@ -1320,7 +1322,7 @@
             clampPan(container); // Apply pan limits
 
             ctx.save(); // Save default context state
-            ctx.fillStyle = '#000'; // Black background
+            ctx.fillStyle = '#000'; // Black background for base layer
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -1351,29 +1353,44 @@
 
               // --- Draw Video and Overlays ---
               try {
-                // draw the live-DVR frame
+                // 1. Draw the base video frame
                 ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
 
-                // Check if overlayState was passed and is valid
-                if (overlayState) {
-                  // darken outside the “Jack’s major” mask, then punch it out
-                  // Use overlayState passed into the function
-                  if (overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) {
-                    ctx.save(); // Save state before masking
-                    ctx.fillStyle = 'rgba(0,0,0,0.4)'; // Semi-transparent black
-                    ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight); // Cover the video area
-                    ctx.globalCompositeOperation = 'destination-out'; // Punch hole
-                    ctx.drawImage(overlayState.imgMask, offsetX, offsetY, drawWidth, drawHeight);
-                    ctx.restore(); // Restore composite operation and fillStyle
-                  }
+                // 2. Apply mask if enabled
+                if (overlayState && overlayState.mask && overlayState.imgMask.complete && overlayState.imgMask.naturalWidth > 0) {
+                  // Save context state before applying mask effect
+                  ctx.save();
 
-                  // draw the minor/text overlays on top
-                  if (overlayState.minor && overlayState.imgMinor.complete && overlayState.imgMinor.naturalWidth > 0) {
-                     ctx.drawImage(overlayState.imgMinor, offsetX, offsetY, drawWidth, drawHeight);
-                  }
-                  if (overlayState.text && overlayState.imgText.complete && overlayState.imgText.naturalWidth > 0) {
-                     ctx.drawImage(overlayState.imgText, offsetX, offsetY, drawWidth, drawHeight);
-                  }
+                  // Draw the mask image itself (this defines the shape)
+                  ctx.drawImage(overlayState.imgMask, offsetX, offsetY, drawWidth, drawHeight);
+
+                  // Use 'source-in' to keep the part of the video *inside* the mask shape
+                  ctx.globalCompositeOperation = 'source-in';
+
+                  // Redraw the video frame. Only the parts overlapping the mask's opaque pixels will remain.
+                  ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+
+                  // Restore context (removes source-in)
+                  ctx.restore();
+
+                  // Now, draw the darkening overlay *behind* the clipped video
+                  ctx.save();
+                  ctx.fillStyle = 'rgba(0,0,0,0.4)'; // Semi-transparent black
+                  // Use 'destination-over' to draw behind existing content
+                  ctx.globalCompositeOperation = 'destination-over';
+                  // Fill the entire video area. This will only be visible where the clipped video isn't.
+                  ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
+                  ctx.restore(); // Restore context
+                }
+
+                // 3. Draw minor/text overlays on top (if enabled)
+                if (overlayState) {
+                    if (overlayState.minor && overlayState.imgMinor.complete && overlayState.imgMinor.naturalWidth > 0) {
+                       ctx.drawImage(overlayState.imgMinor, offsetX, offsetY, drawWidth, drawHeight);
+                    }
+                    if (overlayState.text && overlayState.imgText.complete && overlayState.imgText.naturalWidth > 0) {
+                       ctx.drawImage(overlayState.imgText, offsetX, offsetY, drawWidth, drawHeight);
+                    }
                 }
 
               } catch (e) {
