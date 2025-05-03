@@ -1073,12 +1073,34 @@
         controlsContainer.className = "controls-container";
         container.appendChild(controlsContainer);
 
-        /* Privates UI toggle (no DOM overlays) */
-        if (title === 'privates'){
-          // Preload images
+        // --- Privates Overlays (fix) ---
+        if (streamTitle === 'privates') {
+          // 1) compute a safe key from the URL:
+          const safeKey = encodeURIComponent(url).replace(/[^A-Za-z0-9_]/g, '_');
+
+          // 2) build the sidebar HTML with those safe IDs:
+          const rightSidebar = document.createElement('div');
+          rightSidebar.className = 'right-sidebar';
+          rightSidebar.innerHTML = `
+            <h4>Spot Features</h4>
+            <ul>
+              <li>
+                <input type="checkbox" id="cb_${safeKey}_pp" data-spot="pp">
+                <label for="cb_${safeKey}_pp">Pleasure Point</label>
+              </li>
+              <li>
+                <input type="checkbox" id="cb_${safeKey}_jacks" data-spot="jacks">
+                <label for="cb_${safeKey}_jacks">Jack's</label>
+              </li>
+              <!-- … other spots … -->
+            </ul>
+          `;
+          container.appendChild(rightSidebar);
+
+          // 3) preload images
           const minorImg = new Image();
           minorImg.src = "https://devenf23.github.io/surfcam/privates/Jack's/Jack's_minor.png";
-          const textImg = new Image();
+          const textImg  = new Image();
           textImg.src = "https://devenf23.github.io/surfcam/privates/Jack's/Jack's_text.png";
           const majorImg = new Image();
           majorImg.src = "https://devenf23.github.io/surfcam/privates/Jack's/Jack's_major.png";
@@ -1091,49 +1113,38 @@
             majorImg
           };
 
-          // Gear button
+          // 4) add gear icon
           const overlayIcon = document.createElement('button');
           overlayIcon.className = 'overlay-icon';
           overlayIcon.innerHTML = '⚙️';
           overlayIcon.title = 'Spot Overlays';
           canvasWrapper.appendChild(overlayIcon);
 
-          // Right sidebar
-          const rightSidebar = document.createElement('div');
-          rightSidebar.className = 'right-sidebar';
-          rightSidebar.innerHTML = `
-            <h4>Spot Features</h4>
-            <ul>
-              <li><input type="checkbox" id="cb-${encodeURIComponent(url)}-pp"><label for="cb-${encodeURIComponent(url)}-pp">Pleasure Point</label></li>
-              <li><input type="checkbox" id="cb-${encodeURIComponent(url)}-jacks"><label for="cb-${encodeURIComponent(url)}-jacks">Jack's</label></li>
-              <li><input type="checkbox" id="cb-${encodeURIComponent(url)}-hook"><label for="cb-${encodeURIComponent(url)}-hook">The Hook</label></li>
-              <li><input type="checkbox" id="cb-${encodeURIComponent(url)}-sharks"><label for="cb-${encodeURIComponent(url)}-sharks">Sharks</label></li>
-              <li><input type="checkbox" id="cb-${encodeURIComponent(url)}-inbetweens"><label for="cb-${encodeURIComponent(url)}-inbetweens">In-betweens</label></li>
-              <li><input type="checkbox" id="cb-${encodeURIComponent(url)}-privates"><label for="cb-${encodeURIComponent(url)}-privates">Privates</label></li>
-            </ul>`;
-          container.appendChild(rightSidebar);
-
-          overlayIcon.addEventListener('click', e=>{
+          overlayIcon.addEventListener('click', e => {
             e.stopPropagation();
             rightSidebar.classList.toggle('visible');
           });
 
-          const jacksCb = rightSidebar.querySelector(`#cb-${encodeURIComponent(url)}-jacks`);
-          if (jacksCb){
-            jacksCb.addEventListener('change', e=>{
+          // 5) use getElementById() to find the checkbox
+          const jacksCb = document.getElementById(`cb_${safeKey}_jacks`);
+          if (jacksCb) {
+            jacksCb.addEventListener('change', e => {
               const on = e.target.checked;
               container.overlays.mask  = on;
               container.overlays.minor = on;
               container.overlays.text  = on;
             });
           } else {
-            console.error(`Could not find Jack's checkbox for ${url}`);
+            console.error(`Could not find Jack's checkbox: cb_${safeKey}_jacks`);
           }
 
-          container.addEventListener('click', e=>{
-            if (rightSidebar.classList.contains('visible') &&
-                !rightSidebar.contains(e.target) &&
-                e.target !== overlayIcon){
+          // 6) close sidebar when you click outside
+          container.addEventListener('click', e => {
+            if (
+              rightSidebar.classList.contains('visible') &&
+              !rightSidebar.contains(e.target) &&
+              e.target !== overlayIcon
+            ) {
               rightSidebar.classList.remove('visible');
             }
           });
