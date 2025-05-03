@@ -506,8 +506,9 @@
         background-color: rgba(0, 0, 0, 0.5); /* Darkening effect */
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
-        mask-image: url('/surfcam/privates/Jack\'s/Jack\'s_major.png');
-        -webkit-mask-image: url('surfcam/privates/Jack\'s/Jack\'s_major.png');
+        /* Updated path */
+        mask-image: url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png');
+        -webkit-mask-image: url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png');
         mask-size: contain; /* Adjust as needed */
         -webkit-mask-size: contain;
         mask-repeat: no-repeat;
@@ -733,15 +734,18 @@
             // Right Sidebar
             const rightSidebar = document.createElement('div');
             rightSidebar.className = 'right-sidebar'; // Initially hidden by CSS transform
+            // Function to create a unique, safe ID for checkboxes
+            const createSafeId = (prefix, value) => `${prefix}-${encodeURIComponent(value).replace(/[.%*+?^${}()|[\]\\]/g, '_')}`; // Replace unsafe chars
+
             rightSidebar.innerHTML = `
                 <h4>Spot Features</h4>
                 <ul>
-                    <li><input type="checkbox" id="cb-pp-${url}" data-spot="pp"><label for="cb-pp-${url}">Pleasure Point</label></li>
-                    <li><input type="checkbox" id="cb-jacks-${url}" data-spot="jacks"><label for="cb-jacks-${url}">Jack's</label></li>
-                    <li><input type="checkbox" id="cb-hook-${url}" data-spot="hook"><label for="cb-hook-${url}">The Hook</label></li>
-                    <li><input type="checkbox" id="cb-sharks-${url}" data-spot="sharks"><label for="cb-sharks-${url}">Sharks</label></li>
-                    <li><input type="checkbox" id="cb-inbetweens-${url}" data-spot="inbetweens"><label for="cb-inbetweens-${url}">In-betweens</label></li>
-                    <li><input type="checkbox" id="cb-privates-${url}" data-spot="privates"><label for="cb-privates-${url}">Privates</label></li>
+                    <li><input type="checkbox" id="${createSafeId('cb-pp', url)}" data-spot="pp"><label for="${createSafeId('cb-pp', url)}">Pleasure Point</label></li>
+                    <li><input type="checkbox" id="${createSafeId('cb-jacks', url)}" data-spot="jacks"><label for="${createSafeId('cb-jacks', url)}">Jack's</label></li>
+                    <li><input type="checkbox" id="${createSafeId('cb-hook', url)}" data-spot="hook"><label for="${createSafeId('cb-hook', url)}">The Hook</label></li>
+                    <li><input type="checkbox" id="${createSafeId('cb-sharks', url)}" data-spot="sharks"><label for="${createSafeId('cb-sharks', url)}">Sharks</label></li>
+                    <li><input type="checkbox" id="${createSafeId('cb-inbetweens', url)}" data-spot="inbetweens"><label for="${createSafeId('cb-inbetweens', url)}">In-betweens</label></li>
+                    <li><input type="checkbox" id="${createSafeId('cb-privates', url)}" data-spot="privates"><label for="${createSafeId('cb-privates', url)}">Privates</label></li>
                 </ul>
             `;
             container.appendChild(rightSidebar); // Append to main container
@@ -749,19 +753,22 @@
             // Image Overlays (inside canvasWrapper)
             const jacksMinor = document.createElement('img');
             jacksMinor.className = 'image-overlay jacks-minor';
-            jacksMinor.src = '/surfcam/privates/Jack\'s/Jack\'s_minor.png';
+            jacksMinor.src = 'https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_minor.png'; // Updated path
             jacksMinor.alt = "Jack's Minor Overlay";
             canvasWrapper.appendChild(jacksMinor);
 
             const jacksText = document.createElement('img');
             jacksText.className = 'image-overlay jacks-text';
-            jacksText.src = '/surfcam/privates/Jack\'s/Jack\'s_text.png';
+            jacksText.src = 'https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_text.png'; // Updated path
             jacksText.alt = "Jack's Text Overlay";
             canvasWrapper.appendChild(jacksText);
 
             // Mask Overlay (inside canvasWrapper)
             const maskOverlay = document.createElement('div');
             maskOverlay.className = 'mask-overlay jacks-major-mask';
+            // Note: Setting mask-image via JS style is more reliable than CSS if path has special chars
+            maskOverlay.style.webkitMaskImage = `url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png')`;
+            maskOverlay.style.maskImage = `url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png')`;
             canvasWrapper.appendChild(maskOverlay);
 
             // Event Listeners
@@ -770,13 +777,19 @@
                 rightSidebar.classList.toggle('visible');
             });
 
-            const jacksCheckbox = rightSidebar.querySelector('#cb-jacks-' + url);
-            jacksCheckbox.addEventListener('change', (e) => {
-                const isChecked = e.target.checked;
-                jacksMinor.classList.toggle('visible', isChecked);
-                jacksText.classList.toggle('visible', isChecked);
-                maskOverlay.classList.toggle('visible', isChecked);
-            });
+            const jacksCheckboxId = createSafeId('cb-jacks', url); // Use the safe ID
+            const jacksCheckbox = rightSidebar.querySelector(`#${jacksCheckboxId}`);
+            if (jacksCheckbox) { // Check if element was found
+                jacksCheckbox.addEventListener('change', (e) => {
+                    const isChecked = e.target.checked;
+                    jacksMinor.classList.toggle('visible', isChecked);
+                    jacksText.classList.toggle('visible', isChecked);
+                    maskOverlay.classList.toggle('visible', isChecked);
+                });
+            } else {
+                console.error(`Could not find checkbox with ID: ${jacksCheckboxId}`);
+            }
+
 
             // Close sidebar on outside click
             container.addEventListener('click', (e) => {
@@ -1121,7 +1134,8 @@
           initialLocalMid      = null;
           gestureRect          = null; // Clear cached rect
 
-          // Don't reset lastTranslateX/Y here, let it persist
+          // Fix 1: Persist translation state correctly
+          // No need to reset lastTranslateX/Y here, gestureStartX/Y handles it
           if (currentScale <= 1) {
             currentScale       = 1;
             currentTranslateX  = 0;
@@ -1129,6 +1143,10 @@
             // Reset gesture start as well if scale is 1
             gestureStartX      = 0;
             gestureStartY      = 0;
+          } else {
+             // Update gesture start for the next potential gesture
+             gestureStartX = currentTranslateX;
+             gestureStartY = currentTranslateY;
           }
           applyTransform(); // Apply final clamped transform
         }
