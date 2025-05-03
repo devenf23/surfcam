@@ -155,6 +155,7 @@
         display: block; /* Ensure proper block display */
         width: 100%; /* Make video fill width */
         height: auto; /* Maintain aspect ratio */
+        aspect-ratio: 16 / 9; /* Add aspect ratio to reserve space */
         min-height: 150px; /* Add min-height as fallback */
         background: #000; /* Black background */
     }
@@ -204,11 +205,11 @@
     /* Canvas in Fullscreen */
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
-      /* Fix 1: Allow wrapper to fill space, maintain aspect ratio */
-      width: 100% !important;
-      height: 100% !important; /* Let canvas dictate size */
-      max-height: 100vh !important; /* Remove constraint */
-      /* aspect-ratio: 16 / 9; */ /* Rely on canvas draw logic */
+      /* Fix 2: Simplify fullscreen sizing */
+      width: 100%;  /* Allow flex centering to handle aspect */
+      height: 100%; /* Allow flex centering to handle aspect */
+      /* max-height: 100vh !important; */ /* Removed */
+      /* aspect-ratio: 16 / 9; */ /* Removed */
       border-radius: 0;
       position: relative; /* Keep relative for overlays */
       flex-grow: 1; /* Allow wrapper to grow */
@@ -307,7 +308,7 @@
         border-radius: 8px; /* Add slight rounding */
         background: rgba(0,0,0,0.75); /* Overlay background */
         pointer-events: none; /* Ignore mouse when hidden */
-        width: 90%; /* Fix 2: Stretch horizontally */
+        width: 90%; /* Stretch horizontally */
         max-width: 800px; /* Limit width */
         margin: 0; /* Reset margin */
         flex-shrink: 0; /* Prevent shrinking */
@@ -478,7 +479,7 @@
         height: 100%;
         background: rgba(50, 50, 50, 0.9);
         z-index: 20; /* Above icon */
-        transform: translateX(100%);
+        transform: translateX(100%); /* Fix 5: Start hidden */
         transition: transform 0.3s ease;
         padding: 15px;
         box-sizing: border-box;
@@ -540,8 +541,8 @@
         /* Fix 1: Lighter background, slight blur */
         background-color: rgba(0, 0, 0, 0.3); /* Less dark */
         /* Fix 1: Add slight blur for feathering */
-        filter: blur(2px);
-        -webkit-filter: blur(2px);
+        /* filter: blur(2px); */ /* Removing blur to test mask */
+        /* -webkit-filter: blur(2px); */
         /* Standard mask properties */
         mask-image: url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png');
         mask-size: contain;
@@ -554,7 +555,8 @@
         -webkit-mask-size: contain;
         -webkit-mask-repeat: no-repeat;
         -webkit-mask-position: center;
-        -webkit-mask-composite: destination-out; /* Webkit equivalent for exclude */
+        /* Fix 1: Try source-out for webkit inversion */
+        -webkit-mask-composite: source-out; /* destination-out might also work */
 
         display: none; /* Hidden by default */
         pointer-events: none;
