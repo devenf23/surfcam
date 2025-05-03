@@ -204,13 +204,25 @@
     /* Canvas in Fullscreen */
     .player-container:fullscreen .canvas-wrapper,
     .player-container:-webkit-full-screen .canvas-wrapper {
-      width: 100% !important; height: auto !important;
-      max-height: calc(100vh - 60px); aspect-ratio: 16 / 9;
-      border-radius: 0; position: relative; flex-shrink: 1;
+      /* Fix 1: Allow wrapper to fill space, maintain aspect ratio */
+      width: 100% !important;
+      height: 100% !important; /* Let canvas dictate size */
+      max-height: 100vh !important; /* Remove constraint */
+      /* aspect-ratio: 16 / 9; */ /* Rely on canvas draw logic */
+      border-radius: 0;
+      position: relative; /* Keep relative for overlays */
+      flex-grow: 1; /* Allow wrapper to grow */
+      display: flex; /* Center canvas */
+      justify-content: center;
+      align-items: center;
     }
     .player-container:fullscreen .canvas-wrapper canvas,
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
-      width: 100% !important; height: 100% !important;
+      /* Canvas size controlled by drawing logic to maintain aspect */
+      width: auto !important;
+      height: auto !important;
+      max-width: 100%;
+      max-height: 100%;
     }
     /* MP4 Video in Fullscreen (Uses default controls) */
     .player-container.mp4-player:fullscreen .source-video,
@@ -283,16 +295,34 @@
     }
 
     /* Desktop Controls ONLY in Fullscreen (for HLS/Canvas) */
+    /* Fix 2: Revert to absolute positioning for overlay */
     .player-container:not(.mp4-player):fullscreen .controls-container,
     .player-container:not(.mp4-player):-webkit-full-screen .controls-container {
-        position: relative; bottom: auto; left: auto; right: auto;
-        opacity: 1; transition: none; border-radius: 0; background: #222;
-        pointer-events: auto; width: 100%; max-width: 800px;
-        margin: 10px auto 0 auto; border-radius: 8px; flex-shrink: 0;
+        position: absolute; /* Overlay in fullscreen */
+        bottom: 10px; /* Position at bottom */
+        left: 50%; /* Center horizontally */
+        transform: translateX(-50%); /* Center horizontally */
+        opacity: 0; /* Start hidden */
+        transition: opacity 0.3s ease; /* Smooth fade */
+        border-radius: 8px; /* Add slight rounding */
+        background: rgba(0,0,0,0.75); /* Overlay background */
+        pointer-events: none; /* Ignore mouse when hidden */
+        width: auto; /* Allow natural width based on content */
+        max-width: 90%; /* Limit width */
+        margin: 0; /* Reset margin */
+        flex-shrink: 0; /* Prevent shrinking */
     }
+    /* Fix 2: Show controls on hover */
+    .player-container:not(.mp4-player):fullscreen:hover .controls-container,
+    .player-container:not(.mp4-player):-webkit-full-screen:hover .controls-container {
+        opacity: 1;
+        pointer-events: auto; /* Respond to mouse when visible */
+    }
+
     .player-container:not(.mp4-player):fullscreen .title-bar,
     .player-container:not(.mp4-player):-webkit-full-screen .title-bar {
-        border-radius: 0 0 8px 8px; border-top: 1px solid #444;
+        border-radius: 0 0 8px 8px; /* Match container rounding */
+        border-top: 1px solid #444; /* Add separator */
     }
 
     /* ------- URL MODAL & BACKDROP ------- */
@@ -503,18 +533,25 @@
         width: 100%;
         height: 100%;
         z-index: 4; /* Below image overlays */
-        background-color: rgba(0, 0, 0, 0.5); /* Darkening effect */
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-        /* Updated path */
+        /* Fix 1: Lighter background, slight blur */
+        background-color: rgba(0, 0, 0, 0.3); /* Less dark */
+        backdrop-filter: blur(2px); /* Less blur */
+        -webkit-backdrop-filter: blur(2px);
+        /* Fix 1: Use mask-composite to subtract */
+        /* Standard mask properties */
         mask-image: url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png');
-        -webkit-mask-image: url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png');
-        mask-size: contain; /* Adjust as needed */
-        -webkit-mask-size: contain;
+        mask-size: contain;
         mask-repeat: no-repeat;
-        -webkit-mask-repeat: no-repeat;
         mask-position: center;
+        /* Invert the mask effect (show overlay *outside* the image) */
+        mask-composite: exclude;
+        /* Webkit equivalents */
+        -webkit-mask-image: url('https://devenf23.github.io/surfcam/privates/Jack\'s/Jack\'s_major.png');
+        -webkit-mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
         -webkit-mask-position: center;
+        -webkit-mask-composite: destination-out; /* Webkit equivalent for exclude */
+
         display: none; /* Hidden by default */
         pointer-events: none;
     }
