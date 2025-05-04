@@ -1643,31 +1643,51 @@
           // If the click was handled by the sidebar closing logic (capture phase), do nothing here.
           // Check if default was prevented by the capture phase listener
           if (e.defaultPrevented) {
+              console.log("Click prevented by sidebar close handler.");
               return;
           }
 
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
           // Ignore clicks on overlay controls
-          if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar')) return;
+          if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar')) {
+             console.log("Click ignored: on overlay controls.");
+             return;
+          }
           // Ignore clicks outside the canvas wrapper unless in fullscreen
-          if (!isFs && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) return;
+          if (!isFs && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) {
+             console.log("Click ignored: outside canvas wrapper.");
+             return;
+          }
           // Ignore right-clicks or if currently dragging
-          if (e.button !== 0 || isDragging) return;
+          if (e.button !== 0 || isDragging) {
+             console.log(`Click ignored: button=${e.button}, isDragging=${isDragging}`);
+             return;
+          }
 
           const now = Date.now();
           if (now - lastClickTime < 300) { // Double-click detected
+            console.log("Double click detected");
             clearTimeout(clickTimeout); // Cancel single-click action
             lastClickTime = 0; // Reset timer
             // Toggle fullscreen
             if (!isFs) enterNativeFullScreen(container);
             else exitNativeFullScreen();
           } else { // Potential single-click
+             console.log("Potential single click...");
             clickTimeout = setTimeout(() => {
+              console.log("Single click confirmed.");
               // Ensure click was on the canvas area
               if (e.target === canvasWrapper || canvasWrapper.contains(e.target)) {
                 // Toggle play/pause
-                if (video.paused) video.play().catch(()=>{});
-                else video.pause();
+                if (video.paused) {
+                    console.log("Playing video");
+                    video.play().catch(()=>{});
+                } else {
+                    console.log("Pausing video");
+                    video.pause();
+                }
+              } else {
+                 console.log("Single click target was not canvas area.");
               }
             }, 300); // Wait for potential double-click
           }
@@ -1924,14 +1944,15 @@
         if (Hls.isSupported() && !preferNativeHls) {
           // Use HLS.js
           hlsInstance = new Hls({
-            // Configuration options
-            maxBufferLength: 60,       // Max buffer size in seconds
-            maxMaxBufferLength: 120,   // Max buffer size HLS.js will try to maintain
-            liveSyncDurationCount: 3,  // Number of segments from edge to sync to for live
+            // Configuration options for stability
+            maxBufferLength: 30,       // Default: 30
+            maxMaxBufferLength: 60,   // Default: 600 - Reduce significantly for live
+            liveSyncDurationCount: 4,  // Default: 3 - How many segments behind edge to sync to
+            liveMaxLatencyDurationCount: 10, // Default: Infinity - Allow falling further behind edge
+            maxBufferHole: 0.8,         // Default: 0.5 - Tolerate slightly larger gaps
             fragLoadingTimeOut: 20000, // Timeout for fragment loading
             manifestLoadingTimeOut: 20000, // Timeout for manifest loading
             levelLoadingTimeOut: 20000, // Timeout for level playlist loading
-            progressive: true,         // Enable progressive loading for VOD? (might help some streams)
             // Custom loader to conditionally prepend proxy URL
             loader: class extends Hls.DefaultConfig.loader {
               load(context, config, callbacks) {
@@ -1966,38 +1987,55 @@
             }
           });
 
-          // HLS.js error handling
+          // HLS.js error handling - Enhanced
           hlsInstance.on(Hls.Events.ERROR, (event, data) => {
             console.error(`HLS Error: Type=${data.type}, Details=${data.details}`, data);
+
             if (data.fatal) {
+              // Handle fatal errors (Network, Manifest, etc.)
               switch(data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  // Retry network errors after a delay
                   console.log("Network error, retrying load...");
                   setTimeout(() => { if (hlsInstance) hlsInstance.startLoad(); }, 2000);
                   break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
-                  // Try to recover from media errors
-                  console.log("Media error, attempting recovery...");
+                  console.log("Fatal media error, attempting recovery...");
                   if (hlsInstance) hlsInstance.recoverMediaError();
                   break;
                 default:
-                  // For other fatal errors, destroy and potentially recreate
                   console.log("Unrecoverable HLS error, destroying instance.");
                   if (hlsInstance) {
                       hlsInstance.destroy();
-                      hlsInstance = null; // Clear instance variable
+                      hlsInstance = null;
                       playerObject.hls = null;
                   }
-                  // Optional: Schedule a full player rebuild after a longer delay
-                  setTimeout(() => {
-                    // Check if player still exists and is enabled before recreating
-                    if (players[url] && players[url].container.isConnected && getStreamList().find(s=>s.url===url && s.enabled)) {
-                       console.log("Attempting to recreate player after fatal error...");
-                       updateStreamEnabled(url, true); // Re-enable (which rebuilds)
-                    }
-                  }, 5000);
+                  // Optional: Schedule a full player rebuild
+                  // setTimeout(() => { ... }, 5000);
                   break;
+              }
+            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              // Handle non-fatal media errors (like buffer stalls/holes)
+              switch (data.details) {
+                case Hls.ErrorDetails.BUFFER_STALLED_ERROR:
+                case Hls.ErrorDetails.BUFFER_SEEK_OVER_HOLE:
+                  console.warn(`Non-fatal media error (${data.details}), attempting recovery.`);
+                  if (hlsInstance) {
+                    hlsInstance.recoverMediaError();
+                    // As a fallback, try seeking forward slightly if recovery fails
+                    // const currentTime = video.currentTime;
+                    // setTimeout(() => {
+                    //   if (video.paused && video.currentTime === currentTime) { // Check if still stalled
+                    //     video.currentTime += 0.1; // Seek forward a tiny bit
+                    //     video.play().catch(()=>{});
+                    //   }
+                    // }, 500);
+                  }
+                  break;
+                case Hls.ErrorDetails.BUFFER_FULL_ERROR:
+                  // Usually not an issue, but log it
+                  console.log("Buffer full, HLS.js should handle this.");
+                  break;
+                 // Potentially handle other non-fatal media errors if needed
               }
             }
           });
