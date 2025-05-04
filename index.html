@@ -1272,7 +1272,7 @@
               <li><input type="checkbox" id="${createSafeId('cb-jacks', url)}" data-spot="jacks"><label for="${createSafeId('cb-jacks', url)}">Jack's</label></li>
               <li><input type="checkbox" id="${createSafeId('cb-hook', url)}" data-spot="hook"><label for="${createSafeId('cb-hook', url)}">The Hook</label></li>
               <li><input type="checkbox" id="${createSafeId('cb-sharks', url)}" data-spot="sharks"><label for="${createSafeId('cb-sharks', url)}">Sharks</label></li>
-              <li><input type="checkbox" id="${createSafeId('cb-inbetweens', url)}" data-spot="inbetweens"><label for="${createSafeId('cb-inbetweens', url)}">In-betweens</label></li>
+              <li><input type="checkbox" id="${createSafeId('cb-ib', url)}" data-spot="ib"><label for="${createSafeId('cb-ib', url)}">In-betweens</label></li>
               <li><input type="checkbox" id="${createSafeId('cb-privates', url)}" data-spot="privates"><label for="${createSafeId('cb-privates', url)}">Privates</label></li>
             </ul>`;
           container.appendChild(rightSidebar); // Add sidebar to main container
@@ -1308,8 +1308,8 @@
           // --- Track which overlays to draw ---
           currentOverlays = {
             // Jack's
-            mask: false, minor: false, text: false,
-            imgMask: jacksMaskImg, imgMinor: jacksMinorImg, imgText: jacksTextImg,
+            jacks_mask: false, jacks_minor: false, jacks_text: false,
+            imgJacksMask: jacksMaskImg, imgJacksMinor: jacksMinorImg, imgJacksText: jacksTextImg,
             // Pleasure Point
             pp_mask: false, pp_minor: false, pp_text: false,
             imgPpMask: ppMaskImg, imgPpMinor: ppMinorImg, imgPpText: ppTextImg,
@@ -1336,38 +1336,29 @@
 
           // --- Hook the checkboxes ---
           const setupCheckboxListener = (spotPrefix) => {
-              const checkbox = rightSidebar.querySelector(`#${createSafeId(`cb-${spotPrefix}`, url)}`);
+              // Use the data-spot attribute to find the checkbox
+              const checkbox = rightSidebar.querySelector(`input[data-spot="${spotPrefix}"]`);
               if (checkbox) {
                   checkbox.addEventListener('change', e => {
                       const on = e.target.checked;
                       if (currentOverlays) {
+                          // Use the spotPrefix directly to update state properties
                           currentOverlays[`${spotPrefix}_mask`] = on;
                           currentOverlays[`${spotPrefix}_minor`] = on;
                           currentOverlays[`${spotPrefix}_text`] = on;
                       }
                   });
               } else {
-                  console.error(`Could not find ${spotPrefix} checkbox with ID: ${createSafeId(`cb-${spotPrefix}`, url)}`);
+                  console.error(`Could not find ${spotPrefix} checkbox`);
               }
           };
 
           setupCheckboxListener('pp');
-          setupCheckboxListener('jacks'); // Renamed from 'mask' etc.
+          setupCheckboxListener('jacks');
           setupCheckboxListener('hook');
           setupCheckboxListener('sharks');
-          setupCheckboxListener('inbetweens'); // Assuming 'inbetweens' maps to 'ib' prefix in state
+          setupCheckboxListener('ib'); // Corrected prefix for In-betweens
           setupCheckboxListener('privates');
-
-          // Rename Jack's state properties for consistency
-          if (currentOverlays) {
-              currentOverlays.jacks_mask = currentOverlays.mask; delete currentOverlays.mask;
-              currentOverlays.jacks_minor = currentOverlays.minor; delete currentOverlays.minor;
-              currentOverlays.jacks_text = currentOverlays.text; delete currentOverlays.text;
-              currentOverlays.imgJacksMask = currentOverlays.imgMask; delete currentOverlays.imgMask;
-              currentOverlays.imgJacksMinor = currentOverlays.imgMinor; delete currentOverlays.imgMinor;
-              currentOverlays.imgJacksText = currentOverlays.imgText; delete currentOverlays.imgText;
-          }
-
 
           // Close sidebar if clicking outside
           container.addEventListener('click', e => {
@@ -1376,12 +1367,12 @@
               // Check if the click was outside the sidebar and not on the toggle icon
               if (!rightSidebar.contains(e.target) && e.target !== overlayIcon) {
                 rightSidebar.classList.remove('visible');
-                // Important: Stop propagation ONLY if we closed the sidebar this way
-                // to prevent the main click handler from pausing the video.
-                e.stopPropagation();
+                // Prevent the click from bubbling up and potentially pausing video
+                e.preventDefault(); // Prevent default action (like text selection)
+                e.stopPropagation(); // Stop the event from reaching the main click handler
               }
             }
-          }, true); // Use capture phase to potentially stop propagation early
+          }, true); // Use capture phase to catch the click early
 
         }
         /* --- end privates overlays setup --- */
@@ -1445,13 +1436,17 @@
                 // 2. Check if any mask needs to be applied
                 const activeMasks = [];
                 if (overlayState) {
-                    if (overlayState.jacks_mask && overlayState.imgJacksMask?.complete && overlayState.imgJacksMask.naturalWidth > 0) activeMasks.push(overlayState.imgJacksMask);
-                    if (overlayState.pp_mask && overlayState.imgPpMask?.complete && overlayState.imgPpMask.naturalWidth > 0) activeMasks.push(overlayState.imgPpMask);
-                    if (overlayState.hook_mask && overlayState.imgHookMask?.complete && overlayState.imgHookMask.naturalWidth > 0) activeMasks.push(overlayState.imgHookMask);
-                    if (overlayState.sharks_mask && overlayState.imgSharksMask?.complete && overlayState.imgSharksMask.naturalWidth > 0) activeMasks.push(overlayState.imgSharksMask);
-                    if (overlayState.ib_mask && overlayState.imgIbMask?.complete && overlayState.imgIbMask.naturalWidth > 0) activeMasks.push(overlayState.imgIbMask);
-                    if (overlayState.privates_mask && overlayState.imgPrivatesMask?.complete && overlayState.imgPrivatesMask.naturalWidth > 0) activeMasks.push(overlayState.imgPrivatesMask);
+                    // Helper to check if mask is active and image is ready
+                    const isMaskReady = (prefix) => overlayState[`${prefix}_mask`] && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`]?.complete && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`].naturalWidth > 0;
+
+                    if (isMaskReady('jacks')) activeMasks.push(overlayState.imgJacksMask);
+                    if (isMaskReady('pp')) activeMasks.push(overlayState.imgPpMask);
+                    if (isMaskReady('hook')) activeMasks.push(overlayState.imgHookMask);
+                    if (isMaskReady('sharks')) activeMasks.push(overlayState.imgSharksMask);
+                    if (isMaskReady('ib')) activeMasks.push(overlayState.imgIbMask);
+                    if (isMaskReady('privates')) activeMasks.push(overlayState.imgPrivatesMask);
                 }
+
 
                 if (activeMasks.length > 0 && offscreenCtx) {
                     // --- Prepare masked video on offscreen canvas ---
@@ -1461,7 +1456,7 @@
                     // Draw the combined mask shape onto offscreen canvas
                     offscreenCtx.globalCompositeOperation = 'source-over'; // Start with source-over for the first mask
                     activeMasks.forEach((maskImg, index) => {
-                        // Use 'lighter' for subsequent masks to combine alpha channels
+                        // Use 'lighter' for subsequent masks to combine alpha channels (adds transparency)
                         if (index > 0) {
                            offscreenCtx.globalCompositeOperation = 'lighter';
                         }
@@ -1479,28 +1474,31 @@
                     mainCtx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
 
                     // Draw the result from the offscreen canvas (video clipped to mask)
+                    // This effectively replaces the darkened area inside the mask with the video
                     mainCtx.drawImage(playerObject.offscreenCanvas, 0, 0);
                 }
 
                 // 3. Draw minor/text overlays on top (if enabled) - on main canvas
                 if (overlayState) {
-                    const drawOverlay = (flag, img) => {
-                        if (flag && img?.complete && img.naturalWidth > 0) {
-                            mainCtx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                    const drawOverlay = (prefix) => {
+                        const minorFlag = overlayState[`${prefix}_minor`];
+                        const textFlag = overlayState[`${prefix}_text`];
+                        const minorImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Minor`];
+                        const textImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Text`];
+
+                        if (minorFlag && minorImg?.complete && minorImg.naturalWidth > 0) {
+                            mainCtx.drawImage(minorImg, offsetX, offsetY, drawWidth, drawHeight);
+                        }
+                        if (textFlag && textImg?.complete && textImg.naturalWidth > 0) {
+                            mainCtx.drawImage(textImg, offsetX, offsetY, drawWidth, drawHeight);
                         }
                     };
-                    drawOverlay(overlayState.jacks_minor, overlayState.imgJacksMinor);
-                    drawOverlay(overlayState.jacks_text, overlayState.imgJacksText);
-                    drawOverlay(overlayState.pp_minor, overlayState.imgPpMinor);
-                    drawOverlay(overlayState.pp_text, overlayState.imgPpText);
-                    drawOverlay(overlayState.hook_minor, overlayState.imgHookMinor);
-                    drawOverlay(overlayState.hook_text, overlayState.imgHookText);
-                    drawOverlay(overlayState.sharks_minor, overlayState.imgSharksMinor);
-                    drawOverlay(overlayState.sharks_text, overlayState.imgSharksText);
-                    drawOverlay(overlayState.ib_minor, overlayState.imgIbMinor);
-                    drawOverlay(overlayState.ib_text, overlayState.imgIbText);
-                    drawOverlay(overlayState.privates_minor, overlayState.imgPrivatesMinor);
-                    drawOverlay(overlayState.privates_text, overlayState.imgPrivatesText);
+                    drawOverlay('jacks');
+                    drawOverlay('pp');
+                    drawOverlay('hook');
+                    drawOverlay('sharks');
+                    drawOverlay('ib');
+                    drawOverlay('privates');
                 }
 
             } catch (e) {
@@ -1641,9 +1639,8 @@
         let lastClickTime = 0;
         const handleDesktopClick = e => {
           // If the click was handled by the sidebar closing logic (capture phase), do nothing here.
+          // Check if default was prevented by the capture phase listener
           if (e.defaultPrevented) {
-              // Check if the event propagation was stopped, indicating sidebar close click
-              // This check might be redundant if stopPropagation was used effectively in capture phase
               return;
           }
 
