@@ -1101,7 +1101,8 @@
         video.controls = true; // Use native controls for MP4
         video.muted = false; // Allow sound for MP4
         video.autoplay = false; // Don't autoplay MP4 typically
-        video.src = PROXY_PREFIX + encodeURIComponent(url);
+        // Conditionally use proxy
+        video.src = IS_MOBILE ? PROXY_PREFIX + encodeURIComponent(url) : url;
         container.appendChild(video);
 
         // Add a simple title bar below the video
@@ -1359,6 +1360,7 @@
           setupCheckboxListener('sharks');
           setupCheckboxListener('ib'); // Corrected prefix for In-betweens
           setupCheckboxListener('privates');
+
 
           // Close sidebar if clicking outside
           container.addEventListener('click', e => {
@@ -1930,15 +1932,24 @@
             manifestLoadingTimeOut: 20000, // Timeout for manifest loading
             levelLoadingTimeOut: 20000, // Timeout for level playlist loading
             progressive: true,         // Enable progressive loading for VOD? (might help some streams)
-            // Custom loader to prepend proxy URL
+            // Custom loader to conditionally prepend proxy URL
             loader: class extends Hls.DefaultConfig.loader {
               load(context, config, callbacks) {
                 let requestUrl = context.url;
-                // Avoid double-proxying if URL already starts with it
-                while (requestUrl.startsWith(PROXY_PREFIX)) {
-                  requestUrl = decodeURIComponent(requestUrl.slice(PROXY_PREFIX.length));
+                // Only proxy if on mobile
+                if (IS_MOBILE) {
+                    // Avoid double-proxying if URL already starts with it
+                    while (requestUrl.startsWith(PROXY_PREFIX)) {
+                      requestUrl = decodeURIComponent(requestUrl.slice(PROXY_PREFIX.length));
+                    }
+                    context.url = PROXY_PREFIX + encodeURIComponent(requestUrl);
+                } else {
+                    // On desktop, ensure we are using the original URL (remove proxy if somehow present)
+                     while (requestUrl.startsWith(PROXY_PREFIX)) {
+                      requestUrl = decodeURIComponent(requestUrl.slice(PROXY_PREFIX.length));
+                    }
+                    context.url = requestUrl;
                 }
-                context.url = PROXY_PREFIX + encodeURIComponent(requestUrl);
                 super.load(context, config, callbacks);
               }
             }
@@ -1994,7 +2005,8 @@
         } else if (canPlayNativeHls) {
           // Use native HLS playback
           console.log(`Using native HLS for ${url}`);
-          video.src = PROXY_PREFIX + encodeURIComponent(url); // Set proxied URL directly
+          // Conditionally use proxy
+          video.src = IS_MOBILE ? PROXY_PREFIX + encodeURIComponent(url) : url;
           // Native HLS often requires explicit play action
           if (video.autoplay) {
              video.play().catch(()=>{});
