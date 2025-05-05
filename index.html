@@ -348,9 +348,17 @@
       cursor: pointer;
       z-index: 2;
       box-shadow: 0 0 5px rgba(0,0,0,0.5);
-      transition: transform 0.1s ease;
+      opacity: 0; /* Hidden by default */
+      transition: opacity 0.2s, transform 0.1s ease; /* Add opacity transition */
     }
-    .progress-bar:hover .thumb { transform: translate(-50%, -50%) scale(1.1); }
+    .progress-bar:hover .thumb {
+        opacity: 0.5; /* Slightly visible on bar hover */
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    .progress-bar .thumb:hover {
+        opacity: 1; /* Fully visible on thumb hover */
+        transform: translate(-50%, -50%) scale(1.2); /* Slightly larger */
+    }
     .disable-btn { background: #e74c3c; color: #fff; border: none; }
     .disable-btn:hover { background: #c0392b; }
     .title-bar {
@@ -1428,138 +1436,135 @@
 
         // --- Canvas Rendering Loop ---
         function renderCanvas(overlayState) {
-          if (video.readyState >= video.HAVE_METADATA && container.isConnected) {
-            clampPan(container);
-
-            let drawWidth, drawHeight, offsetX, offsetY;
-            if (video.videoWidth > 0 && video.videoHeight > 0) {
-                const canvasAspect = canvas.width / canvas.height;
-                const videoAspect = video.videoWidth / video.videoHeight;
-                if (canvasAspect > videoAspect) {
-                    drawHeight = canvas.height;
-                    drawWidth = drawHeight * videoAspect;
-                    offsetX = (canvas.width - drawWidth) / 2;
-                    offsetY = 0;
-                } else {
-                    drawWidth = canvas.width;
-                    drawHeight = drawWidth / videoAspect;
-                    offsetX = 0;
-                    offsetY = (canvas.height - drawHeight) / 2;
-                }
-            } else {
-                mainCtx.save();
-                mainCtx.fillStyle = '#555';
-                mainCtx.textAlign = 'center';
-                mainCtx.font = '16px Arial';
-                mainCtx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
-                mainCtx.restore();
-                if (container.isConnected) {
-                    playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
-                } else {
-                    playerObject.animationFrameId = null;
-                }
-                return;
-            }
-
-            mainCtx.save();
-            mainCtx.fillStyle = '#000';
-            mainCtx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            mainCtx.translate(centerX, centerY);
-            mainCtx.scale(container.zoomScale, container.zoomScale);
-            mainCtx.translate(container.panX, container.panY);
-            mainCtx.translate(-centerX, -centerY);
-
-            try {
-                // 1. Draw the raw video frame onto the main canvas
-                mainCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
-
-                // 2. Check if any mask needs to be applied
-                const activeMasks = [];
-                if (overlayState) {
-                    // Helper to check if mask is active and image is ready
-                    const isMaskReady = (prefix) => overlayState[`${prefix}_mask`] && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`]?.complete && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`].naturalWidth > 0;
-
-                    if (isMaskReady('jacks')) activeMasks.push(overlayState.imgJacksMask);
-                    if (isMaskReady('pp')) activeMasks.push(overlayState.imgPpMask);
-                    if (isMaskReady('hook')) activeMasks.push(overlayState.imgHookMask);
-                    if (isMaskReady('sharks')) activeMasks.push(overlayState.imgSharksMask);
-                    if (isMaskReady('ib')) activeMasks.push(overlayState.imgIbMask);
-                    if (isMaskReady('privates')) activeMasks.push(overlayState.imgPrivatesMask);
-                }
-
-
-                if (activeMasks.length > 0 && offscreenCtx) {
-                    // --- Prepare masked video on offscreen canvas ---
-                    offscreenCtx.save();
-                    offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
-
-                    // Draw the combined mask shape onto offscreen canvas
-                    offscreenCtx.globalCompositeOperation = 'source-over'; // Start with source-over for the first mask
-                    activeMasks.forEach((maskImg, index) => {
-                        // Use 'lighter' for subsequent masks to combine alpha channels (adds transparency)
-                        if (index > 0) {
-                           offscreenCtx.globalCompositeOperation = 'lighter';
-                        }
-                        offscreenCtx.drawImage(maskImg, offsetX, offsetY, drawWidth, drawHeight);
-                    });
-
-                    // Use 'source-in': Draw video, keeping only where it overlaps the mask shape(s)
-                    offscreenCtx.globalCompositeOperation = 'source-in';
-                    offscreenCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
-                    offscreenCtx.restore(); // Restore offscreen context state
-
-                    // --- Draw onto main canvas ---
-                    // Draw the darkening layer over the full video area on main canvas
-                    mainCtx.fillStyle = 'rgba(0,0,0,0.4)';
-                    mainCtx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
-
-                    // Draw the result from the offscreen canvas (video clipped to mask)
-                    // This effectively replaces the darkened area inside the mask with the video
-                    mainCtx.drawImage(playerObject.offscreenCanvas, 0, 0);
-                }
-
-                // 3. Draw minor/text overlays on top (if enabled) - on main canvas
-                if (overlayState) {
-                    const drawOverlay = (prefix) => {
-                        const minorFlag = overlayState[`${prefix}_minor`];
-                        const textFlag = overlayState[`${prefix}_text`];
-                        const minorImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Minor`];
-                        const textImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Text`];
-
-                        if (minorFlag && minorImg?.complete && minorImg.naturalWidth > 0) {
-                            mainCtx.drawImage(minorImg, offsetX, offsetY, drawWidth, drawHeight);
-                        }
-                        if (textFlag && textImg?.complete && textImg.naturalWidth > 0) {
-                            mainCtx.drawImage(textImg, offsetX, offsetY, drawWidth, drawHeight);
-                        }
-                    };
-                    drawOverlay('jacks');
-                    drawOverlay('pp');
-                    drawOverlay('hook');
-                    drawOverlay('sharks');
-                    drawOverlay('ib');
-                    drawOverlay('privates');
-                }
-
-            } catch (e) {
-                console.error("Canvas Draw Error:", e);
-                mainCtx.fillStyle = 'red';
-                mainCtx.textAlign = 'center';
-                mainCtx.fillText('Render Error', canvas.width / 2, canvas.height / 2);
-            }
-
-            mainCtx.restore(); // Restore main canvas context (removes pan/zoom)
+          // Check if the container is still connected to the DOM
+          if (!container.isConnected) {
+              if (playerObject.animationFrameId) {
+                  cancelAnimationFrame(playerObject.animationFrameId);
+                  playerObject.animationFrameId = null;
+              }
+              return; // Stop rendering if disconnected
           }
 
-          // Continue animation loop if the player is still active
-          if (container.isConnected) {
-            playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
+          // Check if video has enough data to play the current frame
+          const isBuffering = video.readyState < video.HAVE_FUTURE_DATA || video.paused && spinner.classList.contains('visible');
+
+          clampPan(container);
+
+          let drawWidth, drawHeight, offsetX, offsetY;
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+              const canvasAspect = canvas.width / canvas.height;
+              const videoAspect = video.videoWidth / video.videoHeight;
+              if (canvasAspect > videoAspect) {
+                  drawHeight = canvas.height;
+                  drawWidth = drawHeight * videoAspect;
+                  offsetX = (canvas.width - drawWidth) / 2;
+                  offsetY = 0;
+              } else {
+                  drawWidth = canvas.width;
+                  drawHeight = drawWidth / videoAspect;
+                  offsetX = 0;
+                  offsetY = (canvas.height - drawHeight) / 2;
+              }
           } else {
-            playerObject.animationFrameId = null; // Stop loop if container removed
+              // Video dimensions not ready, show loading and request next frame
+              mainCtx.save();
+              mainCtx.fillStyle = '#555';
+              mainCtx.textAlign = 'center';
+              mainCtx.font = '16px Arial';
+              mainCtx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
+              mainCtx.restore();
+              playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
+              return;
           }
+
+          mainCtx.save();
+          // Clear only if not buffering (to keep last frame)
+          if (!isBuffering) {
+              mainCtx.fillStyle = '#000';
+              mainCtx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          mainCtx.translate(centerX, centerY);
+          mainCtx.scale(container.zoomScale, container.zoomScale);
+          mainCtx.translate(container.panX, container.panY);
+          mainCtx.translate(-centerX, -centerY);
+
+          try {
+              // 1. Draw the video frame *only if not buffering*
+              if (!isBuffering) {
+                  mainCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+              }
+              // Else: the previous frame remains on the canvas
+
+              // 2. Check if any mask needs to be applied
+              const activeMasks = [];
+              if (overlayState) {
+                  const isMaskReady = (prefix) => overlayState[`${prefix}_mask`] && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`]?.complete && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`].naturalWidth > 0;
+                  if (isMaskReady('jacks')) activeMasks.push(overlayState.imgJacksMask);
+                  if (isMaskReady('pp')) activeMasks.push(overlayState.imgPpMask);
+                  if (isMaskReady('hook')) activeMasks.push(overlayState.imgHookMask);
+                  if (isMaskReady('sharks')) activeMasks.push(overlayState.imgSharksMask);
+                  if (isMaskReady('ib')) activeMasks.push(overlayState.imgIbMask);
+                  if (isMaskReady('privates')) activeMasks.push(overlayState.imgPrivatesMask);
+              }
+
+              if (activeMasks.length > 0 && offscreenCtx) {
+                  // --- Prepare masked video on offscreen canvas (only if not buffering) ---
+                  if (!isBuffering) {
+                      offscreenCtx.save();
+                      offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
+                      offscreenCtx.globalCompositeOperation = 'source-over';
+                      activeMasks.forEach((maskImg, index) => {
+                          if (index > 0) offscreenCtx.globalCompositeOperation = 'lighter';
+                          offscreenCtx.drawImage(maskImg, offsetX, offsetY, drawWidth, drawHeight);
+                      });
+                      offscreenCtx.globalCompositeOperation = 'source-in';
+                      offscreenCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+                      offscreenCtx.restore();
+                  }
+                  // --- Draw onto main canvas ---
+                  // Always draw darkening layer if mask is active
+                  mainCtx.fillStyle = 'rgba(0,0,0,0.4)';
+                  mainCtx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
+                  // Draw the clipped video from offscreen canvas over the darkening layer
+                  mainCtx.drawImage(playerObject.offscreenCanvas, 0, 0);
+              }
+
+              // 3. Draw minor/text overlays on top (if enabled) - on main canvas
+              if (overlayState) {
+                  const drawOverlay = (prefix) => {
+                      const minorFlag = overlayState[`${prefix}_minor`];
+                      const textFlag = overlayState[`${prefix}_text`];
+                      const minorImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Minor`];
+                      const textImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Text`];
+                      if (minorFlag && minorImg?.complete && minorImg.naturalWidth > 0) {
+                          mainCtx.drawImage(minorImg, offsetX, offsetY, drawWidth, drawHeight);
+                      }
+                      if (textFlag && textImg?.complete && textImg.naturalWidth > 0) {
+                          mainCtx.drawImage(textImg, offsetX, offsetY, drawWidth, drawHeight);
+                      }
+                  };
+                  drawOverlay('jacks');
+                  drawOverlay('pp');
+                  drawOverlay('hook');
+                  drawOverlay('sharks');
+                  drawOverlay('ib');
+                  drawOverlay('privates');
+              }
+
+          } catch (e) {
+              console.error("Canvas Draw Error:", e);
+              mainCtx.fillStyle = 'red';
+              mainCtx.textAlign = 'center';
+              mainCtx.fillText('Render Error', canvas.width / 2, canvas.height / 2);
+          }
+
+          mainCtx.restore(); // Restore main canvas context (removes pan/zoom)
+
+          // Continue animation loop
+          playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
         }
 
 
@@ -1682,53 +1687,32 @@
         let lastClickTime = 0;
         const handleDesktopClick = e => {
           // If the click was handled by the sidebar closing logic (capture phase), do nothing here.
-          // Check if default was prevented by the capture phase listener
           if (e.defaultPrevented) {
-              // console.log("Click prevented by sidebar close handler."); // Debugging
               return;
           }
 
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
           // Ignore clicks on overlay controls
-          if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar')) {
-             // console.log("Click ignored: on overlay controls."); // Debugging
-             return;
-          }
+          if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar')) return;
           // Ignore clicks outside the canvas wrapper unless in fullscreen
-          if (!isFs && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) {
-             // console.log("Click ignored: outside canvas wrapper."); // Debugging
-             return;
-          }
+          if (!isFs && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) return;
           // Ignore right-clicks or if currently dragging
-          if (e.button !== 0 || isDragging) {
-             // console.log(`Click ignored: button=${e.button}, isDragging=${isDragging}`); // Debugging
-             return;
-          }
+          if (e.button !== 0 || isDragging) return;
 
           const now = Date.now();
           if (now - lastClickTime < 300) { // Double-click detected
-            // console.log("Double click detected"); // Debugging
             clearTimeout(clickTimeout); // Cancel single-click action
             lastClickTime = 0; // Reset timer
             // Toggle fullscreen
             if (!isFs) enterNativeFullScreen(container);
             else exitNativeFullScreen();
           } else { // Potential single-click
-             // console.log("Potential single click..."); // Debugging
             clickTimeout = setTimeout(() => {
-              // console.log("Single click confirmed."); // Debugging
               // Ensure click was on the canvas area
               if (e.target === canvasWrapper || canvasWrapper.contains(e.target)) {
                 // Toggle play/pause
-                if (video.paused) {
-                    // console.log("Playing video"); // Debugging
-                    video.play().catch(()=>{});
-                } else {
-                    // console.log("Pausing video"); // Debugging
-                    video.pause();
-                }
-              } else {
-                 // console.log("Single click target was not canvas area."); // Debugging
+                if (video.paused) video.play().catch(()=>{});
+                else video.pause();
               }
             }, 300); // Wait for potential double-click
           }
@@ -1738,7 +1722,7 @@
         container.addEventListener("click", handleDesktopClick, false);
 
 
-        /* --- Desktop Controls Bar (No changes needed here) --- */
+        /* --- Desktop Controls Bar --- */
         const controlBar = document.createElement("div");
         controlBar.className = "control-bar";
         controlsContainer.appendChild(controlBar);
@@ -1774,6 +1758,13 @@
 
         // Update progress bar display
         function updateProgressBar() {
+          // Check if stalled (paused and spinner visible)
+           const isStalled = video.paused && spinner.classList.contains('visible');
+           if (isStalled) {
+               // Don't update playhead if stalled
+               return;
+           }
+
           const d = video.duration;
           // Check if duration is valid number
           if (!isNaN(d) && d > 0 && isFinite(d)) {
