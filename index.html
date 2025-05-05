@@ -1494,168 +1494,185 @@
         // Append video element (hidden by CSS, used as source for canvas)
         container.appendChild(video);
 
-        const mainCtx = canvas.getContext("2d"); // Context for visible canvas
+// ... inside the desktop HLS else block ...
+
+const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         const offscreenCtx = playerObject.offscreenCtx; // Context for offscreen canvas
 
         // --- Buffering Listeners ---
-        // We will handle spinner visibility primarily in updateProgressBar based on stall detection
-        // video.addEventListener('waiting', () => { ... }); // Removed
-        // video.addEventListener('playing', () => { ... }); // Removed
-        // video.addEventListener('canplay', () => { ... }); // Removed
+        const showSpinner = () => {
+            playerObject.isBuffering = true; // Set buffering flag
+            spinner.classList.add('visible');
+            // Force a progress bar update check when buffering starts
+            updateProgressBar();
+        };
+        const hideSpinner = () => {
+            playerObject.isBuffering = false; // Clear buffering flag
+            spinner.classList.remove('visible');
+             // Force a progress bar update check when buffering ends
+            updateProgressBar();
+        };
+        video.addEventListener('waiting', showSpinner);
+        video.addEventListener('playing', hideSpinner);
+        // Also hide spinner if video can play initially or recovers
+        video.addEventListener('canplay', hideSpinner);
+        video.addEventListener('pause', hideSpinner); // Hide spinner on manual pause too
 
-        // --- Canvas Rendering Loop ---
+
+        // --- Canvas Rendering Loop (No changes needed in this function itself based on latest issues) ---
         function renderCanvas(overlayState) {
-          // Check if the container is still connected to the DOM
-          if (!container.isConnected) {
-              if (playerObject.animationFrameId) {
-                  cancelAnimationFrame(playerObject.animationFrameId);
-                  playerObject.animationFrameId = null;
-              }
-              return; // Stop rendering if disconnected
-          }
+            // ... (Existing renderCanvas logic remains the same) ...
+             // Check if the container is still connected to the DOM
+            if (!container.isConnected) {
+                if (playerObject.animationFrameId) {
+                    cancelAnimationFrame(playerObject.animationFrameId);
+                    playerObject.animationFrameId = null;
+                }
+                return; // Stop rendering if disconnected
+            }
 
-          // Use the player object's buffering flag
-          const isBuffering = playerObject.isBuffering;
+            // Use the player object's buffering flag
+            const isBuffering = playerObject.isBuffering;
 
-          // Apply pan limits using the current canvas dimensions
-          clampPan(container, canvas);
+            // Apply pan limits using the current canvas dimensions
+            clampPan(container, canvas); // Ensure canvas is passed
 
-          let drawWidth, drawHeight, offsetX, offsetY;
-          // Use the canvas's current drawing surface size
-          let actualCanvasWidth = canvas.width;
-          let actualCanvasHeight = canvas.height;
+            let drawWidth, drawHeight, offsetX, offsetY;
+            // Use the canvas's current drawing surface size
+            let actualCanvasWidth = canvas.width;
+            let actualCanvasHeight = canvas.height;
 
-          if (video.videoWidth > 0 && video.videoHeight > 0) {
-              // Calculate drawing dimensions based on *canvas drawing surface size*
-              const canvasAspect = actualCanvasWidth / actualCanvasHeight;
-              const videoAspect = video.videoWidth / video.videoHeight;
-              if (canvasAspect > videoAspect) { // Canvas wider than video -> pillarbox
-                  drawHeight = actualCanvasHeight;
-                  drawWidth = drawHeight * videoAspect;
-                  offsetX = (actualCanvasWidth - drawWidth) / 2;
-                  offsetY = 0;
-              } else { // Canvas taller than video (or same aspect) -> letterbox
-                  drawWidth = actualCanvasWidth;
-                  drawHeight = drawWidth / videoAspect;
-                  offsetX = 0;
-                  offsetY = (actualCanvasHeight - drawHeight) / 2;
-              }
-          } else {
-              // Video dimensions not ready, show loading and request next frame
-              mainCtx.save();
-              mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-              mainCtx.fillStyle = '#555';
-              mainCtx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight); // Clear with loading background
-              mainCtx.fillStyle = '#fff';
-              mainCtx.textAlign = 'center';
-              mainCtx.font = '16px Arial';
-              mainCtx.fillText('Loading...', actualCanvasWidth / 2, actualCanvasHeight / 2);
-              mainCtx.restore();
-              playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
-              return;
-          }
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                // Calculate drawing dimensions based on *canvas drawing surface size*
+                const canvasAspect = actualCanvasWidth / actualCanvasHeight;
+                const videoAspect = video.videoWidth / video.videoHeight;
+                if (canvasAspect > videoAspect) { // Canvas wider than video -> pillarbox
+                    drawHeight = actualCanvasHeight;
+                    drawWidth = drawHeight * videoAspect;
+                    offsetX = (actualCanvasWidth - drawWidth) / 2;
+                    offsetY = 0;
+                } else { // Canvas taller than video (or same aspect) -> letterbox
+                    drawWidth = actualCanvasWidth;
+                    drawHeight = drawWidth / videoAspect;
+                    offsetX = 0;
+                    offsetY = (actualCanvasHeight - drawHeight) / 2;
+                }
+            } else {
+                // Video dimensions not ready, show loading and request next frame
+                mainCtx.save();
+                mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+                mainCtx.fillStyle = '#555';
+                mainCtx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight); // Clear with loading background
+                mainCtx.fillStyle = '#fff';
+                mainCtx.textAlign = 'center';
+                mainCtx.font = '16px Arial';
+                mainCtx.fillText('Loading...', actualCanvasWidth / 2, actualCanvasHeight / 2);
+                mainCtx.restore();
+                playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
+                return;
+            }
 
-          mainCtx.save();
-          // Clear the main canvas only if not buffering (to keep last frame)
-          if (!isBuffering) {
-              mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before clearing
-              mainCtx.fillStyle = '#000';
-              mainCtx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight);
-          }
+            mainCtx.save();
+            // Clear the main canvas only if not buffering (to keep last frame)
+            if (!isBuffering) {
+                mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before clearing
+                mainCtx.fillStyle = '#000';
+                mainCtx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight);
+            }
 
-          // Apply pan/zoom transformations centered on the *actual* canvas size
-          const centerX = actualCanvasWidth / 2;
-          const centerY = actualCanvasHeight / 2;
-          mainCtx.translate(centerX, centerY);
-          mainCtx.scale(container.zoomScale, container.zoomScale);
-          mainCtx.translate(container.panX, container.panY);
-          mainCtx.translate(-centerX, -centerY);
+            // Apply pan/zoom transformations centered on the *actual* canvas size
+            const centerX = actualCanvasWidth / 2;
+            const centerY = actualCanvasHeight / 2;
+            mainCtx.translate(centerX, centerY);
+            mainCtx.scale(container.zoomScale, container.zoomScale);
+            mainCtx.translate(container.panX, container.panY);
+            mainCtx.translate(-centerX, -centerY);
 
-          try {
-              // 1. Draw the video frame *only if not buffering*
-              if (!isBuffering) {
-                  mainCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
-              }
-              // Else: the previous frame remains on the canvas
+            try {
+                // 1. Draw the video frame *only if not buffering*
+                if (!isBuffering) {
+                    mainCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+                }
+                // Else: the previous frame remains on the canvas
 
-              // 2. Check if any mask needs to be applied
-              const activeMasks = [];
-              if (overlayState) {
-                  const isMaskReady = (prefix) => overlayState[`${prefix}_mask`] && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`]?.complete && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`].naturalWidth > 0;
-                  if (isMaskReady('jacks')) activeMasks.push(overlayState.imgJacksMask);
-                  if (isMaskReady('pp')) activeMasks.push(overlayState.imgPpMask);
-                  if (isMaskReady('hook')) activeMasks.push(overlayState.imgHookMask);
-                  if (isMaskReady('sharks')) activeMasks.push(overlayState.imgSharksMask);
-                  if (isMaskReady('ib')) activeMasks.push(overlayState.imgIbMask);
-                  if (isMaskReady('privates')) activeMasks.push(overlayState.imgPrivatesMask);
-              }
+                // 2. Check if any mask needs to be applied
+                const activeMasks = [];
+                if (overlayState) {
+                    const isMaskReady = (prefix) => overlayState[`${prefix}_mask`] && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`]?.complete && overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Mask`].naturalWidth > 0;
+                    if (isMaskReady('jacks')) activeMasks.push(overlayState.imgJacksMask);
+                    if (isMaskReady('pp')) activeMasks.push(overlayState.imgPpMask);
+                    if (isMaskReady('hook')) activeMasks.push(overlayState.imgHookMask);
+                    if (isMaskReady('sharks')) activeMasks.push(overlayState.imgSharksMask);
+                    if (isMaskReady('ib')) activeMasks.push(overlayState.imgIbMask);
+                    if (isMaskReady('privates')) activeMasks.push(overlayState.imgPrivatesMask);
+                }
 
 
-              if (activeMasks.length > 0 && offscreenCtx) {
-                  // --- Prepare masked video on offscreen canvas (only if not buffering) ---
-                  if (!isBuffering) {
-                      // Ensure offscreen canvas matches main canvas size if it changed (e.g., fullscreen)
-                      if (playerObject.offscreenCanvas.width !== actualCanvasWidth || playerObject.offscreenCanvas.height !== actualCanvasHeight) {
-                          playerObject.offscreenCanvas.width = actualCanvasWidth;
-                          playerObject.offscreenCanvas.height = actualCanvasHeight;
-                      }
-                      offscreenCtx.save();
-                      offscreenCtx.clearRect(0, 0, actualCanvasWidth, actualCanvasHeight);
-                      offscreenCtx.globalCompositeOperation = 'source-over';
-                      activeMasks.forEach((maskImg, index) => {
-                          if (index > 0) offscreenCtx.globalCompositeOperation = 'lighter';
-                          // Draw mask using calculated dimensions
-                          offscreenCtx.drawImage(maskImg, offsetX, offsetY, drawWidth, drawHeight);
-                      });
-                      offscreenCtx.globalCompositeOperation = 'source-in';
-                      // Draw video using calculated dimensions
-                      offscreenCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
-                      offscreenCtx.restore();
-                  }
-                  // --- Draw onto main canvas ---
-                  // Always draw darkening layer if mask is active
-                  mainCtx.fillStyle = 'rgba(0,0,0,0.4)';
-                  mainCtx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
-                  // Draw the clipped video from offscreen canvas over the darkening layer
-                  // Use the actual canvas dimensions for the destination draw
-                  mainCtx.drawImage(playerObject.offscreenCanvas, 0, 0, actualCanvasWidth, actualCanvasHeight, 0, 0, actualCanvasWidth, actualCanvasHeight);
-              }
+                if (activeMasks.length > 0 && offscreenCtx) {
+                    // --- Prepare masked video on offscreen canvas (only if not buffering) ---
+                    if (!isBuffering) {
+                        // Ensure offscreen canvas matches main canvas size if it changed (e.g., fullscreen)
+                        if (playerObject.offscreenCanvas.width !== actualCanvasWidth || playerObject.offscreenCanvas.height !== actualCanvasHeight) {
+                            playerObject.offscreenCanvas.width = actualCanvasWidth;
+                            playerObject.offscreenCanvas.height = actualCanvasHeight;
+                        }
+                        offscreenCtx.save();
+                        offscreenCtx.clearRect(0, 0, actualCanvasWidth, actualCanvasHeight);
+                        offscreenCtx.globalCompositeOperation = 'source-over';
+                        activeMasks.forEach((maskImg, index) => {
+                            if (index > 0) offscreenCtx.globalCompositeOperation = 'lighter';
+                            // Draw mask using calculated dimensions
+                            offscreenCtx.drawImage(maskImg, offsetX, offsetY, drawWidth, drawHeight);
+                        });
+                        offscreenCtx.globalCompositeOperation = 'source-in';
+                        // Draw video using calculated dimensions
+                        offscreenCtx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+                        offscreenCtx.restore();
+                    }
+                    // --- Draw onto main canvas ---
+                    // Always draw darkening layer if mask is active
+                    mainCtx.fillStyle = 'rgba(0,0,0,0.4)';
+                    mainCtx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
+                    // Draw the clipped video from offscreen canvas over the darkening layer
+                    // Use the actual canvas dimensions for the destination draw
+                    mainCtx.drawImage(playerObject.offscreenCanvas, 0, 0, actualCanvasWidth, actualCanvasHeight, 0, 0, actualCanvasWidth, actualCanvasHeight);
+                }
 
-              // 3. Draw minor/text overlays on top (if enabled) - on main canvas
-              if (overlayState) {
-                  const drawOverlay = (prefix) => {
-                      const minorFlag = overlayState[`${prefix}_minor`];
-                      const textFlag = overlayState[`${prefix}_text`];
-                      const minorImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Minor`];
-                      const textImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Text`];
-                      if (minorFlag && minorImg?.complete && minorImg.naturalWidth > 0) {
-                          mainCtx.drawImage(minorImg, offsetX, offsetY, drawWidth, drawHeight);
-                      }
-                      if (textFlag && textImg?.complete && textImg.naturalWidth > 0) {
-                          mainCtx.drawImage(textImg, offsetX, offsetY, drawWidth, drawHeight);
-                      }
-                  };
-                  drawOverlay('jacks');
-                  drawOverlay('pp');
-                  drawOverlay('hook');
-                  drawOverlay('sharks');
-                  drawOverlay('ib');
-                  drawOverlay('privates');
-              }
+                // 3. Draw minor/text overlays on top (if enabled) - on main canvas
+                if (overlayState) {
+                    const drawOverlay = (prefix) => {
+                        const minorFlag = overlayState[`${prefix}_minor`];
+                        const textFlag = overlayState[`${prefix}_text`];
+                        const minorImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Minor`];
+                        const textImg = overlayState[`img${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Text`];
+                        if (minorFlag && minorImg?.complete && minorImg.naturalWidth > 0) {
+                            mainCtx.drawImage(minorImg, offsetX, offsetY, drawWidth, drawHeight);
+                        }
+                        if (textFlag && textImg?.complete && textImg.naturalWidth > 0) {
+                            mainCtx.drawImage(textImg, offsetX, offsetY, drawWidth, drawHeight);
+                        }
+                    };
+                    drawOverlay('jacks');
+                    drawOverlay('pp');
+                    drawOverlay('hook');
+                    drawOverlay('sharks');
+                    drawOverlay('ib');
+                    drawOverlay('privates');
+                }
 
-          } catch (e) {
-              console.error("Canvas Draw Error:", e);
-              // Draw error message without transforms
-              mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-              mainCtx.fillStyle = 'red';
-              mainCtx.textAlign = 'center';
-              mainCtx.fillText('Render Error', actualCanvasWidth / 2, actualCanvasHeight / 2);
-          }
+            } catch (e) {
+                console.error("Canvas Draw Error:", e);
+                // Draw error message without transforms
+                mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+                mainCtx.fillStyle = 'red';
+                mainCtx.textAlign = 'center';
+                mainCtx.fillText('Render Error', actualCanvasWidth / 2, actualCanvasHeight / 2);
+            }
 
-          mainCtx.restore(); // Restore main canvas context (removes pan/zoom)
+            mainCtx.restore(); // Restore main canvas context (removes pan/zoom)
 
-          // Continue animation loop
-          playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
+            // Continue animation loop
+            playerObject.animationFrameId = requestAnimationFrame(() => renderCanvas(overlayState));
         }
 
 
@@ -1689,7 +1706,8 @@
            ctx.restore();
         });
 
-        /* --- Desktop interactions: Pan/Zoom/Click --- */
+        /* --- Desktop interactions: Pan/Zoom/Click (No changes needed here) --- */
+        // ... (Pan/Zoom/Click handlers remain the same, ensuring clampPan(container, canvas) is called) ...
         let startX, startY, isDragging = false;
         // Mousedown: Initiate drag panning (if space held or fullscreen)
         canvasWrapper.addEventListener("mousedown", e => {
@@ -1854,10 +1872,8 @@
           // Check if stalled using the player object's flag
            if (playerObject.isBuffering) {
                // Don't update playhead if stalled
-               spinner.classList.add('visible'); // Ensure spinner is visible
+               // Spinner visibility is handled by waiting/playing events
                return;
-           } else {
-               spinner.classList.remove('visible'); // Ensure spinner is hidden if not buffering
            }
 
           const d = video.duration;
@@ -1883,35 +1899,20 @@
             thumb.style.left = `${Math.min(100, pp)}%`;
             bufferedBar.style.width = `${Math.min(100, bp)}%`;
 
-            // Stall detection based on time not advancing
-            if (!video.paused && video.readyState >= video.HAVE_FUTURE_DATA) {
-                if (video.currentTime === playerObject.previousTime) {
-                    // Time hasn't advanced, potential stall
-                    playerObject.isBuffering = true;
-                    spinner.classList.add('visible');
-                } else {
-                    // Time advanced, not stalled
-                    playerObject.isBuffering = false;
-                    spinner.classList.remove('visible');
-                }
-            } else if (video.paused) {
-                 playerObject.isBuffering = false; // Not buffering if paused
-                 spinner.classList.remove('visible');
-            }
-            playerObject.previousTime = video.currentTime; // Update previous time
-
           } else {
             // Reset if duration is invalid (e.g., live stream with no duration)
             playedBar.style.width = '0%';
             thumb.style.left = '0%';
             bufferedBar.style.width = '0%';
-            playerObject.previousTime = 0; // Reset previous time
           }
         }
         // Update on relevant video events
-        ["timeupdate", "progress", "loadedmetadata", "durationchange", "seeking", "seeked", "play", "pause"].forEach(evt => {
+        ["timeupdate", "progress", "loadedmetadata", "durationchange", "seeking", "seeked"].forEach(evt => {
           video.addEventListener(evt, updateProgressBar);
         });
+        // Also update on play/pause to immediately reflect state change if needed
+        video.addEventListener("play", updateProgressBar);
+        video.addEventListener("pause", updateProgressBar);
         updateProgressBar(); // Initial update
 
         // Progress Bar Seeking Logic
@@ -2102,27 +2103,24 @@
           // Use HLS.js
           hlsInstance = new Hls({
             // Configuration options for stability
-            maxBufferLength: 30,       // Default: 30
-            maxMaxBufferLength: 60,   // Default: 600 - Reduce significantly for live
-            liveSyncDurationCount: 4,  // Default: 3 - How many segments behind edge to sync to
-            liveMaxLatencyDurationCount: 10, // Default: Infinity - Allow falling further behind edge
-            maxBufferHole: 0.8,         // Default: 0.5 - Tolerate slightly larger gaps
-            fragLoadingTimeOut: 20000, // Timeout for fragment loading
-            manifestLoadingTimeOut: 20000, // Timeout for manifest loading
-            levelLoadingTimeOut: 20000, // Timeout for level playlist loading
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            liveSyncDurationCount: 4,
+            liveMaxLatencyDurationCount: 10,
+            maxBufferHole: 0.8,
+            fragLoadingTimeOut: 20000,
+            manifestLoadingTimeOut: 20000,
+            levelLoadingTimeOut: 20000,
             // Custom loader to conditionally prepend proxy URL
             loader: class extends Hls.DefaultConfig.loader {
               load(context, config, callbacks) {
                 let requestUrl = context.url;
-                // Only proxy if on mobile
                 if (IS_MOBILE) {
-                    // Avoid double-proxying if URL already starts with it
                     while (requestUrl.startsWith(PROXY_PREFIX)) {
                       requestUrl = decodeURIComponent(requestUrl.slice(PROXY_PREFIX.length));
                     }
                     context.url = PROXY_PREFIX + encodeURIComponent(requestUrl);
                 } else {
-                    // On desktop, ensure we are using the original URL (remove proxy if somehow present)
                      while (requestUrl.startsWith(PROXY_PREFIX)) {
                       requestUrl = decodeURIComponent(requestUrl.slice(PROXY_PREFIX.length));
                     }
@@ -2132,15 +2130,14 @@
               }
             }
           });
-          playerObject.hls = hlsInstance; // Add hls instance to player object
+          playerObject.hls = hlsInstance;
 
-          hlsInstance.loadSource(url); // Load the original (non-proxied) URL
-          hlsInstance.attachMedia(video); // Attach HLS.js to the video element
+          hlsInstance.loadSource(url);
+          hlsInstance.attachMedia(video);
 
-          // Attempt to play when manifest is parsed
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-            if (video.autoplay || !video.paused) { // Respect autoplay and current state
-                video.play().catch(()=>{}); // Attempt play
+            if (video.autoplay || !video.paused) {
+                video.play().catch(()=>{});
             }
           });
 
@@ -2149,7 +2146,6 @@
             console.error(`HLS Error: Type=${data.type}, Details=${data.details}`, data);
 
             if (data.fatal) {
-              // Handle fatal errors (Network, Manifest, etc.)
               switch(data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
                   console.log("Network error, retrying load...");
@@ -2166,25 +2162,29 @@
                       hlsInstance = null;
                       playerObject.hls = null;
                   }
-                  // Optional: Schedule a full player rebuild
-                  // setTimeout(() => { ... }, 5000);
                   break;
               }
             } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-              // Handle non-fatal media errors (like buffer stalls/holes)
               switch (data.details) {
                 case Hls.ErrorDetails.BUFFER_STALLED_ERROR:
                 case Hls.ErrorDetails.BUFFER_SEEK_OVER_HOLE:
                   console.warn(`Non-fatal media error (${data.details}), attempting recovery.`);
                   if (hlsInstance) {
                     hlsInstance.recoverMediaError();
+                    // Attempt to nudge playback after a short delay if still paused
+                    const wasPaused = video.paused;
+                    setTimeout(() => {
+                      if (video.currentTime === data.buffer || (wasPaused && video.paused)) { // Check if still stuck
+                        console.log("Nudging video playback after stall/hole recovery.");
+                        video.currentTime += 0.1; // Small seek forward
+                        if(wasPaused) video.play().catch(()=>{}); // Try to play if it was paused by the stall
+                      }
+                    }, 500); // Wait 500ms
                   }
                   break;
                 case Hls.ErrorDetails.BUFFER_FULL_ERROR:
-                  // Usually not an issue, but log it
                   console.log("Buffer full, HLS.js should handle this.");
                   break;
-                 // Potentially handle other non-fatal media errors if needed
               }
             }
           });
