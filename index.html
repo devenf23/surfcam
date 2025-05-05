@@ -342,6 +342,7 @@
     }
     .progress-bar .buffered { background: #888; width: 0%; opacity: 0.7; }
     .progress-bar .played { background: #4d90fe; width: 0%; z-index: 1; }
+    /* Replace existing .progress-bar .thumb rules with these */
     .progress-bar .thumb {
       position: absolute;
       top: 50%;
@@ -358,14 +359,22 @@
       transition: opacity 0.2s, transform 0.15s ease-out; /* Smooth transitions */
       pointer-events: none; /* Initially ignore pointer events */
     }
+    /* Show slightly when hovering the bar */
     .progress-bar:hover .thumb {
-        opacity: 0.6; /* Slightly visible on bar hover */
-        transform: translate(-50%, -50%) scale(0.8); /* Slightly smaller */
+        opacity: 0.6;
+        transform: translate(-50%, -50%) scale(0.8);
         pointer-events: auto; /* Enable pointer events on hover */
     }
+    /* Show fully when hovering the thumb itself */
     .progress-bar .thumb:hover {
-        opacity: 1; /* Fully visible on thumb hover */
-        transform: translate(-50%, -50%) scale(1); /* Normal size */
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    /* Keep visible while seeking */
+    .progress-bar.seeking .thumb {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1); /* Slightly larger while seeking */
+        pointer-events: auto;
     }
     .disable-btn { background: #e74c3c; color: #fff; border: none; }
     .disable-btn:hover { background: #c0392b; }
@@ -1340,6 +1349,10 @@
         playerObject.offscreenCanvas.height = canvas.height;
         playerObject.offscreenCtx = playerObject.offscreenCanvas.getContext('2d');
 
+        // Add buffering state to player object
+        playerObject.isBuffering = false;
+        playerObject.previousTime = 0; // For stall detection
+
 
         const controlsContainer = document.createElement("div");
         controlsContainer.className = "controls-container";
@@ -1351,6 +1364,7 @@
 
         /* --- Privates Overlays Setup (Canvas-based) --- */
         if (title === 'privates') {
+          // ... (rest of the overlay setup code remains the same) ...
           const overlayIcon = document.createElement('button');
           overlayIcon.className = 'overlay-icon';
           overlayIcon.innerHTML = '⚙️'; // Gear icon
@@ -1481,18 +1495,86 @@
         const offscreenCtx = playerObject.offscreenCtx; // Context for offscreen canvas
 
         // --- Buffering Listeners ---
-        video.addEventListener('waiting', () => {
-            playerObject.isBuffering = true; // Set buffering flag
+        const showSpinner = () => {
+            playerObject.isBuffering = true;
             spinner.classList.add('visible');
-        });
-        const hideSpinnerAndBufferFlag = () => {
-            playerObject.isBuffering = false; // Clear buffering flag
+        };
+        const hideSpinner = () => {
+            playerObject.isBuffering = false;
             spinner.classList.remove('visible');
         };
-        video.addEventListener('playing', hideSpinnerAndBufferFlag);
-        // Remove spinner hiding from 'canplay' as it might hide too early
-        // video.addEventListener('canplay', hideSpinnerAndBufferFlag);
+        video.addEventListener('waiting', showSpinner);
+        video.addEventListener('playing', hideSpinner);
+        // Handle stalls detected manually
+        let stallCheckTimeout;
+        const checkStall = () => {
+            if (!video.paused && video.readyState < video.HAVE_FUTURE_DATA) {
+                const currentTime = video.currentTime;
+                // Check again shortly to see if time has progressed
+                clearTimeout(stallCheckTimeout);
+                stallCheckTimeout = setTimeout(() => {
+                    if (!video.paused && video.currentTime === currentTime && video.readyState < video.HAVE_FUTURE_DATA) {
+                        showSpinner(); // Show spinner if still stalled
+                    }
+                }, 150); // Check after 150ms
+            } else if (!video.paused) {
+                hideSpinner(); // Hide if playing normally
+            }
+            // If paused manually, ensure spinner is hidden
+            if(video.paused) hideSpinner();
+        };
+        video.addEventListener('timeupdate', checkStall);
+        video.addEventListener('pause', hideSpinner); // Hide spinner on manual pause
 
+
+        // --- Resize Canvas Function ---
+        const resizeCanvas = () => {
+            if (!canvas || !container) return;
+
+            const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
+            const wrapper = container.querySelector('.canvas-wrapper');
+            let targetWidth, targetHeight;
+
+            if (isFs) {
+                // Fullscreen: Calculate size maintaining aspect ratio within wrapper
+                const containerWidth = wrapper.clientWidth;
+                const containerHeight = wrapper.clientHeight;
+                const containerAspect = containerWidth / containerHeight;
+                const videoAspect = 16 / 9; // Assuming 16:9, adjust if needed
+
+                if (containerAspect > videoAspect) { // Pillarbox
+                    targetHeight = containerHeight;
+                    targetWidth = targetHeight * videoAspect;
+                } else { // Letterbox
+                    targetWidth = containerWidth;
+                    targetHeight = targetWidth / videoAspect;
+                }
+            } else {
+                // Non-fullscreen: Use fixed base size
+                targetWidth = 960;
+                targetHeight = 540;
+            }
+
+            // Apply size to canvas element style for layout
+            canvas.style.width = `${targetWidth}px`;
+            canvas.style.height = `${targetHeight}px`;
+
+            // Update drawing surface size
+            if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                if (playerObject.offscreenCanvas) {
+                    playerObject.offscreenCanvas.width = targetWidth;
+                    playerObject.offscreenCanvas.height = targetHeight;
+                }
+                 console.log(`Resized canvas for ${url} to ${targetWidth}x${targetHeight}`);
+                 // Trigger redraw if needed (optional, loop should handle it)
+                 // if (!playerObject.animationFrameId && container.isConnected) {
+                 //     renderCanvas(playerObject.overlays);
+                 // }
+            }
+        };
+        playerObject.resizeHandler = resizeCanvas; // Store for removal later
 
         // --- Canvas Rendering Loop ---
         function renderCanvas(overlayState) {
@@ -1508,7 +1590,7 @@
           // Use the player object's buffering flag
           const isBuffering = playerObject.isBuffering;
 
-          clampPan(container);
+          clampPan(container); // Apply pan limits
 
           let drawWidth, drawHeight, offsetX, offsetY;
           // Use the canvas's current drawing surface size
@@ -1516,6 +1598,7 @@
           let actualCanvasHeight = canvas.height;
 
           if (video.videoWidth > 0 && video.videoHeight > 0) {
+              // Calculate drawing dimensions based on *canvas drawing surface size*
               const canvasAspect = actualCanvasWidth / actualCanvasHeight;
               const videoAspect = video.videoWidth / video.videoHeight;
               if (canvasAspect > videoAspect) { // Canvas wider than video -> pillarbox
@@ -1915,6 +1998,7 @@
         progressBar.addEventListener("mousedown", e => {
           if (e.button === 0) { // Left click only
             isSeeking = true;
+            progressBar.classList.add('seeking'); // Add class for thumb style
             document.body.style.userSelect = 'none'; // Prevent text selection during drag
             seek(e);
             progressBar.style.cursor = 'grabbing';
@@ -1923,6 +2007,7 @@
         // Touch start (basic support)
         progressBar.addEventListener("touchstart", e => {
           isSeeking = true;
+           progressBar.classList.add('seeking');
           document.body.style.webkitUserSelect = 'none'; // iOS selection prevent
           seek(e);
         }, { passive: true });
@@ -1939,6 +2024,7 @@
         document.addEventListener("mouseup", e => {
           if (e.button === 0 && isSeeking) {
             isSeeking = false;
+            progressBar.classList.remove('seeking');
             progressBar.style.cursor = 'pointer';
             document.body.style.userSelect = '';
           }
@@ -1947,6 +2033,7 @@
         document.addEventListener("touchend", e => {
           if (isSeeking) {
             isSeeking = false;
+            progressBar.classList.remove('seeking');
             document.body.style.webkitUserSelect = '';
           }
         });
@@ -1969,6 +2056,8 @@
         function updateFsBtn() {
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
           fsBtnDesktop.innerHTML = isFs ? "&#x2921;" : "&#x26F6;"; // Exit/Enter symbols
+          // Trigger canvas resize when FS state changes
+          resizeCanvas();
         }
         document.addEventListener("fullscreenchange", updateFsBtn);
         document.addEventListener("webkitfullscreenchange", updateFsBtn);
@@ -2045,10 +2134,7 @@
         document.addEventListener("fullscreenchange", setInitialControlsVisibility);
         document.addEventListener("webkitfullscreenchange", setInitialControlsVisibility);
 
-        // Add resize listener for fullscreen canvas adjustments
-        playerObject.resizeHandler = () => resizeCanvas(playerObject);
-        document.addEventListener("fullscreenchange", playerObject.resizeHandler);
-        document.addEventListener("webkitfullscreenchange", playerObject.resizeHandler);
+        // Add resize listener for canvas adjustments
         window.addEventListener("resize", playerObject.resizeHandler); // Handle window resize too
 
       }
