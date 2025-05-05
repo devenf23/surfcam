@@ -273,16 +273,17 @@
       justify-content: center;
       align-items: center;
     }
-    /* Stretch the canvas to fill the fullscreen container */
+    /* Canvas in Fullscreen */
     .player-container:fullscreen .canvas-wrapper canvas,
     .player-container:-webkit-full-screen .canvas-wrapper canvas {
-      /* Let JS handle sizing based on aspect ratio */
-      /* width: 100% !important; */
-      /* height: 100% !important; */
-      /* Instead, ensure it can be sized by JS */
-      max-width: 100%;
+      /* Allow JS to set exact dimensions based on aspect ratio */
+      position: absolute; /* Ensure positioning works */
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%); /* Center the canvas */
+      max-width: 100%; /* Don't exceed container */
       max-height: 100%;
-      object-fit: contain; /* This helps if canvas itself has intrinsic size */
+      /* width/height set by JS */
     }
 
     /* MP4 Video in Fullscreen */
@@ -1072,6 +1073,13 @@
         }
       } else {
         if (existing) {
+          // Remove fullscreen listener before destroying player
+          if (existing.resizeHandler) {
+              document.removeEventListener("fullscreenchange", existing.resizeHandler);
+              document.removeEventListener("webkitfullscreenchange", existing.resizeHandler);
+              window.removeEventListener("resize", existing.resizeHandler); // Also remove window resize listener
+              existing.resizeHandler = null; // Clear reference
+          }
           if (existing.hls) existing.hls.destroy();
           existing.video.pause();
           existing.video.removeAttribute('src');
@@ -1093,6 +1101,46 @@
       reorderPlayers();
       updateStreamSidebar(); // Update sidebar to reflect checkbox state
     }
+
+    // Function to handle canvas resizing on fullscreen change or window resize
+    function resizeCanvas(playerObj) {
+        if (!playerObj || !playerObj.canvas || !playerObj.container) return;
+
+        const canvas = playerObj.canvas;
+        const wrapper = playerObj.container.querySelector('.canvas-wrapper');
+        const isFs = document.fullscreenElement === playerObj.container || document.webkitFullscreenElement === playerObj.container;
+
+        let targetWidth, targetHeight;
+
+        if (isFs) {
+            targetWidth = wrapper.clientWidth;
+            targetHeight = wrapper.clientHeight;
+        } else {
+            // Use default non-fullscreen size or calculate based on container?
+            // Sticking to fixed size for now when not fullscreen.
+            targetWidth = 960;
+            targetHeight = 540;
+        }
+
+        // Only resize if dimensions actually changed
+        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+
+            // Resize offscreen canvas too
+            if (playerObj.offscreenCanvas) {
+                playerObj.offscreenCanvas.width = targetWidth;
+                playerObj.offscreenCanvas.height = targetHeight;
+            }
+            console.log(`Resized canvas for ${playerObj.container.dataset.url} to ${targetWidth}x${targetHeight}`);
+
+            // Trigger a redraw if the animation loop isn't running
+            if (!playerObj.animationFrameId && playerObj.container.isConnected) {
+                renderCanvas(playerObj.overlays); // Assuming renderCanvas is accessible
+            }
+        }
+    }
+
 
     function createPlayerContainer(stream) {
       if (!stream || !stream.enabled) return null;
@@ -1130,7 +1178,9 @@
           overlays: null,        // Will hold overlay state if applicable
           offscreenCanvas: null, // Will hold the offscreen canvas for masking
           offscreenCtx: null,    // Context for the offscreen canvas
-          isBuffering: false     // Flag for buffering state
+          isBuffering: false,    // Flag for buffering state
+          canvas: null,          // Reference to the main canvas
+          resizeHandler: null    // Reference to the resize handler function
       };
 
 
@@ -1274,9 +1324,10 @@
 
         const canvas = document.createElement("canvas");
         canvas.className = "display-canvas";
-        canvas.width = 960; // Base resolution
+        canvas.width = 960; // Initial base resolution
         canvas.height = 540;
         canvasWrapper.appendChild(canvas);
+        playerObject.canvas = canvas; // Store canvas reference
 
         // Add Buffering Spinner Element
         const spinner = document.createElement('div');
@@ -1402,7 +1453,7 @@
           setupCheckboxListener('jacks');
           setupCheckboxListener('hook');
           setupCheckboxListener('sharks');
-          setupCheckboxListener('ib'); // Corrected prefix for In-betweens
+          setupCheckboxListener('ib');
           setupCheckboxListener('privates');
 
 
@@ -1439,7 +1490,8 @@
             spinner.classList.remove('visible');
         };
         video.addEventListener('playing', hideSpinnerAndBufferFlag);
-        video.addEventListener('canplay', hideSpinnerAndBufferFlag); // Also hide on canplay
+        // Remove spinner hiding from 'canplay' as it might hide too early
+        // video.addEventListener('canplay', hideSpinnerAndBufferFlag);
 
 
         // --- Canvas Rendering Loop ---
@@ -1459,10 +1511,10 @@
           clampPan(container);
 
           let drawWidth, drawHeight, offsetX, offsetY;
-          let actualCanvasWidth = canvas.clientWidth;
-          let actualCanvasHeight = canvas.clientHeight;
+          // Use the canvas's current drawing surface size
+          let actualCanvasWidth = canvas.width;
+          let actualCanvasHeight = canvas.height;
 
-          // Use actual canvas size for calculations, especially in fullscreen
           if (video.videoWidth > 0 && video.videoHeight > 0) {
               const canvasAspect = actualCanvasWidth / actualCanvasHeight;
               const videoAspect = video.videoWidth / video.videoHeight;
@@ -1480,8 +1532,7 @@
           } else {
               // Video dimensions not ready, show loading and request next frame
               mainCtx.save();
-              // Reset transform before drawing loading text
-              mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+              mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
               mainCtx.fillStyle = '#555';
               mainCtx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight); // Clear with loading background
               mainCtx.fillStyle = '#fff';
@@ -1496,8 +1547,7 @@
           mainCtx.save();
           // Clear the main canvas only if not buffering (to keep last frame)
           if (!isBuffering) {
-              // Reset transform before clearing
-              mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+              mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before clearing
               mainCtx.fillStyle = '#000';
               mainCtx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight);
           }
@@ -1603,7 +1653,7 @@
           if (!playerObject.animationFrameId && container.isConnected) {
              renderCanvas(currentOverlays); // Start the loop, passing initial overlay state
           }
-        }, { once: true }); // Use once to avoid multiple starts if event fires again
+        }); // Removed { once: true } to allow re-triggering after stalls
 
         // Stop rendering if video becomes empty or errors
         video.addEventListener('emptied', () => {
@@ -1690,9 +1740,9 @@
             // Normalize mouse coordinates (0 to 1)
             const normX = mouseX / rect.width;
             const normY = mouseY / rect.height;
-            // Convert normalized coords to canvas coords (based on 960x540)
-            const canvasX = normX * canvas.width; // Use canvas actual width
-            const canvasY = normY * canvas.height; // Use canvas actual height
+            // Convert normalized coords to canvas coords (based on canvas drawing surface size)
+            const canvasX = normX * canvas.width;
+            const canvasY = normY * canvas.height;
 
             const oldZoom = container.zoomScale;
             const zoomAmount = 0.15; // Zoom sensitivity
@@ -1726,9 +1776,8 @@
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
           // Ignore clicks on overlay controls
           if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar')) return;
-          // Ignore clicks outside the canvas wrapper unless in fullscreen
-          // If fullscreen, allow clicks anywhere on the container (including black bars)
-          if (!isFs && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) return;
+          // Ignore clicks outside the container (covers canvas and black bars in FS)
+          if (!container.contains(e.target)) return;
           // Ignore right-clicks or if currently dragging
           if (e.button !== 0 || isDragging) return;
 
@@ -1741,11 +1790,9 @@
             else exitNativeFullScreen();
           } else { // Potential single-click
             clickTimeout = setTimeout(() => {
-              // Toggle play/pause if click was within container (fullscreen) or canvas wrapper (non-fullscreen)
-              if (isFs || e.target === canvasWrapper || canvasWrapper.contains(e.target)) {
-                if (video.paused) video.play().catch(()=>{});
-                else video.pause();
-              }
+              // Toggle play/pause if click was within container
+               if (video.paused) video.play().catch(()=>{});
+               else video.pause();
             }, 300); // Wait for potential double-click
           }
           lastClickTime = now; // Record click time
@@ -1958,7 +2005,7 @@
         tb.textContent = title;
         controlsContainer.appendChild(tb);
 
-        /* --- Auto-hide controls in fullscreen (No changes needed here) --- */
+        /* --- Auto-hide controls in fullscreen --- */
         let hideControlsTimeout = null;
         function showControlsTemporarily() {
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
@@ -1966,8 +2013,8 @@
           controlsContainer.style.opacity = '1';
           controlsContainer.style.pointerEvents = 'auto';
           clearTimeout(hideControlsTimeout);
-          // Don't auto-hide if paused
-          if (!video.paused) {
+          // Don't auto-hide if paused or buffering
+          if (!video.paused && !playerObject.isBuffering) {
             hideControlsTimeout = setTimeout(() => {
               controlsContainer.style.opacity = '0';
               controlsContainer.style.pointerEvents = 'none';
@@ -1977,9 +2024,10 @@
         // Show controls on mouse move/enter in fullscreen
         container.addEventListener('mousemove', showControlsTemporarily);
         container.addEventListener('mouseenter', showControlsTemporarily);
-        // Keep controls visible when paused
+        // Keep controls visible when paused or waiting
         video.addEventListener('pause', showControlsTemporarily);
-        // Start hide timer when playing
+        video.addEventListener('waiting', showControlsTemporarily);
+        // Start hide timer when playing (and not buffering)
         video.addEventListener('play', showControlsTemporarily);
 
         // Set initial controls visibility based on fullscreen state
@@ -1996,6 +2044,13 @@
         }
         document.addEventListener("fullscreenchange", setInitialControlsVisibility);
         document.addEventListener("webkitfullscreenchange", setInitialControlsVisibility);
+
+        // Add resize listener for fullscreen canvas adjustments
+        playerObject.resizeHandler = () => resizeCanvas(playerObject);
+        document.addEventListener("fullscreenchange", playerObject.resizeHandler);
+        document.addEventListener("webkitfullscreenchange", playerObject.resizeHandler);
+        window.addEventListener("resize", playerObject.resizeHandler); // Handle window resize too
+
       }
 
       /* --- HLS.js Setup (Common for Mobile/Desktop HLS) --- */
