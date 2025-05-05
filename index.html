@@ -223,6 +223,29 @@
       -webkit-user-select: none;
     }
 
+    /* Buffering Spinner */
+    .buffering-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      transform: translate(-50%, -50%);
+      z-index: 15; /* Above canvas, below sidebar */
+      display: none; /* Hidden by default */
+    }
+    .buffering-spinner.visible {
+      display: block;
+    }
+    @keyframes spin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+
     /* Native Fullscreen (Desktop) */
     .player-container:fullscreen,
     .player-container:-webkit-full-screen {
@@ -1239,6 +1262,11 @@
         canvas.height = 540;
         canvasWrapper.appendChild(canvas);
 
+        // Add Buffering Spinner Element
+        const spinner = document.createElement('div');
+        spinner.className = 'buffering-spinner';
+        canvasWrapper.appendChild(spinner); // Add spinner inside the wrapper
+
         // Create offscreen canvas for masking operations
         playerObject.offscreenCanvas = document.createElement('canvas');
         playerObject.offscreenCanvas.width = canvas.width;
@@ -1384,6 +1412,19 @@
 
         const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         const offscreenCtx = playerObject.offscreenCtx; // Context for offscreen canvas
+
+        // --- Buffering Listeners ---
+        video.addEventListener('waiting', () => {
+            spinner.classList.add('visible');
+        });
+        video.addEventListener('playing', () => {
+            spinner.classList.remove('visible');
+        });
+         // Also hide spinner if video can play (covers initial load buffering)
+        video.addEventListener('canplay', () => {
+             spinner.classList.remove('visible');
+        });
+
 
         // --- Canvas Rendering Loop ---
         function renderCanvas(overlayState) {
@@ -1643,51 +1684,51 @@
           // If the click was handled by the sidebar closing logic (capture phase), do nothing here.
           // Check if default was prevented by the capture phase listener
           if (e.defaultPrevented) {
-              console.log("Click prevented by sidebar close handler.");
+              // console.log("Click prevented by sidebar close handler."); // Debugging
               return;
           }
 
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
           // Ignore clicks on overlay controls
           if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar')) {
-             console.log("Click ignored: on overlay controls.");
+             // console.log("Click ignored: on overlay controls."); // Debugging
              return;
           }
           // Ignore clicks outside the canvas wrapper unless in fullscreen
           if (!isFs && e.target !== canvasWrapper && !canvasWrapper.contains(e.target)) {
-             console.log("Click ignored: outside canvas wrapper.");
+             // console.log("Click ignored: outside canvas wrapper."); // Debugging
              return;
           }
           // Ignore right-clicks or if currently dragging
           if (e.button !== 0 || isDragging) {
-             console.log(`Click ignored: button=${e.button}, isDragging=${isDragging}`);
+             // console.log(`Click ignored: button=${e.button}, isDragging=${isDragging}`); // Debugging
              return;
           }
 
           const now = Date.now();
           if (now - lastClickTime < 300) { // Double-click detected
-            console.log("Double click detected");
+            // console.log("Double click detected"); // Debugging
             clearTimeout(clickTimeout); // Cancel single-click action
             lastClickTime = 0; // Reset timer
             // Toggle fullscreen
             if (!isFs) enterNativeFullScreen(container);
             else exitNativeFullScreen();
           } else { // Potential single-click
-             console.log("Potential single click...");
+             // console.log("Potential single click..."); // Debugging
             clickTimeout = setTimeout(() => {
-              console.log("Single click confirmed.");
+              // console.log("Single click confirmed."); // Debugging
               // Ensure click was on the canvas area
               if (e.target === canvasWrapper || canvasWrapper.contains(e.target)) {
                 // Toggle play/pause
                 if (video.paused) {
-                    console.log("Playing video");
+                    // console.log("Playing video"); // Debugging
                     video.play().catch(()=>{});
                 } else {
-                    console.log("Pausing video");
+                    // console.log("Pausing video"); // Debugging
                     video.pause();
                 }
               } else {
-                 console.log("Single click target was not canvas area.");
+                 // console.log("Single click target was not canvas area."); // Debugging
               }
             }, 300); // Wait for potential double-click
           }
