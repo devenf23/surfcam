@@ -79026,6 +79026,30 @@ object-assign
               // hasWaveEnergyPermissions: !!r(a.r.WAVE_ENERGY)
             }
         })
+        function hideAds() {
+            const adSelectors = ['.ad-banner', '.ad-slot', '#ad-container'];
+            
+            adSelectors.forEach(selector => {
+              document.querySelectorAll(selector).forEach(ad => {
+                ad.innerHTML = '';  // remove inner content
+                ad.style.height = '0px';
+                ad.style.margin = '0';
+                ad.style.padding = '0';
+                ad.style.display = 'none';
+              });
+            });
+          }
+          
+          // Run on load
+          window.addEventListener('load', () => {
+            hideAds();
+          });
+          
+          // Also run after navigation (if it’s a single-page app)
+          document.addEventListener('click', () => {
+            setTimeout(hideAds, 500);
+          });
+        }   
         
           , m = (0,
         i.P1)(f, function(t) {
