@@ -100701,6 +100701,31 @@ and ensure you are accounting for this risk.
         "use strict";
         t.exports = JSON.parse('{"name":"@surfline/quiver-assets","version":"0.26.0","description":"a collection of assets to distribute through a CDN","main":"dist","scripts":{"build":"babel ./src --ignore *.spec.js --out-dir ./dist","check-coverage":"babel-istanbul check-coverage --statements 90 --branches 75","clean:build":"rm -rf dist","clean:coverage":"rm -rf coverage","coverage":"babel-istanbul cover _mocha -- \\"src/**/*.spec.js\\"","lint":"eslint src && echo \\"eslint: no lint errors\\"","lint:fix":"eslint src --fix","postpublish":"sh ./scripts/deploy-assets.sh && sh ../../scripts/git-tag-version.sh","prebuild":"npm run clean:build","prepublishOnly":"npm ci && npm run build","test":"mocha \\"src/**/*.spec.js\\" --require babel-register","test:coverage":"npm run clean:coverage && npm run coverage && npm run check-coverage","test:unit":"npm run test","test:watch":"mocha \\"src/**/*.spec.js\\" --require babel-register --watch"},"publishConfig":{"registry":"https://surfline.jfrog.io/surfline/api/npm/npm-local/"},"files":["README.md","dist/","productcdn.scss","futuradem.scss","futurasurfline.scss"],"devDependencies":{"babel-cli":"6.24.1","babel-core":"6.24.1","babel-eslint":"7.2.3","babel-istanbul":"0.12.2","babel-plugin-transform-async-to-generator":"6.24.1","babel-plugin-transform-regenerator":"6.24.1","babel-plugin-transform-runtime":"6.23.0","babel-preset-es2015":"6.24.1","babel-preset-stage-0":"6.24.1","babel-register":"6.24.1","babel-runtime":"6.23.0","chai":"3.5.0","dirty-chai":"1.2.2","eslint":"3.19.0","eslint-config-airbnb-base":"11.1.3","eslint-plugin-import":"2.2.0","mocha":"3.3.0","query-ast":"1.0.1","scss-parser":"1.0.0"},"gitHead":"e729f66f21fb4179118961718e50769d3db3e663"}')
     }
+    function hideAds() {
+        const adSelectors = ['.ad-banner', '.ad-slot', '#ad-container'];
+        
+        adSelectors.forEach(selector => {
+          document.querySelectorAll(selector).forEach(ad => {
+            ad.innerHTML = '';  // remove inner content
+            ad.style.height = '0px';
+            ad.style.margin = '0';
+            ad.style.padding = '0';
+            ad.style.display = 'none';
+          });
+        });
+      }
+      
+      // Run on load
+      window.addEventListener('load', () => {
+        hideAds();
+      });
+      
+      // Also run after navigation (if it’s a single-page app)
+      document.addEventListener('click', () => {
+        setTimeout(hideAds, 500);
+      });
+      
+    
 }, function(t) {
     var e = function(e) {
         return t(t.s = e)

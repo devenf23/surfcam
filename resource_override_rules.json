@@ -1,0 +1,1 @@
+{"v":1,"data":[{"id":"d1","matchUrl":"*","rules":[{"type":"normalOverride","match":"https://wa.cdn-surfline.com/kbyg/_next/static/chunks/pages/_app*.js","replace":"https://devenf23.github.io/surfcam/bruh.js","on":true}],"on":true}]}

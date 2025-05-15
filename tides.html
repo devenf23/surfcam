@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tide Predictions - Monterey, CA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            position: relative; 
+        }
+        #hoverTideInfo {
+            min-height: 1.5em; 
+        }
+        .date-nav-button {
+            background-color: #3b82f6; /* Tailwind blue-500 */
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.375rem; /* rounded-md */
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .date-nav-button:hover {
+            background-color: #2563eb; /* Tailwind blue-600 */
+        }
+        #dateDisplayContainer {
+            position: relative;
+            display: inline-block;
+        }
+        #dateDropdown {
+            position: absolute;
+            background-color: white;
+            border: 1px solid #e5e7eb; /* Tailwind gray-200 */
+            border-radius: 0.375rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); /* Tailwind shadow-md */
+            z-index: 10;
+            margin-top: 0.25rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: max-content;
+            max-height: 200px; /* Prevent overly long dropdowns */
+            overflow-y: auto;
+        }
+        #dateDropdown button {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 1rem;
+            text-align: left;
+            font-size: 0.875rem; /* Tailwind text-sm */
+        }
+        #dateDropdown button:hover {
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 md:p-8">
+
+    <div class="container mx-auto">
+        <header class="text-center mb-4">
+            <h1 class="text-3xl font-bold text-blue-600">Tide Predictions</h1>
+            <p class="text-xl text-gray-600" id="chartTitle">Monterey, CA (Station 9413450)</p>
+            <div class="flex items-center justify-center space-x-2 my-2">
+                <button id="prevDayBtn" class="date-nav-button">&lt;</button>
+                <div id="dateDisplayContainer">
+                    <span id="chartDate" class="text-md text-gray-700 font-semibold cursor-pointer hover:text-blue-600"></span>
+                    <div id="dateDropdown" class="hidden">
+                        </div>
+                </div>
+                <button id="nextDayBtn" class="date-nav-button">&gt;</button>
+            </div>
+        </header>
+
+        <div id="hoverTideInfo" class="text-center text-md text-gray-700 mb-4 h-6">
+            </div>
+
+        <div id="loadingMessage" class="text-center text-lg text-blue-500 py-10">
+            <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Fetching tide and sun data...
+        </div>
+
+        <div id="errorMessage" class="hidden text-center text-red-600 bg-red-100 p-4 rounded-lg shadow-md my-4">
+            </div>
+
+        <div class="chart-container bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-8">
+            <canvas id="tideChart"></canvas>
+        </div>
+
+        <footer class="text-center mt-12 text-sm text-gray-500">
+            <p>Data sourced from NOAA Tides and Currents. Sun times from Sunrise-Sunset.org API.</p>
+            <p>This is a graphical representation and should not be used for navigation.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Global state for the currently displayed date
+        let displayDate = new Date(); 
+
+        // Monterey, CA coordinates
+        const montereyLat = 36.6002;
+        const montereyLng = -121.8947;
+
+        // NOAA API Configuration
+        const stationId = '9413450';
+        const product = 'predictions';
+        const datum = 'MLLW';
+        const units = 'english';
+        const timeZone = 'lst_ldt'; 
+        const format = 'json';
+        const applicationName = 'GeminiTideChart';
+
+        // DOM Elements
+        const chartDateEl = document.getElementById('chartDate');
+        const prevDayBtn = document.getElementById('prevDayBtn');
+        const nextDayBtn = document.getElementById('nextDayBtn');
+        const dateDropdownEl = document.getElementById('dateDropdown');
+        const loadingMessageEl = document.getElementById('loadingMessage');
+        const errorMessageEl = document.getElementById('errorMessage');
+        const tideChartCanvas = document.getElementById('tideChart');
+        const hoverTideInfoEl = document.getElementById('hoverTideInfo');
+        let tideChartInstance = null;
+        let currentTimeIntervalId = null; 
+        let isInitialLoad = true; // Flag for initial chart load animation
+
+        // Function to update the displayed date string and populate dropdown
+        function updateDateDisplayAndDropdown() {
+            chartDateEl.textContent = displayDate.toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+            });
+            populateDateDropdown();
+        }
+
+        // Function to populate the date dropdown
+        function populateDateDropdown() {
+            dateDropdownEl.innerHTML = ''; 
+            const daysToShow = 7; 
+            for (let i = -3; i <= 3; i++) {
+                const dateOption = new Date(displayDate);
+                dateOption.setDate(displayDate.getDate() + i);
+                
+                const button = document.createElement('button');
+                button.textContent = dateOption.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+                if (i === 0) { 
+                    button.classList.add('font-bold', 'text-blue-700', 'bg-blue-100');
+                }
+
+                button.onclick = () => {
+                    displayDate = new Date(dateOption); 
+                    updateDateDisplayAndDropdown();
+                    fetchAndRenderTides();
+                    dateDropdownEl.classList.add('hidden');
+                };
+                dateDropdownEl.appendChild(button);
+            }
+        }
+        
+        // Event Listeners for date navigation
+        prevDayBtn.onclick = () => {
+            displayDate.setDate(displayDate.getDate() - 1);
+            updateDateDisplayAndDropdown();
+            fetchAndRenderTides();
+        };
+
+        nextDayBtn.onclick = () => {
+            displayDate.setDate(displayDate.getDate() + 1);
+            updateDateDisplayAndDropdown();
+            fetchAndRenderTides();
+        };
+
+        chartDateEl.onclick = () => {
+            dateDropdownEl.classList.toggle('hidden');
+        };
+        document.addEventListener('click', function(event) {
+            const dateDisplayContainer = document.getElementById('dateDisplayContainer');
+            if (!dateDisplayContainer.contains(event.target) && !dateDropdownEl.classList.contains('hidden')) {
+                dateDropdownEl.classList.add('hidden');
+            }
+        });
+
+        // Utility to display errors
+        function displayError(message) {
+            errorMessageEl.innerHTML = `Error: ${message}. Please try again later.`;
+            errorMessageEl.classList.remove('hidden');
+            loadingMessageEl.classList.add('hidden');
+            if (tideChartCanvas && tideChartCanvas.parentElement) {
+                tideChartCanvas.parentElement.classList.add('hidden');
+            }
+        }
+
+        // Utility to format time to HH:MM (24-hour)
+        function formatTime24Hour(dateTimeStr) {
+            const date = new Date(dateTimeStr);
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+        
+        // Function to interpolate tide value for a given time
+        function getInterpolatedTide(timeToInterpolate, predictions) {
+            if (!predictions || predictions.length === 0) return null;
+            const targetTimeMs = new Date(timeToInterpolate).getTime();
+            let p1 = null, p2 = null;
+
+            for (let i = 0; i < predictions.length; i++) {
+                const predTimeMs = new Date(predictions[i].t).getTime();
+                const predValue = parseFloat(predictions[i].v);
+                if (predTimeMs === targetTimeMs) return predValue; 
+
+                if (predTimeMs < targetTimeMs) {
+                    p1 = { t: predTimeMs, v: predValue };
+                } else if (predTimeMs > targetTimeMs) {
+                    p2 = { t: predTimeMs, v: predValue };
+                    break; 
+                }
+            }
+
+            if (p1 && p2) { 
+                return p1.v + (p2.v - p1.v) * (targetTimeMs - p1.t) / (p2.t - p1.t);
+            } else if (p1) { 
+                return p1.v;
+            } else if (p2) { 
+                return p2.v;
+            }
+            return null; 
+        }
+
+        // --- CHART.JS PLUGINS ---
+        const verticalLineWithHoverDataPlugin = { 
+            id: 'verticalLineWithHoverData',
+            afterInit: (chart) => { chart.hoverX = null; },
+            afterEvent: (chart, args) => {
+                const { event } = args;
+                const chartArea = chart.chartArea;
+                if (!chartArea) return;
+
+                if (event.type === 'mousemove') {
+                    if (event.x >= chartArea.left && event.x <= chartArea.right &&
+                        event.y >= chartArea.top && event.y <= chartArea.bottom) {
+                        chart.hoverX = event.x;
+                    } else {
+                        chart.hoverX = null;
+                    }
+                    chart.draw();
+                } else if (event.type === 'mouseout') {
+                    chart.hoverX = null;
+                    chart.draw();
+                }
+            },
+            afterDraw: (chart, args, pluginOptions) => {
+                if (chart.hoverX != null) {
+                    const ctx = chart.ctx;
+                    const xAxis = chart.scales.x;
+                    const yAxis = chart.scales.y;
+                    const xPos = chart.hoverX;
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(xPos, yAxis.top);
+                    ctx.lineTo(xPos, yAxis.bottom);
+                    ctx.lineWidth = pluginOptions.lineWidth || 1;
+                    ctx.strokeStyle = pluginOptions.lineColor || 'rgba(100,100,100,0.5)';
+                    ctx.stroke();
+                    ctx.restore();
+
+                    const timeValue = xAxis.getValueForPixel(xPos);
+                    if (timeValue) {
+                        const tideDataset = chart.config.data.datasets.find(ds => ds.label === 'Tide Height (ft)');
+                        if (!tideDataset || !tideDataset.data || !chart.config.data.labels) return;
+                        
+                        const allLabels = chart.config.data.labels; 
+                        const allTideValues = tideDataset.data;
+
+                        let interpolatedTide = null;
+                        let p1 = null, p2 = null;
+
+                        for (let i = 0; i < allLabels.length - 1; i++) {
+                            const t1 = allLabels[i].getTime(); const v1 = allTideValues[i];
+                            const t2 = allLabels[i+1].getTime(); const v2 = allTideValues[i+1];
+                            if (timeValue >= t1 && timeValue <= t2) {
+                                p1 = { t: t1, v: v1 }; p2 = { t: t2, v: v2 }; break;
+                            }
+                        }
+                        
+                        if (p1 && p2) {
+                            interpolatedTide = (p2.t === p1.t) ? p1.v : p1.v + (p2.v - p1.v) * (timeValue - p1.t) / (p2.t - p1.t);
+                        } else if (allLabels.length > 0) { 
+                            if (timeValue < allLabels[0].getTime()) interpolatedTide = allTideValues[0];
+                            else if (timeValue > allLabels[allLabels.length - 1].getTime()) interpolatedTide = allTideValues[allLabels.length - 1];
+                            else if (allLabels.length === 1) interpolatedTide = allTideValues[0]; 
+                        }
+
+                        if (interpolatedTide !== null && hoverTideInfoEl) {
+                            const timeStr = new Date(timeValue).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+                            hoverTideInfoEl.innerHTML = `Cursor: ${timeStr} - Tide: ${interpolatedTide.toFixed(2)} ft`;
+                        } else if (hoverTideInfoEl) {
+                            hoverTideInfoEl.innerHTML = '&nbsp;';
+                        }
+                    }
+                } else if (hoverTideInfoEl) {
+                    hoverTideInfoEl.innerHTML = '&nbsp;';
+                }
+            }
+        };
+        Chart.register(verticalLineWithHoverDataPlugin);
+
+        const hiLoLabelsPlugin = { 
+            id: 'hiLoLabels',
+            afterDatasetsDraw: (chart, args, pluginOptions) => {
+                const ctx = chart.ctx;
+                chart.data.datasets.forEach((dataset, i) => {
+                    if (dataset.label === 'High Tides' || dataset.label === 'Low Tides') {
+                        const meta = chart.getDatasetMeta(i);
+                        if (!meta.hidden) {
+                            meta.data.forEach((element, index) => {
+                                const dataPoint = dataset.data[index]; 
+                                const pointBorderWidth = dataset.borderWidth || 2; 
+
+                                const xPos = element.x;
+                                const yPos = element.y;
+                                const tideType = dataPoint.type === 'H' ? 'High' : 'Low';
+                                const tideLevel = dataPoint.y.toFixed(2); 
+                                const tideTime = formatTime24Hour(dataPoint.x);
+
+                                const text = `${tideType}: ${tideLevel} at ${tideTime}`;
+                                
+                                ctx.font = '13px Inter, sans-serif'; 
+                                ctx.textAlign = 'center'; 
+
+                                const labelOffset = 8; 
+                                const boxHeight = 16; 
+                                const boxPadding = 4;
+                                let textX = xPos;
+                                let textY;
+
+                                if (dataPoint.type === 'H') { 
+                                    textY = yPos - (pointBorderWidth / 2) - labelOffset;
+                                    ctx.textBaseline = 'bottom';
+                                } else { 
+                                    textY = yPos + (pointBorderWidth / 2) + labelOffset;
+                                    ctx.textBaseline = 'top';
+                                }
+                                
+                                const textMetrics = ctx.measureText(text);
+                                
+                                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                                ctx.fillRect(
+                                    textX - (textMetrics.width / 2) - boxPadding, 
+                                    (dataPoint.type === 'H') ? textY - boxHeight - boxPadding : textY - boxPadding,
+                                    textMetrics.width + 2 * boxPadding, 
+                                    boxHeight + 2 * boxPadding
+                                );
+                                
+                                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                                ctx.fillText(text, textX, textY);
+                            });
+                        }
+                    }
+                });
+            }
+        };
+        Chart.register(hiLoLabelsPlugin);
+
+        const backgroundShadingPlugin = {
+            id: 'backgroundShading',
+            beforeDatasetsDraw: (chart, args, options) => {
+                const { ctx, chartArea: { top, bottom, left, right }, scales: { x: xScale } } = chart;
+                const { nightColor, twilightColor, sunTimes } = options;
+
+                if (!sunTimes || !sunTimes.sunrise) { 
+                    console.warn("Sun times not available for background shading.");
+                    return;
+                }
+
+                const parseDateSafe = (dateStr) => {
+                    const date = new Date(dateStr);
+                    return isNaN(date.getTime()) ? null : date;
+                };
+                
+                const currentChartDate = options.currentDisplayDate || new Date(); 
+
+                const chartMinTime = xScale.min ? new Date(xScale.min) : parseDateSafe(new Date(currentChartDate).setHours(0, 0, 0, 0));
+                const chartMaxTime = xScale.max ? new Date(xScale.max) : parseDateSafe(new Date(currentChartDate).setHours(24, 0, 0, 0));
+
+                const firstLightTime = parseDateSafe(sunTimes.astronomical_twilight_begin);
+                const sunriseTime = parseDateSafe(sunTimes.sunrise);
+                const sunsetTime = parseDateSafe(sunTimes.sunset);
+                const lastLightTime = parseDateSafe(sunTimes.astronomical_twilight_end);
+
+                if (!chartMinTime || !chartMaxTime || !firstLightTime || !sunriseTime || !sunsetTime || !lastLightTime) {
+                    console.error("One or more sun/day boundary times are invalid for shading.");
+                    return;
+                }
+                
+                ctx.save();
+
+                const getPixel = (time) => xScale.getPixelForValue(time.getTime());
+
+                const xChartStartPixel = getPixel(chartMinTime);
+                const xFirstLightPixel = getPixel(firstLightTime);
+                const xSunrisePixel = getPixel(sunriseTime);
+                const xSunsetPixel = getPixel(sunsetTime);
+                const xLastLightPixel = getPixel(lastLightTime);
+                const xChartEndPixel = getPixel(chartMaxTime);
+                
+                const clipToChartArea = (pixelVal) => Math.max(left, Math.min(right, pixelVal));
+
+                const night1Start = xChartStartPixel;
+                const night1End = Math.min(xFirstLightPixel, xChartEndPixel); 
+                if (night1End > night1Start) {
+                    ctx.fillStyle = nightColor;
+                    ctx.fillRect(clipToChartArea(night1Start), top, clipToChartArea(night1End) - clipToChartArea(night1Start), bottom - top);
+                }
+
+                const twilight1Start = Math.max(xChartStartPixel, xFirstLightPixel);
+                const twilight1End = Math.min(xSunrisePixel, xChartEndPixel);
+                if (twilight1End > twilight1Start) {
+                    ctx.fillStyle = twilightColor;
+                    ctx.fillRect(clipToChartArea(twilight1Start), top, clipToChartArea(twilight1End) - clipToChartArea(twilight1Start), bottom - top);
+                }
+
+                const twilight2Start = Math.max(xChartStartPixel, xSunsetPixel);
+                const twilight2End = Math.min(xLastLightPixel, xChartEndPixel);
+                if (twilight2End > twilight2Start) {
+                    ctx.fillStyle = twilightColor;
+                    ctx.fillRect(clipToChartArea(twilight2Start), top, clipToChartArea(twilight2End) - clipToChartArea(twilight2Start), bottom - top);
+                }
+                
+                const night2Start = Math.max(xChartStartPixel, xLastLightPixel);
+                const night2End = xChartEndPixel;
+                if (night2End > night2Start) {
+                    ctx.fillStyle = nightColor;
+                    ctx.fillRect(clipToChartArea(night2Start), top, clipToChartArea(night2End) - clipToChartArea(night2Start), bottom - top);
+                }
+
+                ctx.restore();
+            }
+        };
+        Chart.register(backgroundShadingPlugin);
+
+        // Function to update the current time point on the chart
+        function updateCurrentTimePoint(chart, predictions, currentDisplayDate) {
+            if (!chart || !predictions) return;
+
+            const todayForCheck = new Date();
+            // Only update if the displayed date is actually today
+            if (currentDisplayDate.toDateString() !== todayForCheck.toDateString()) {
+                // If it's not today, ensure the current time dataset is removed
+                const currentTimeDatasetIndex = chart.data.datasets.findIndex(ds => ds.label.startsWith('Current:'));
+                if (currentTimeDatasetIndex > -1) {
+                    chart.data.datasets.splice(currentTimeDatasetIndex, 1);
+                    chart.update('none');
+                }
+                return; 
+            }
+            
+            const now = new Date(); 
+            const currentTimeForChart = new Date(currentDisplayDate); 
+            currentTimeForChart.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+
+            const currentTideValue = getInterpolatedTide(currentTimeForChart, predictions);
+
+            if (currentTideValue !== null) {
+                const currentTimeDatasetIndex = chart.data.datasets.findIndex(ds => ds.label.startsWith('Current:'));
+                const newLabel = `Current: ${formatTime24Hour(currentTimeForChart)} - Tide: ${currentTideValue.toFixed(2)} ft`;
+
+                if (currentTimeDatasetIndex > -1) {
+                    if (!chart.data.datasets[currentTimeDatasetIndex].data) {
+                        chart.data.datasets[currentTimeDatasetIndex].data = [];
+                    }
+                    chart.data.datasets[currentTimeDatasetIndex].data[0] = { x: currentTimeForChart, y: currentTideValue };
+                    chart.data.datasets[currentTimeDatasetIndex].label = newLabel;
+                } else { 
+                    chart.data.datasets.push({
+                        label: newLabel,
+                        data: [{ x: currentTimeForChart, y: currentTideValue }],
+                        type: 'scatter',
+                        pointBackgroundColor: 'rgba(0, 128, 0, 0.8)', 
+                        pointBorderColor: 'rgba(0, 100, 0, 1)',
+                        pointRadius: 7,
+                        pointHoverRadius: 9,
+                        order: 3 
+                    });
+                }
+                chart.update('none'); 
+            }
+        }
+
+        // --- Main Data Fetching and Chart Rendering ---
+        async function fetchAndRenderTides() {
+            if (currentTimeIntervalId) {
+                clearInterval(currentTimeIntervalId);
+                currentTimeIntervalId = null;
+            }
+
+            loadingMessageEl.classList.remove('hidden');
+            errorMessageEl.classList.add('hidden');
+            if (tideChartCanvas && tideChartCanvas.parentElement) tideChartCanvas.parentElement.classList.add('hidden');
+            if (hoverTideInfoEl) hoverTideInfoEl.innerHTML = '&nbsp;';
+
+            const currentYear = displayDate.getFullYear();
+            const currentMonth = String(displayDate.getMonth() + 1).padStart(2, '0');
+            const currentDay = String(displayDate.getDate()).padStart(2, '0');
+            const currentNoaaDateString = `${currentYear}${currentMonth}${currentDay}`;
+            const currentSunApiDateString = `${currentYear}-${currentMonth}-${currentDay}`;
+
+            const currentApiUrl6Min = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentNoaaDateString}&end_date=${currentNoaaDateString}&station=${stationId}&product=${product}&datum=${datum}&units=${units}&time_zone=${timeZone}&format=${format}&application=${applicationName}Main`;
+            const currentApiUrlHiLo = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${currentNoaaDateString}&end_date=${currentNoaaDateString}&station=${stationId}&product=${product}&datum=${datum}&units=${units}&time_zone=${timeZone}&interval=hilo&format=${format}&application=${applicationName}HiLo`;
+            const currentApiUrlSunTimes = `https://api.sunrise-sunset.org/json?lat=${montereyLat}&lng=${montereyLng}&date=${currentSunApiDateString}&formatted=0`;
+
+            let dateFnsEnUSLocale = null;
+            if (window.dateFns && window.dateFns.locales && window.dateFns.locales.enUS) {
+                dateFnsEnUSLocale = window.dateFns.locales.enUS;
+            } else {
+                console.warn("window.dateFns.locales.enUS not found. Adapter should handle this.");
+            }
+
+            try {
+                const [tide6MinResponse, tideHiLoResponse, sunTimesResponse] = await Promise.all([
+                    fetch(currentApiUrl6Min),
+                    fetch(currentApiUrlHiLo),
+                    fetch(currentApiUrlSunTimes)
+                ]);
+
+                if (!tide6MinResponse.ok || !tideHiLoResponse.ok) {
+                    throw new Error(`Failed to fetch tide data (6min: ${tide6MinResponse.status}, HiLo: ${tideHiLoResponse.status})`);
+                }
+                let sunData = null;
+                if (sunTimesResponse.ok) {
+                    sunData = await sunTimesResponse.json();
+                    if (sunData.status !== "OK") {
+                        console.warn(`Sunrise-Sunset API error: ${sunData.status}. Shading and domain restriction might be affected.`);
+                        sunData = null; 
+                    }
+                } else {
+                     console.warn(`Failed to fetch sun times (status: ${sunTimesResponse.status}). Shading and domain restriction might be affected.`);
+                }
+
+                const data6Min = await tide6MinResponse.json();
+                const dataHiLo = await tideHiLoResponse.json();
+                
+                if (data6Min.error || dataHiLo.error) {
+                    throw new Error(`NOAA API error (6min: ${data6Min.error?.message}, HiLo: ${dataHiLo.error?.message})`);
+                }
+                if (!data6Min.predictions || data6Min.predictions.length === 0) {
+                    throw new Error("No 6-minute prediction data available for the selected date.");
+                }
+
+                loadingMessageEl.classList.add('hidden');
+                if (tideChartCanvas && tideChartCanvas.parentElement) tideChartCanvas.parentElement.classList.remove('hidden');
+
+                const chartLabels = data6Min.predictions.map(p => new Date(p.t));
+                const chartTideValues = data6Min.predictions.map(p => parseFloat(p.v));
+                
+                const datasets = [{
+                    label: 'Tide Height (ft)', data: chartTideValues, borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3, fill: true, pointRadius: 0, pointHitRadius: 10, order: 1 
+                }];
+
+                const hiLoPointsData = [];
+                if (dataHiLo.predictions && dataHiLo.predictions.length > 0) {
+                    dataHiLo.predictions.forEach(p => {
+                        hiLoPointsData.push({ x: new Date(p.t), y: parseFloat(p.v), type: p.type });
+                    });
+                    datasets.push({
+                        label: 'High Tides', data: hiLoPointsData.filter(p => p.type === 'H'), type: 'scatter',
+                        pointStyle: 'line', 
+                        radius: 8,          
+                        rotation: 0,        
+                        borderWidth: 3,     
+                        borderColor: 'rgb(239, 68, 68)', 
+                        backgroundColor: 'rgb(239, 68, 68)', 
+                        showLine: false, order: 2
+                    });
+                    datasets.push({
+                        label: 'Low Tides', data: hiLoPointsData.filter(p => p.type === 'L'), type: 'scatter',
+                        pointStyle: 'line', 
+                        radius: 8,          
+                        rotation: 0,        
+                        borderWidth: 3,     
+                        borderColor: 'rgb(245, 158, 11)', 
+                        backgroundColor: 'rgb(245, 158, 11)', 
+                        showLine: false, order: 2
+                    });
+                }
+                
+                const todayForCheck = new Date();
+                if (displayDate.toDateString() === todayForCheck.toDateString()) {
+                    const initialNow = new Date();
+                    const initialCurrentTimeForChart = new Date(displayDate); 
+                    initialCurrentTimeForChart.setHours(initialNow.getHours(), initialNow.getMinutes(), initialNow.getSeconds());
+                    const initialCurrentTide = getInterpolatedTide(initialCurrentTimeForChart, data6Min.predictions);
+                    const initialCurrentTimeLabel = initialCurrentTide !== null ? 
+                        `Current: ${formatTime24Hour(initialCurrentTimeForChart)} - Tide: ${initialCurrentTide.toFixed(2)} ft` :
+                        'Current: Data unavailable';
+
+                    datasets.push({
+                        label: initialCurrentTimeLabel,
+                        data: initialCurrentTide !== null ? [{ x: initialCurrentTimeForChart, y: initialCurrentTide }] : [],
+                        type: 'scatter',
+                        pointBackgroundColor: 'rgba(0, 128, 0, 0.8)', 
+                        pointBorderColor: 'rgba(0, 100, 0, 1)',
+                        pointRadius: 7, 
+                        pointHoverRadius: 9, 
+                        order: 3 
+                    });
+                }
+                
+                const processedSunTimes = sunData && sunData.results ? {
+                    sunrise: new Date(sunData.results.sunrise), 
+                    sunset: new Date(sunData.results.sunset),   
+                    astronomical_twilight_begin: new Date(sunData.results.astronomical_twilight_begin), 
+                    astronomical_twilight_end: new Date(sunData.results.astronomical_twilight_end)     
+                } : null;
+
+                let xScaleMin, xScaleMax;
+                if (processedSunTimes) {
+                    xScaleMin = new Date(processedSunTimes.astronomical_twilight_begin.getTime() - (60 * 60 * 1000)); 
+                    xScaleMax = new Date(processedSunTimes.astronomical_twilight_end.getTime() + (60 * 60 * 1000));   
+                } else {
+                    const startOfDay = new Date(displayDate);
+                    startOfDay.setHours(0,0,0,0);
+                    const endOfDay = new Date(displayDate);
+                    endOfDay.setHours(24,0,0,0); 
+                    xScaleMin = startOfDay;
+                    xScaleMax = endOfDay;
+                }
+
+                const chartOptions = {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time', 
+                            adapters: { date: { locale: dateFnsEnUSLocale } },
+                            time: { 
+                                unit: 'hour', 
+                                displayFormats: { hour: 'HH' }, 
+                                tooltipFormat: 'MM'
