@@ -60453,7 +60453,7 @@ object-assign
     },
     6840: function(t, e, n) {
         (window.__NEXT_P = window.__NEXT_P || []).push(["/_app", function() {
-            return n(43153)
+            return n(86154)
         }
         ])
     },
@@ -66021,6 +66021,9 @@ object-assign
             SL_WEB_HIGH_QUALITY_REWIND_CLIPS_STILLS: function() {
                 return b
             },
+            SL_WEB_KBYG_GREEN: function() {
+                return A
+            },
             SL_WEB_LIVE_CAM_REWIND_SHARING: function() {
                 return M
             },
@@ -66073,6 +66076,7 @@ object-assign
           , M = "sl_web_live_cam_rewind_sharing"
           , k = "sl_web_remove_ads_from_premium"
           , L = "sl_web_content_carousel"
+          , A = "sl_web_kbyg_green"
     },
     90225: function(t, e, n) {
         "use strict";
@@ -67322,7 +67326,7 @@ object-assign
           , s = n(77823)
           , u = n(80660)
           , l = n(70235)
-          , c = n(17485)
+          , c = n(52994)
           , f = n(33409)
           , d = function(t) {
             var e, n = t.isVisible, o = void 0 === n || n, d = t.adConfigName, p = void 0 === d ? "" : d, h = t.adTarget, m = void 0 === h ? [] : h, v = t.entitlements, g = void 0 === v ? [] : v, y = t.styles, b = void 0 === y ? {} : y, x = t.userDetails, w = void 0 !== x && x, S = t.adKey, _ = void 0 === S ? "" : S, C = (e = null,
@@ -73056,12 +73060,12 @@ object-assign
             }
         }
     },
-    43153: function(t, e, n) {
+    86154: function(t, e, n) {
         "use strict";
         n.r(e),
         n.d(e, {
             default: function() {
-                return oc
+                return og
             }
         });
         var r, i = n(26042), o = n(69396), a = n(10253), s = n(85893), u = n(37667), l = n.n(u), c = n(93967), f = n.n(c), d = n(9008), p = n.n(d), h = n(11163), m = n(2664);
@@ -73620,27 +73624,124 @@ object-assign
         }
           , to = n(30964)
           , ta = n(14924)
-          , ts = n(78080)
-          , tu = n(40904)
-          , tl = n(69091)
-          , tc = n(12857)
-          , tf = n(9437)
-          , td = n(31247)
-          , tp = n(25501)
-          , th = n(96486)
-          , tm = n(19886)
-          , tv = n(3833)
-          , tg = n(42499)
-          , ty = function() {
+          , ts = n(40904)
+          , tu = n(69091);
+        /*! js-cookie v3.0.5 | MIT */
+        function tl(t) {
+            for (var e = 1; e < arguments.length; e++) {
+                var n = arguments[e];
+                for (var r in n)
+                    t[r] = n[r]
+            }
+            return t
+        }
+        var tc = {
+            read: function(t) {
+                return '"' === t[0] && (t = t.slice(1, -1)),
+                t.replace(/(%[\dA-F]{2})+/gi, decodeURIComponent)
+            },
+            write: function(t) {
+                return encodeURIComponent(t).replace(/%(2[346BF]|3[AC-F]|40|5[BDE]|60|7[BCD])/g, decodeURIComponent)
+            }
+        };
+        function tf(t, e) {
+            function n(n, r, i) {
+                if ("undefined" != typeof document) {
+                    "number" == typeof (i = tl({}, e, i)).expires && (i.expires = new Date(Date.now() + 864e5 * i.expires)),
+                    i.expires && (i.expires = i.expires.toUTCString()),
+                    n = encodeURIComponent(n).replace(/%(2[346B]|5E|60|7C)/g, decodeURIComponent).replace(/[()]/g, escape);
+                    var o = "";
+                    for (var a in i) {
+                        if (i[a])
+                            o += "; " + a,
+                            !0 !== i[a] && (o += "=" + i[a].split(";")[0])
+                    }
+                    return document.cookie = n + "=" + t.write(r, n) + o
+                }
+            }
+            function r(e) {
+                if ("undefined" != typeof document && (!arguments.length || e)) {
+                    for (var n = document.cookie ? document.cookie.split("; ") : [], r = {}, i = 0; i < n.length; i++) {
+                        var o = n[i].split("=")
+                          , a = o.slice(1).join("=");
+                        try {
+                            var s = decodeURIComponent(o[0]);
+                            if (r[s] = t.read(a, s),
+                            e === s)
+                                break
+                        } catch (u) {}
+                    }
+                    return e ? r[e] : r
+                }
+            }
+            return Object.create({
+                set: n,
+                get: r,
+                remove: function(t, e) {
+                    n(t, "", tl({}, e, {
+                        expires: -1
+                    }))
+                },
+                withAttributes: function(t) {
+                    return tf(this.converter, tl({}, this.attributes, t))
+                },
+                withConverter: function(t) {
+                    return tf(tl({}, this.converter, t), this.attributes)
+                }
+            }, {
+                attributes: {
+                    value: Object.freeze(e)
+                },
+                converter: {
+                    value: Object.freeze(t)
+                }
+            })
+        }
+        var td = tf(tc, {
+            path: "/"
+        })
+          , tp = n(78080)
+          , th = "sl_kbyg_web_green"
+          , tm = 3
+          , tv = function() {
+            var t = (0,
+            tp.NJ)()
+              , e = (0,
+            u.useState)(!1)
+              , n = e[0]
+              , r = e[1];
+            return (0,
+            u.useEffect)(function() {
+                var e = t[ts.SL_WEB_KBYG_GREEN]
+                  , n = !!td.get(th);
+                "on" === e ? (n || (td.set(th, "on", {
+                    expires: tm
+                }),
+                window.location.reload()),
+                r(!0)) : (n && (td.remove(th),
+                window.location.reload()),
+                r(!1))
+            }, [t]),
+            n
+        }
+          , tg = n(12857)
+          , ty = n(9437)
+          , tb = n(31247)
+          , tx = n(25501)
+          , tw = n(96486)
+          , tS = n(19886)
+          , t_ = n(3833)
+          , tC = n(42499)
+          , tE = function() {
             var t = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : null
               , e = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : null
               , n = t ? "?redirectUrl=".concat(encodeURIComponent(t)) : ""
               , r = e ? "/setup/favorite-surf-spots" : "/create-account";
             return "".concat(r).concat(n)
         }
-          , tb = n(36602)
-          , tx = n.n(tb)
-          , tw = function(t) {
+          , tT = n(36602)
+          , tM = n.n(tT)
+          , tk = function(t) {
             var e = t.user
               , n = void 0 === e ? null : e
               , r = t.entitlements
@@ -73668,30 +73769,30 @@ object-assign
                 children: (0,
                 s.jsx)("a", {
                     ref: f,
-                    className: tx().addFavorites,
-                    href: ty(a ? a.location.href : null, n),
+                    className: tM().addFavorites,
+                    href: tE(a ? a.location.href : null, n),
                     children: (0,
                     s.jsxs)("div", {
-                        className: tx().wrapper,
+                        className: tM().wrapper,
                         children: [(0,
                         s.jsx)(Y.dt, {
-                            className: tx().icon
+                            className: tM().icon
                         }), (0,
                         s.jsx)(I.Z, {
                             variant: "subHeadline",
                             component: "p",
-                            className: tx().label,
+                            className: tM().label,
                             children: "Add favorites"
                         })]
                     })
                 })
             })
         }
-          , tS = n(46560)
-          , t_ = n.n(tS)
-          , tC = "favoritesPosition"
-          , tE = new tp.Z
-          , tT = function(t) {
+          , tL = n(46560)
+          , tA = n.n(tL)
+          , tj = "favoritesPosition"
+          , tO = new tx.Z
+          , tP = function(t) {
             var e = t.favorites
               , n = void 0 === e ? [] : e
               , r = t.settings
@@ -73704,7 +73805,7 @@ object-assign
             u.useRef)(null)
               , p = function(t) {
                 var e = 2592e3;
-                tE.set(tC, t, {
+                tO.set(tj, t, {
                     path: "/",
                     maxAge: e
                 })
@@ -73725,7 +73826,7 @@ object-assign
                     return
                 }
                 if (!(0,
-                th.isNil)(null == t ? void 0 : t.scrollLeft)) {
+                tw.isNil)(null == t ? void 0 : t.scrollLeft)) {
                     var r, i = t, o = (e - (null !== (r = null == i ? void 0 : i.scrollLeft) && void 0 !== r ? r : 0)) / n * 10;
                     setTimeout(function() {
                         i.scrollLeft += o,
@@ -73737,7 +73838,7 @@ object-assign
                 (null == d ? void 0 : d.current) && ("left" === t ? m(d.current, d.current.scrollLeft - d.current.clientWidth, 150) : "right" === t && m(d.current, d.current.scrollLeft + d.current.clientWidth, 150))
             }
               , g = function(t) {
-                var e = tE.get(tC);
+                var e = tO.get(tj);
                 e && null !== t && m(t, e, 10)
             };
             return (0,
@@ -73746,47 +73847,47 @@ object-assign
             }),
             (0,
             s.jsx)("div", {
-                className: t_().favoritesBar,
+                className: tA().favoritesBar,
                 children: (0,
                 s.jsx)("div", {
-                    className: t_().content,
+                    className: tA().content,
                     children: (0,
                     s.jsxs)("div", {
-                        className: t_().contentFavorites,
+                        className: tA().contentFavorites,
                         children: [(0,
                         s.jsx)("div", {
-                            className: t_().link,
+                            className: tA().link,
                             children: (0,
                             s.jsxs)(I.Z, {
-                                className: t_().linkAnchor,
-                                component: tv.Z,
+                                className: tA().linkAnchor,
+                                component: t_.Z,
                                 href: "/surf-cams",
                                 variant: "overline3",
                                 children: [(0,
                                 s.jsx)(Y.w3, {
-                                    className: t_().linkIcon
+                                    className: tA().linkIcon
                                 }), (0,
                                 s.jsx)("span", {
-                                    className: t_().linkLabel,
+                                    className: tA().linkLabel,
                                     children: "Multi-cam"
                                 })]
                             })
                         }), (0,
                         s.jsxs)("div", {
-                            className: t_().scrollWrapper,
+                            className: tA().scrollWrapper,
                             onScroll: function() {
                                 return h(null == d ? void 0 : d.current)
                             },
                             ref: d,
                             children: [(0,
                             s.jsx)("ul", {
-                                className: t_().contentFavoritesList,
+                                className: tA().contentFavoritesList,
                                 children: n.map(function(t) {
                                     return (0,
                                     s.jsx)("li", {
-                                        className: t_().contentFavoritesItem,
+                                        className: tA().contentFavoritesItem,
                                         children: (0,
-                                        s.jsx)(tm.Z, {
+                                        s.jsx)(tS.Z, {
                                             favorite: t,
                                             settings: r,
                                             large: !1,
@@ -73800,20 +73901,20 @@ object-assign
                                     }, t._id)
                                 })
                             }), (0,
-                            s.jsx)(tw, {
+                            s.jsx)(tk, {
                                 user: a
                             })]
                         }), (0,
                         s.jsx)("div", {
-                            className: t_().contentFavoritesArrows,
+                            className: tA().contentFavoritesArrows,
                             children: ["left", "right"].map(function(t) {
                                 return (0,
                                 s.jsx)("div", (0,
                                 o.Z)((0,
                                 i.Z)({
-                                    className: t_().contentFavoritesArrow
+                                    className: tA().contentFavoritesArrow
                                 }, (0,
-                                tg.ZP)(function() {
+                                tC.ZP)(function() {
                                     return v(t)
                                 }, "button")), {
                                     children: (0,
@@ -73827,18 +73928,18 @@ object-assign
                 })
             })
         }
-          , tM = n(88029)
-          , tk = n(60460)
-          , tL = n(50657)
-          , tA = n(63462)
-          , tj = n(29815)
-          , tO = [{
+          , tI = n(88029)
+          , tN = n(60460)
+          , tD = n(50657)
+          , tZ = n(63462)
+          , tR = n(29815)
+          , tF = [{
             display: "Home",
             href: "/",
             isExternal: !1,
             newWindow: !1
         }, ]
-          , tP = [{
+          , tz = [{
             display: "Surf Etiquette",
             href: "https://www.surfline.com/lp/surf-etiquette",
             isExternal: !0,
@@ -73849,7 +73950,7 @@ object-assign
             isExternal: !0,
             newWindow: !1
         }, ]
-          , tI = [{
+          , tB = [{
             display: "Surf spots",
             href: "/surf-reports-forecasts-cams-map",
             isExternal: !1,
@@ -73870,7 +73971,7 @@ object-assign
             isExternal: !1,
             newWindow: !1
         }, ]
-          , tN = [{
+          , tU = [{
             display: "Video",
             href: "/category/video",
             isExternal: !1,
@@ -73911,7 +74012,7 @@ object-assign
             isExternal: !1,
             newWindow: !1
         }, ]
-          , tD = function() {
+          , tV = function() {
             var t = arguments.length > 0 && void 0 !== arguments[0] && arguments[0];
             return [{
                 display: "Account",
@@ -73919,7 +74020,7 @@ object-assign
                 isExternal: !0,
                 newWindow: !1
             }, ].concat((0,
-            tj.Z)(t ? [{
+            tR.Z)(t ? [{
                 display: "Add people to your membership",
                 href: "/subscriptions/manage-members",
                 isExternal: !0,
@@ -73935,13 +74036,13 @@ object-assign
                 newWindow: !1
             }, ])
         }
-          , tZ = [{
+          , tH = [{
             display: "Gift Cards",
             href: "/gift-cards",
             isExternal: !0,
             newWindow: !1
         }, ]
-          , tR = [{
+          , tW = [{
             display: "Multi-Cam",
             href: "/surf-cams",
             newWindow: !1
@@ -73952,10 +74053,10 @@ object-assign
             newWindow: !1
         }, ];
         (0,
-        tj.Z)(tD()).concat((0,
-        tj.Z)(tZ), (0,
-        tj.Z)(tR));
-        var tF, tz, tB, tU, tV, tH = [{
+        tR.Z)(tV()).concat((0,
+        tR.Z)(tH), (0,
+        tR.Z)(tW));
+        var tq, tG, tY, t$, tQ, tK = [{
             display: "All Surf Spots",
             href: "/surf-reports-forecasts-cams",
             isExternal: !1,
@@ -73975,10 +74076,10 @@ object-assign
             href: "/series/hurricane",
             isExternal: !1,
             newWindow: !1
-        }, ], tW = n(47568), tq = n(70655), tG = n(18241), tY = n(86692), t$ = n(10956), tQ = n(68273), tK = n(5060), tX = n(69592), tJ = n.n(tX), t0 = function(t) {
+        }, ], tX = n(47568), tJ = n(70655), t0 = n(18241), t1 = n(86692), t2 = n(10956), t3 = n(68273), t4 = n(5060), t5 = n(69592), t6 = n.n(t5), t8 = function(t) {
             var e, n, r = t.onClickLink, i = t.spot, o = function() {
-                return f()(tJ().renderSpot, (0,
-                ta.Z)({}, tJ()["renderSpot--lastOfGroup"], null == i ? void 0 : i.lastOfGroup))
+                return f()(t6().renderSpot, (0,
+                ta.Z)({}, t6()["renderSpot--lastOfGroup"], null == i ? void 0 : i.lastOfGroup))
             }, a = function(t) {
                 var e = t.associated
                   , n = t._id
@@ -73990,9 +74091,9 @@ object-assign
                     return null == o ? void 0 : o.replace(T.Z.surflineHost, "")
                 }
                 var a = (0,
-                tQ.Z)(r || "");
+                t3.Z)(r || "");
                 return (0,
-                tK.Z)(n || "", a)
+                t4.Z)(n || "", a)
             }, l = i.cameras && i.cameras.length > 1, c = (0,
             h.useRouter)(), d = (0,
             u.useMemo)(function() {
@@ -74001,7 +74102,7 @@ object-assign
             u.useMemo)(function() {
                 var t, e;
                 return !(0,
-                th.isNil)(d) && (null === (e = (t = c.asPath).includes) || void 0 === e ? void 0 : e.call(t, d))
+                tw.isNil)(d) && (null === (e = (t = c.asPath).includes) || void 0 === e ? void 0 : e.call(t, d))
             }, [d, c.asPath]), m = function() {
                 r && r({
                     clickEndLocation: "Spot",
@@ -74014,11 +74115,11 @@ object-assign
             s.jsxs)("div", {
                 className: o(),
                 children: [(0,
-                s.jsx)(t$.Z, {
+                s.jsx)(t2.Z, {
                     conditions: null !== (n = null == i ? void 0 : null === (e = i.conditions) || void 0 === e ? void 0 : e.value) && void 0 !== n ? n : "NONE"
                 }), (0,
                 s.jsx)(I.Z, {
-                    component: tv.Z,
+                    component: t_.Z,
                     href: a(i) || "",
                     isExternal: p,
                     onClick: m,
@@ -74026,21 +74127,21 @@ object-assign
                     children: i.name
                 }), i.insightsCameraId && (0,
                 s.jsx)(W.Z, {
-                    className: tJ().insightsIcon,
+                    className: t6().insightsIcon,
                     children: (0,
                     s.jsx)(Y.v2, {})
                 }), ((null == i ? void 0 : i.hasCamera) || (null == i ? void 0 : i.cameras) && i.cameras.length > 0) && !i.insightsCameraId && (0,
                 s.jsx)("div", {
-                    className: tJ().iconWrapper,
+                    className: t6().iconWrapper,
                     children: (0,
                     s.jsx)(Y.HT, {
-                        className: tJ().icon,
+                        className: t6().icon,
                         isMultiCam: l,
                         withText: !0
                     })
                 })]
             })
-        }, t1 = n(78185), t2 = n.n(t1), t3 = function(t) {
+        }, t7 = n(78185), t9 = n.n(t7), et = function(t) {
             var e = t.items
               , n = t.loggedIn
               , r = void 0 !== n && n
@@ -74058,7 +74159,7 @@ object-assign
               , y = g[0]
               , b = g[1]
               , x = (0,
-            ts.NJ)()
+            tp.NJ)()
               , w = function() {
                 v(function(t) {
                     return !t
@@ -74068,18 +74169,18 @@ object-assign
                 var t;
                 return f()((t = {},
                 (0,
-                ta.Z)(t, t2().header, !0),
+                ta.Z)(t, t9().header, !0),
                 (0,
-                ta.Z)(t, t2()["header--open"], m),
+                ta.Z)(t, t9()["header--open"], m),
                 t))
             }
               , C = function() {
                 var t;
                 return f()((t = {},
                 (0,
-                ta.Z)(t, t2().list, !0),
+                ta.Z)(t, t9().list, !0),
                 (0,
-                ta.Z)(t, t2()["list--hidden"], !m),
+                ta.Z)(t, t9()["list--hidden"], !m),
                 t))
             }
               , E = function() {
@@ -74111,10 +74212,10 @@ object-assign
             };
             return (0,
             _.Z)((0,
-            tW.Z)(function() {
+            tX.Z)(function() {
                 var t, n, r, o, a;
                 return (0,
-                tq.__generator)(this, function(s) {
+                tJ.__generator)(this, function(s) {
                     switch (s.label) {
                     case 0:
                         t = e || [],
@@ -74124,9 +74225,9 @@ object-assign
                         n = t.map(function(t) {
                             return t._id || ""
                         }),
-                        r = "on" === x[tu.SL_WEB_OBSERVATION_CLARITY],
+                        r = "on" === x[ts.SL_WEB_OBSERVATION_CLARITY],
                         [4, (0,
-                        tG.cr)(n, {
+                        t0.cr)(n, {
                             units: null == p ? void 0 : p.units,
                             observationClarity: r
                         })];
@@ -74142,7 +74243,7 @@ object-assign
                     case 3:
                         return a = s.sent(),
                         (0,
-                        tY.Z)(a, "RecentlyVisited", {}),
+                        t1.Z)(a, "RecentlyVisited", {}),
                         [3, 4];
                     case 4:
                         return [2]
@@ -74151,7 +74252,7 @@ object-assign
             })),
             (0,
             s.jsxs)("div", {
-                className: t2().recentlyVisited,
+                className: t9().recentlyVisited,
                 children: [(0,
                 s.jsx)("button", {
                     type: "button",
@@ -74159,11 +74260,11 @@ object-assign
                     onClick: w,
                     children: (0,
                     s.jsxs)(I.Z, {
-                        className: t2().buttonWrapper,
+                        className: t9().buttonWrapper,
                         variant: "h5",
                         children: ["Recently Visited", (0,
                         s.jsx)(Y.Tt, {
-                            className: t2().chevron,
+                            className: t9().chevron,
                             direction: "right"
                         })]
                     })
@@ -74174,17 +74275,17 @@ object-assign
                         return !!t._id && !!t.name
                     }).map(function(t) {
                         return (0,
-                        s.jsx)(t0, {
+                        s.jsx)(t8, {
                             spot: t,
                             onClickLink: T
                         }, t._id)
                     }) : (0,
                     s.jsxs)(I.Z, {
-                        className: t2().signin,
+                        className: t9().signin,
                         variant: "body2",
                         children: [(0,
-                        s.jsx)(tv.Z, {
-                            className: t2().link,
+                        s.jsx)(t_.Z, {
+                            className: t9().link,
                             href: l,
                             isExternal: !0,
                             onClick: E,
@@ -74193,13 +74294,13 @@ object-assign
                     })
                 }), (0,
                 s.jsx)("div", {
-                    className: t2().staticLinks,
+                    className: t9().staticLinks,
                     children: null == d ? void 0 : d.map(function(t) {
                         var e;
                         return x && t.splitTreatment && "on" !== x[t.splitTreatment] ? null : (0,
                         s.jsx)(I.Z, {
-                            className: t2().staticLink,
-                            component: tv.Z,
+                            className: t9().staticLink,
+                            component: t_.Z,
                             href: null !== (e = null == t ? void 0 : t.href) && void 0 !== e ? e : void 0,
                             isExternal: null == t ? void 0 : t.isExternal,
                             onClick: M(t),
@@ -74211,13 +74312,13 @@ object-assign
                     })
                 })]
             })
-        }, t4 = "58f7ed51dadb30820bb38782", t5 = function(t, e, n) {
+        }, ee = "58f7ed51dadb30820bb38782", en = function(t, e, n) {
             return "".concat(n.serviceUrl, "/taxonomy?type=taxonomy&id=").concat(t, "&maxDepth=").concat(e)
-        }, t6 = (tF = (0,
-        tW.Z)(function(t) {
+        }, er = (tq = (0,
+        tX.Z)(function(t) {
             var e, n;
             return (0,
-            tq.__generator)(this, function(r) {
+            tJ.__generator)(this, function(r) {
                 switch (r.label) {
                 case 0:
                     return [4, fetch(t)];
@@ -74232,23 +74333,23 @@ object-assign
             })
         }),
         function(t) {
-            return tF.apply(this, arguments)
+            return tq.apply(this, arguments)
         }
-        ), t8 = (tz = (0,
-        tW.Z)(function(t, e, n) {
+        ), ei = (tG = (0,
+        tX.Z)(function(t, e, n) {
             var r, i, o, a, s, u, l, c;
             return (0,
-            tq.__generator)(this, function(f) {
+            tJ.__generator)(this, function(f) {
                 switch (f.label) {
                 case 0:
-                    return r = t5(t, e, n),
-                    [4, t6(r)];
+                    return r = en(t, e, n),
+                    [4, er(r)];
                 case 1:
                     if (o = (i = f.sent()).body,
                     200 === (a = i.statusCode))
                         return [2, o];
-                    return s = t5(t4, e, n),
-                    [4, t6(s)];
+                    return s = en(ee, e, n),
+                    [4, er(s)];
                 case 2:
                     if (l = (u = f.sent()).body,
                     200 === (c = u.statusCode))
@@ -74258,9 +74359,9 @@ object-assign
             })
         }),
         function(t, e, n) {
-            return tz.apply(this, arguments)
+            return tG.apply(this, arguments)
         }
-        ), t7 = n(5600), t9 = n.n(t7), et = function(t) {
+        ), eo = n(5600), ea = n.n(eo), es = function(t) {
             var e = t.label
               , n = void 0 === e ? "" : e
               , r = t.taxonomyId
@@ -74277,29 +74378,29 @@ object-assign
             };
             return (0,
             s.jsxs)("div", {
-                className: t9().breadcrumbNode,
+                className: ea().breadcrumbNode,
                 children: [o ? (0,
                 s.jsx)(I.Z, {
                     component: "button",
                     type: "button",
-                    className: t9().button,
+                    className: ea().button,
                     onClick: u,
                     variant: "footnote",
                     children: "Earth" === n ? (0,
                     s.jsx)(Y.IY, {
-                        className: t9().earth
+                        className: ea().earth
                     }) : n
                 }) : (0,
                 s.jsx)("span", {
-                    className: t9().placeholder,
+                    className: ea().placeholder,
                     children: n
                 }), (0,
                 s.jsx)(Y.Tt, {
                     direction: "right",
-                    className: t9().chevron
+                    className: ea().chevron
                 })]
             })
-        }, ee = n(23041), en = n.n(ee), er = function(t) {
+        }, eu = n(23041), el = n.n(eu), ec = function(t) {
             var e = t.listType
               , n = void 0 === e ? "" : e
               , r = t.nodes
@@ -74309,22 +74410,22 @@ object-assign
               , u = t.onClickNode
               , l = o.map(function(t, e) {
                 return r[e] ? (0,
-                s.jsx)(et, {
+                s.jsx)(es, {
                     label: r[e].name,
-                    taxonomyId: 0 === e ? t4 : r[e]._id,
+                    taxonomyId: 0 === e ? ee : r[e]._id,
                     onClickNode: u,
                     onClickLink: a
                 }, t) : "spots" === n && e < 5 ? null : (0,
-                s.jsx)(et, {
+                s.jsx)(es, {
                     label: t
                 }, t)
             });
             return (0,
             s.jsx)("div", {
-                className: en().breadcrumb,
+                className: el().breadcrumb,
                 children: l
             })
-        }, ei = n(27786), eo = n.n(ei), ea = function(t) {
+        }, ef = n(27786), ed = n.n(ef), ep = function(t) {
             var e = t.onClickLink
               , n = t.onClickNode
               , r = t.node
@@ -74338,36 +74439,36 @@ object-assign
             };
             return (0,
             s.jsx)("div", {
-                className: eo().renderGeoname,
+                className: ed().renderGeoname,
                 children: (0,
                 s.jsxs)(I.Z, {
                     component: "button",
                     type: "button",
                     onClick: i,
-                    className: eo().button,
+                    className: ed().button,
                     variant: "body2",
                     children: [r.name, (0,
                     s.jsx)(Y.Tt, {
-                        className: eo().chevron,
+                        className: ed().chevron,
                         direction: "right"
                     })]
                 })
             })
-        }, es = n(40039), eu = n.n(es), el = function(t) {
+        }, eh = n(40039), em = n.n(eh), ev = function(t) {
             var e = t.node;
             return (0,
             s.jsx)(I.Z, {
-                className: eu().renderCity,
+                className: em().renderCity,
                 variant: "h5",
                 children: null == e ? void 0 : e.name
             })
-        }, ec = n(86077), ef = n.n(ec), ed = function(t) {
+        }, eg = n(86077), ey = n.n(eg), eb = function(t) {
             var e = [];
             return null == t || t.forEach(function(t) {
                 if (!t.spots || 0 !== t.spots.length) {
                     e.push(t.city);
                     var n = (0,
-                    tj.Z)(t.spots.slice(0, t.spots.length - 1)).concat([(0,
+                    tR.Z)(t.spots.slice(0, t.spots.length - 1)).concat([(0,
                     o.Z)((0,
                     i.Z)({}, t.spots[t.spots.length - 1]), {
                         lastOfGroup: !0
@@ -74378,52 +74479,52 @@ object-assign
             e.filter(function(t) {
                 return null !== t
             })
-        }, ep = function(t) {
+        }, ex = function(t) {
             var e;
             return f()((e = {},
             (0,
-            ta.Z)(e, ef()["childList--spot"], "spots" === t),
+            ta.Z)(e, ey()["childList--spot"], "spots" === t),
             (0,
-            ta.Z)(e, ef().childList, "spots" !== t),
+            ta.Z)(e, ey().childList, "spots" !== t),
             e))
-        }, eh = function(t) {
+        }, ew = function(t) {
             var e, n, r = t.error, i = void 0 !== r && r, o = t.listType, a = void 0 === o ? "" : o, u = t.loading, l = void 0 !== u && u, c = t.nodes, f = t.onClickLink, d = t.onClickNode;
             return (0,
             s.jsx)("div", {
-                className: ep(a),
+                className: ex(a),
                 children: i ? (0,
                 s.jsx)(I.Z, {
                     variant: "body1",
                     component: "p",
-                    className: ef().message,
+                    className: ey().message,
                     children: "Sorry, an error occurred"
                 }) : l ? (0,
                 s.jsx)(I.Z, {
                     variant: "body1",
                     component: "p",
-                    className: ef().message,
+                    className: ey().message,
                     children: "Fetching data"
                 }) : "geonames" === a ? null == c ? void 0 : c.map(function(t) {
                     return (0,
-                    s.jsx)(ea, {
+                    s.jsx)(ep, {
                         node: t,
                         onClickNode: d,
                         onClickLink: f
                     }, t._id)
-                }) : null === (n = null === (e = ed(c)) || void 0 === e ? void 0 : e.filter(function(t) {
+                }) : null === (n = null === (e = eb(c)) || void 0 === e ? void 0 : e.filter(function(t) {
                     return !!t.name
                 })) || void 0 === n ? void 0 : n.map(function(t) {
                     return "geoname" === t.type ? (0,
-                    s.jsx)(el, {
+                    s.jsx)(ev, {
                         node: t
                     }, t._id) : (0,
-                    s.jsx)(t0, {
+                    s.jsx)(t8, {
                         spot: t,
                         onClickLink: f
                     }, t._id)
                 })
             })
-        }, em = n(66189), ev = n.n(em), eg = function(t) {
+        }, eS = n(66189), e_ = n.n(eS), eC = function(t) {
             var e, n, r = t.activeNode, i = t.label, o = void 0 === i ? "" : i, a = t.listType, u = void 0 === a ? "" : a, l = t.onClickChange, c = t.onClickLink, f = r.name, d = r.links, p = "spots" === u && d && d.find(function(t) {
                 return t && "www" === t.key
             }), h = "spots" === u && d && d.find(function(t) {
@@ -74451,47 +74552,47 @@ object-assign
             };
             return (0,
             s.jsxs)("div", {
-                className: ev().header,
+                className: e_().header,
                 children: [(0,
                 s.jsx)(I.Z, {
                     variant: "h5",
-                    className: ev().headerTitle,
+                    className: e_().headerTitle,
                     children: "geonames" === u && o ? "Select ".concat(o) : "".concat(f).concat(m)
                 }), p ? (0,
                 s.jsx)(I.Z, {
                     variant: "h6",
-                    component: tv.Z,
+                    component: t_.Z,
                     href: null !== (e = null == p ? void 0 : p.href) && void 0 !== e ? e : "",
                     onClick: g,
                     children: "View spots on map"
                 }) : null, "spots" === u && h ? (0,
                 s.jsx)(I.Z, {
                     variant: "h6",
-                    component: tv.Z,
+                    component: t_.Z,
                     href: null !== (n = null == h ? void 0 : h.href) && void 0 !== n ? n : "",
                     onClick: y,
                     children: "View travel information"
                 }) : null, (0,
                 s.jsx)(N.Z, {
-                    className: ev().button,
+                    className: e_().button,
                     onClick: v,
                     size: "small",
                     variant: "secondary",
                     children: "Change"
                 })]
             })
-        }, ey = function(t) {
+        }, eE = function(t) {
             var e = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : "spot";
             return t.find(function(t) {
                 return t.type === e
             }) ? "".concat(e, "s") : "geonames"
-        }, eb = function(t) {
+        }, eT = function(t) {
             return t.sort(function(t, e) {
                 var n, r, i = null !== (n = null == t ? void 0 : t.name) && void 0 !== n ? n : "", o = null !== (r = null == e ? void 0 : e.name) && void 0 !== r ? r : "";
                 return i < o ? -1 : i > o ? 1 : 0
             })
-        }, ex = function(t, e) {
-            var n, r = eb(t.filter(function(t) {
+        }, eM = function(t, e) {
+            var n, r = eT(t.filter(function(t) {
                 return "geoname" === t.type && t.hasSpots
             })), a = t.filter(function(t) {
                 return "spot" === t.type
@@ -74510,24 +74611,24 @@ object-assign
             });
             return 0 === r.length ? [{
                 city: null,
-                spots: eb(a)
+                spots: eT(a)
             }, ] : r.map(function(t) {
                 return {
                     city: t,
-                    spots: eb(a.filter(function(e) {
+                    spots: eT(a.filter(function(e) {
                         var r;
                         return null == e ? void 0 : null === (r = e.liesIn) || void 0 === r ? void 0 : r.includes(null !== (n = null == t ? void 0 : t._id) && void 0 !== n ? n : "")
                     }))
                 }
             })
-        }, ew = (tB = (0,
-        tW.Z)(function(t, e) {
+        }, ek = (tY = (0,
+        tX.Z)(function(t, e) {
             var n, r, i, o, a;
             return (0,
-            tq.__generator)(this, function(s) {
+            tJ.__generator)(this, function(s) {
                 switch (s.label) {
                 case 0:
-                    return r = (n = new tp.Z).get("access_token"),
+                    return r = (n = new tx.Z).get("access_token"),
                     i = "".concat(e.serviceUrl, "/user/settings"),
                     [4, fetch(r ? "".concat(i, "?accesstoken=").concat(r) : i, {
                         headers: {
@@ -74547,21 +74648,21 @@ object-assign
             })
         }),
         function(t, e) {
-            return tB.apply(this, arguments)
+            return tY.apply(this, arguments)
         }
-        ), eS = new tp.Z, e_ = function(t, e) {
+        ), eL = new tx.Z, eA = function(t, e) {
             var n, r = arguments.length > 2 && void 0 !== arguments[2] && arguments[2];
-            return r ? null !== (n = e && (null == e ? void 0 : e[t])) && void 0 !== n ? n : "" : eS.get("navigation.".concat(t)) || ""
-        }, eC = (tU = (0,
-        tW.Z)(function(t, e, n, r, a) {
+            return r ? null !== (n = e && (null == e ? void 0 : e[t])) && void 0 !== n ? n : "" : eL.get("navigation.".concat(t)) || ""
+        }, ej = (t$ = (0,
+        tX.Z)(function(t, e, n, r, a) {
             var s;
             return (0,
-            tq.__generator)(this, function(u) {
+            tJ.__generator)(this, function(u) {
                 switch (u.label) {
                 case 0:
                     if (!n)
                         return [3, 2];
-                    return [4, ew(s = {
+                    return [4, ek(s = {
                         navigation: (0,
                         o.Z)((0,
                         i.Z)({}, a), (0,
@@ -74571,7 +74672,7 @@ object-assign
                     return u.sent(),
                     [3, 3];
                 case 2:
-                    eS.set("navigation.".concat(e), t),
+                    eL.set("navigation.".concat(e), t),
                     u.label = 3;
                 case 3:
                     return [2]
@@ -74579,31 +74680,31 @@ object-assign
             })
         }),
         function(t, e, n, r, i) {
-            return tU.apply(this, arguments)
+            return t$.apply(this, arguments)
         }
-        ), eE = n(38937), eT = (0,
-        b.Z)(), eM = function(t) {
+        ), eO = n(38937), eP = (0,
+        b.Z)(), eI = function(t) {
             return (0,
-            eE.v)() && (null == eT ? void 0 : eT.localStorage.getItem(t)) || ""
-        }, ek = (tV = (0,
-        tW.Z)(function(t, e) {
+            eO.v)() && (null == eP ? void 0 : eP.localStorage.getItem(t)) || ""
+        }, eN = (tQ = (0,
+        tX.Z)(function(t, e) {
             return (0,
-            tq.__generator)(this, function(n) {
+            tJ.__generator)(this, function(n) {
                 return (0,
-                eE.v)() && (null == eT || eT.localStorage.setItem(e, t)),
+                eO.v)() && (null == eP || eP.localStorage.setItem(e, t)),
                 [2]
             })
         }),
         function(t, e) {
-            return tV.apply(this, arguments)
+            return tQ.apply(this, arguments)
         }
-        ), eL = n(40297), eA = n.n(eL), ej = function(t) {
+        ), eD = n(40297), eZ = n.n(eD), eR = function(t) {
             var e, n, r, a, u, l = t.hierarchy, c = t.loggedIn, d = void 0 !== c && c, p = t.menuState, h = t.navigationSettings, m = t.onClickLink, v = t.savedLocationType, g = t.scrollMenuToTop, y = t.serviceConfig, b = t.setMenuState, x = t.taxonomyType, w = void 0 === x ? "spot" : x, S = t.userSettings, C = p.loading, E = p.error, T = p.taxonomy, M = (0,
-            ts.NJ)(), k = (a = (0,
-            tW.Z)(function(t, e) {
+            tp.NJ)(), k = (a = (0,
+            tX.Z)(function(t, e) {
                 var n, r, i, o, a, s, u, c, f, d, p, h;
                 return (0,
-                tq.__generator)(this, function(m) {
+                tJ.__generator)(this, function(m) {
                     switch (m.label) {
                     case 0:
                         return m.trys.push([0, 5, , 6]),
@@ -74611,7 +74712,7 @@ object-assign
                             loading: !0,
                             error: !1
                         }),
-                        [4, t8(t, e, y)];
+                        [4, ei(t, e, y)];
                     case 1:
                         if (r = (n = m.sent()).contains.filter(function(t) {
                             return "spot" === t.type
@@ -74620,7 +74721,7 @@ object-assign
                             return "geoname" === t.type && t.hasSpots && t.liesIn.length < 3
                         }).length,
                         o = l.length - 1,
-                        "spots" !== (s = ey(a = n.contains.filter(function(t) {
+                        "spots" !== (s = eE(a = n.contains.filter(function(t) {
                             return ("geoname" === t.type || t.type === w) && ("spot" === t.type || t.hasSpots || "subregion" === w && t.hasSpots) && (!(2 * i < r) && !(r > 50) || n.in.length >= o || 0 === t.depth)
                         }), w)))
                             return [3, 3];
@@ -74629,19 +74730,19 @@ object-assign
                         }).map(function(t) {
                             return t.spot
                         }),
-                        f = "on" === M[tu.SL_WEB_OBSERVATION_CLARITY],
+                        f = "on" === M[ts.SL_WEB_OBSERVATION_CLARITY],
                         [4, (0,
-                        tG.cr)(c, {
+                        t0.cr)(c, {
                             units: null == S ? void 0 : S.units,
                             observationClarity: f
                         })];
                     case 2:
-                        return u = ex(a, d = m.sent().data),
+                        return u = eM(a, d = m.sent().data),
                         [3, 4];
                     case 3:
-                        u = "subregions" === s ? eb(p = a.filter(function(t) {
+                        u = "subregions" === s ? eT(p = a.filter(function(t) {
                             return "subregion" === t.type
-                        })) : eb(a),
+                        })) : eT(a),
                         m.label = 4;
                     case 4:
                         return b({
@@ -74686,16 +74787,16 @@ object-assign
                 });
                 return s && s > -1 ? s : (null !== (a = null == T ? void 0 : null === (i = T.parents) || void 0 === i ? void 0 : i.length) && void 0 !== a ? a : 0) + 1
             }, A = (u = (0,
-            tW.Z)(function(t) {
+            tX.Z)(function(t) {
                 var e, n;
                 return (0,
-                tq.__generator)(this, function(r) {
+                tJ.__generator)(this, function(r) {
                     switch (r.label) {
                     case 0:
-                        return eC(t, v, d, y, h),
-                        ek(t, v),
+                        return ej(t, v, d, y, h),
+                        eN(t, v),
                         e = l.length - 2,
-                        n = L(t) < e || t === t4 ? 0 : 2,
+                        n = L(t) < e || t === ee ? 0 : 2,
                         [4, k(t, n)];
                     case 1:
                         return r.sent(),
@@ -74718,7 +74819,7 @@ object-assign
                     }), e)
                 }
             }, O = function() {
-                return A(t4)
+                return A(ee)
             }, P = function(t, e) {
                 if (m) {
                     var n;
@@ -74744,32 +74845,32 @@ object-assign
             _.Z)(function() {
                 var t, e;
                 if (!(null == p ? void 0 : null === (t = p.taxonomy) || void 0 === t ? void 0 : null === (e = t.activeNode) || void 0 === e ? void 0 : e._id)) {
-                    var n = e_(v, h, d)
-                      , r = eM(v)
-                      , i = n || r || t4;
-                    k(i, i === t4 ? 0 : 2)
+                    var n = eA(v, h, d)
+                      , r = eI(v)
+                      , i = n || r || ee;
+                    k(i, i === ee ? 0 : 2)
                 }
             }),
             (0,
             s.jsxs)("div", {
-                className: f()(eA().taxonomyNavigator, "sl-taxonomy-navigator"),
+                className: f()(eZ().taxonomyNavigator, "sl-taxonomy-navigator"),
                 children: [(0,
-                s.jsx)(er, {
+                s.jsx)(ec, {
                     nodes: (0,
-                    tj.Z)(null !== (n = null == T ? void 0 : T.parents) && void 0 !== n ? n : []).concat([null == T ? void 0 : T.activeNode]),
+                    tR.Z)(null !== (n = null == T ? void 0 : T.parents) && void 0 !== n ? n : []).concat([null == T ? void 0 : T.activeNode]),
                     nodesPlaceholder: l,
                     listType: null == T ? void 0 : T.listType,
                     onClickNode: A,
                     onClickLink: j
                 }), (0,
-                s.jsx)(eg, {
+                s.jsx)(eC, {
                     listType: null == T ? void 0 : T.listType,
                     activeNode: null == T ? void 0 : T.activeNode,
                     label: l[(null !== (r = null == T ? void 0 : null === (e = T.parents) || void 0 === e ? void 0 : e.length) && void 0 !== r ? r : 0) + 1],
                     onClickChange: O,
                     onClickLink: P
                 }), (0,
-                s.jsx)(eh, {
+                s.jsx)(ew, {
                     listType: null == T ? void 0 : T.listType,
                     nodes: null == T ? void 0 : T.children,
                     loading: C,
@@ -74778,7 +74879,7 @@ object-assign
                     onClickLink: I
                 })]
             })
-        }, eO = n(5739), eP = n.n(eO), eI = ["\uD83C\uDF0D", "Continent", "Country", "Region", "Area"], eN = function(t) {
+        }, eF = n(5739), ez = n.n(eF), eB = ["\uD83C\uDF0D", "Continent", "Country", "Region", "Area"], eU = function(t) {
             var e = t.loggedIn
               , n = void 0 !== e && e
               , r = t.menuState
@@ -74803,18 +74904,18 @@ object-assign
             }, [l]);
             return (0,
             s.jsxs)("div", {
-                className: f()(eP().camsReportsMenu, "sl-cams-reports-menu"),
+                className: f()(ez().camsReportsMenu, "sl-cams-reports-menu"),
                 children: [(0,
-                s.jsx)(t3, {
+                s.jsx)(et, {
                     loggedIn: n,
                     items: c,
-                    staticLinks: tH,
+                    staticLinks: tK,
                     signInUrl: m,
                     onClickLink: g,
                     userSettings: v
                 }), (0,
-                s.jsx)(ej, {
-                    hierarchy: eI,
+                s.jsx)(eR, {
+                    hierarchy: eB,
                     loggedIn: n,
                     navigationSettings: a,
                     serviceConfig: p,
@@ -74827,14 +74928,14 @@ object-assign
                     userSettings: v
                 })]
             })
-        }, eD = n(39818), eZ = n.n(eD), eR = function(t) {
+        }, eV = n(39818), eH = n.n(eV), eW = function(t) {
             var e, n = t.children, r = t.position, i = void 0 === r ? "left" : r;
             return t.testId,
             (0,
             s.jsx)("div", {
-                className: f()(eZ().baseMenu, (e = {},
+                className: f()(eH().baseMenu, (e = {},
                 (0,
-                ta.Z)(e, eZ()["baseMenu--open-right"], "right" === i),
+                ta.Z)(e, eH()["baseMenu--open-right"], "right" === i),
                 (0,
                 ta.Z)(e, "sl-base-menu", !0),
                 (0,
@@ -74842,7 +74943,7 @@ object-assign
                 e)),
                 children: n
             })
-        }, eF = n(23790), ez = n.n(eF), eB = function(t) {
+        }, eq = n(23790), eG = n.n(eq), eY = function(t) {
             var e = t.children
               , n = t.href
               , r = t.isExternal
@@ -74852,8 +74953,8 @@ object-assign
               , u = t.role
               , l = t.tabIndex;
             return (0,
-            s.jsx)(tv.Z, {
-                className: ez().baseMenuItem,
+            s.jsx)(t_.Z, {
+                className: eG().baseMenuItem,
                 href: n,
                 isExternal: r,
                 onClick: a,
@@ -74865,14 +74966,14 @@ object-assign
                 s.jsx)(I.Z, {
                     variant: "body1",
                     component: "span",
-                    className: ez().label,
+                    className: eG().label,
                     children: e
                 })
             })
-        }, eU = n(45421), eV = n.n(eU), eH = function() {
+        }, e$ = n(45421), eQ = n.n(e$), eK = function() {
             return (0,
             s.jsx)("div", {
-                className: eV().newNotification,
+                className: eQ().newNotification,
                 children: (0,
                 s.jsx)(I.Z, {
                     component: "div",
@@ -74881,7 +74982,7 @@ object-assign
                     children: "NEW"
                 })
             })
-        }, eW = n(67707), eq = n.n(eW), eG = function(t) {
+        }, eX = n(67707), eJ = n.n(eX), e0 = function(t) {
             var e, n = t.links, r = void 0 === n ? [] : n, o = t.children, a = void 0 === o ? null : o, u = t.onClick, l = function(t) {
                 u && ((null == t ? void 0 : t.eventTracking) && (0,
                 G.L9)("Button Clicked", (0,
@@ -74898,30 +74999,30 @@ object-assign
             };
             return (0,
             s.jsxs)("div", {
-                className: eq().baseMenuSection,
+                className: eJ().baseMenuSection,
                 children: [r ? r.map(function(t) {
                     return (0,
-                    s.jsx)(eB, {
+                    s.jsx)(eY, {
                         href: null !== (e = null == t ? void 0 : t.href) && void 0 !== e ? e : "",
                         isExternal: null == t ? void 0 : t.isExternal,
                         newWindow: null == t ? void 0 : t.newWindow,
                         onClick: c(t),
                         children: (0,
                         s.jsxs)("div", {
-                            className: eq().linkContainer,
+                            className: eJ().linkContainer,
                             children: [(0,
                             s.jsx)("div", {
                                 children: t.display
                             }), (null == t ? void 0 : t.showNewNotification) && (0,
-                            s.jsx)(eH, {})]
+                            s.jsx)(eK, {})]
                         })
                     }, "".concat(t.display, "-").concat(t.href))
                 }) : null, a, (0,
                 s.jsx)("div", {
-                    className: eq().baseMenuDivider
+                    className: eJ().baseMenuDivider
                 })]
             })
-        }, eY = function(t) {
+        }, e1 = function(t) {
             var e = t.onClickLink
               , n = (0,
             u.useCallback)(function(t, n) {
@@ -74936,15 +75037,15 @@ object-assign
                 }, n)
             }, [e]);
             return (0,
-            s.jsx)(eR, {
+            s.jsx)(eW, {
                 testId: "maps-menu",
                 children: (0,
-                s.jsx)(eG, {
-                    links: tI,
+                s.jsx)(e0, {
+                    links: tB,
                     onClick: n
                 })
             })
-        }, e$ = n(72812), eQ = n.n(e$), eK = function(t) {
+        }, e2 = n(72812), e3 = n.n(e2), e4 = function(t) {
             var e = t.beta
               , n = void 0 !== e && e
               , r = t.children
@@ -74980,16 +75081,16 @@ object-assign
             };
             return (0,
             s.jsxs)("div", {
-                className: f()(eQ().navigationItem, (0,
-                ta.Z)({}, eQ()["navigationItem--focus"], y)),
+                className: f()(e3().navigationItem, (0,
+                ta.Z)({}, e3()["navigationItem--focus"], y)),
                 onClick: x,
                 onFocus: _,
                 onMouseEnter: w,
                 onMouseLeave: S,
                 children: [(0,
-                s.jsxs)(tv.Z, {
-                    className: f()(eQ().link, (0,
-                    ta.Z)({}, eQ()["link--isAvatar"], l)),
+                s.jsxs)(t_.Z, {
+                    className: f()(e3().link, (0,
+                    ta.Z)({}, e3()["link--isAvatar"], l)),
                     href: o,
                     role: m,
                     tabIndex: v,
@@ -74999,7 +75100,7 @@ object-assign
                     s.jsx)(I.Z, {
                         variant: "subHeadline",
                         component: "span",
-                        className: eQ().label,
+                        className: e3().label,
                         children: p
                     }), n && (0,
                     s.jsx)("sup", {
@@ -75007,7 +75108,7 @@ object-assign
                     })]
                 }), r]
             })
-        }, eX = function(t) {
+        }, e5 = function(t) {
             var e = t.onClickLink
               , n = (0,
             u.useCallback)(function(t, n) {
@@ -75022,32 +75123,32 @@ object-assign
                 }, n)
             }, [e]);
             return (0,
-            s.jsxs)(eR, {
+            s.jsxs)(eW, {
                 testId: "news-menu",
                 children: [(0,
-                s.jsx)(eG, {
-                    links: tP,
+                s.jsx)(e0, {
+                    links: tz,
                     onClick: n
                 }), (0,
-                s.jsx)(eG, {
-                    links: tN,
+                s.jsx)(e0, {
+                    links: tU,
                     onClick: n
                 })]
             })
-        }, eJ = n(17314), e0 = n(98456), e1 = n(81758), e2 = n(72882), e3 = n(82027), e4 = n(7967), e5 = n(42920), e6 = n(89622), e8 = n.n(e6), e7 = function(t) {
+        }, e6 = n(17314), e8 = n(98456), e7 = n(81758), e9 = n(72882), nt = n(82027), ne = n(7967), nn = n(42920), nr = n(89622), ni = n.n(nr), no = function(t) {
             var e = t.handleViewAllClick
               , n = t.onChange
               , r = t.onKeyUp
               , i = t.searchTerm
               , o = t.viewAllLink
               , a = (0,
-            e2.B)().isMobile;
+            e9.B)().isMobile;
             return (0,
             s.jsxs)("div", {
-                className: e8().input,
+                className: ni().input,
                 children: [(0,
                 s.jsx)(Y.ol, {
-                    className: e8().icon
+                    className: ni().icon
                 }), (0,
                 s.jsx)("input", {
                     autoFocus: !0,
@@ -75057,8 +75158,8 @@ object-assign
                     spellCheck: "false"
                 }), i ? (0,
                 s.jsxs)(I.Z, {
-                    className: e8().link,
-                    component: tv.Z,
+                    className: ni().link,
+                    component: t_.Z,
                     href: o,
                     onClick: function() {
                         return e(i, a)
@@ -75068,11 +75169,11 @@ object-assign
                     children: ["View All Results", (0,
                     s.jsx)(Y.Tt, {
                         direction: "right",
-                        className: e8().linkIcon
+                        className: ni().linkIcon
                     })]
                 }) : null]
             })
-        }, e9 = n(35682), nt = function(t, e) {
+        }, na = n(35682), ns = function(t, e) {
             return fetch("".concat(t, "/search/analytics"), {
                 method: "POST",
                 headers: {
@@ -75083,7 +75184,7 @@ object-assign
                     log: e
                 })
             })
-        }, ne = function(t, e, n) {
+        }, nu = function(t, e, n) {
             var r = n.searchId
               , o = n.searchResultRank
               , a = n.destinationPage
@@ -75103,14 +75204,14 @@ object-assign
                 resultType: l,
                 isMobileView: c
             };
-            e ? (nt(e, (0,
+            e ? (ns(e, (0,
             i.Z)({
                 event: "Viewed Search Results"
             }, d)),
             (0,
             G.L9)("Viewed Search Results", d, void 0, f)) : f()
-        }, nn = function(t, e) {
-            nt(t, {
+        }, nl = function(t, e) {
+            ns(t, {
                 event: "Focused Search",
                 searchId: e.searchId
             }),
@@ -75118,12 +75219,12 @@ object-assign
             G.L9)("Focused Search", {
                 location: "navigation"
             })
-        }, nr = function(t, e, n, r) {
+        }, nc = function(t, e, n, r) {
             var i = null == r ? void 0 : r.map(function(t) {
                 var e;
                 return null == t ? void 0 : null === (e = t.hits) || void 0 === e ? void 0 : e.hits
             });
-            nt(t, {
+            ns(t, {
                 event: "Query",
                 searchId: n,
                 query: e,
@@ -75135,10 +75236,10 @@ object-assign
                     travel: null == i ? void 0 : i[4].slice(0, 3).length
                 }
             })
-        }, ni = function(t, e, n) {
+        }, nf = function(t, e, n) {
             var r;
             return e ? n && n.length ? n[0].name : "" : t && t.length > 1 ? "".concat(t[0], " / ").concat(t[t.length - 1]) : ""
-        }, no = function(t, e, n, r) {
+        }, nd = function(t, e, n, r) {
             var i;
             return "spot" === e && r ? (0,
             s.jsx)(Y.v2, {}) : t && t.length && null !== t[0] ? (0,
@@ -75149,7 +75250,7 @@ object-assign
             s.jsx)(Y.zt, {}) : n ? (0,
             s.jsx)(Y.dG, {}) : (0,
             s.jsx)(Y._t, {})
-        }, na = function(t, e, n, r, i) {
+        }, np = function(t, e, n, r, i) {
             var o, a = (r ? null == t ? void 0 : t.title : e) || "", u = a.toLowerCase().indexOf((null == i ? void 0 : i.toLowerCase()) || "");
             if (r && n)
                 l = (0,
@@ -75177,15 +75278,15 @@ object-assign
                     })
                 });
             return l
-        }, ns = new Map;
-        ns.set("spot-suggest", "Surf Spots"),
-        ns.set("subregion-suggest", "Regional Forecast"),
-        ns.set("geoname-suggest", "Map Area"),
-        ns.set("travel-suggest", "Travel Guide"),
-        ns.set("feed-tag-suggest", "Surf News");
-        var nu = function(t) {
+        }, nh = new Map;
+        nh.set("spot-suggest", "Surf Spots"),
+        nh.set("subregion-suggest", "Regional Forecast"),
+        nh.set("geoname-suggest", "Map Area"),
+        nh.set("travel-suggest", "Travel Guide"),
+        nh.set("feed-tag-suggest", "Surf News");
+        var nm = function(t) {
             var e = (0,
-            a.Z)(Array.from(ns.entries()).find(function(e) {
+            a.Z)(Array.from(nh.entries()).find(function(e) {
                 return t.suggest[e[0]]
             }), 2)
               , n = e[0]
@@ -75216,81 +75317,81 @@ object-assign
               , p = null == f ? void 0 : f[n];
             return {
                 sectionResults: (0,
-                tj.Z)(s).concat((0,
-                tj.Z)(d)).slice(0, p),
+                tR.Z)(s).concat((0,
+                tR.Z)(d)).slice(0, p),
                 sectionTitle: r,
                 sectionLimit: p,
                 sectionTook: l
             }
         }
-          , nl = function(t) {
+          , nv = function(t) {
             var e, n;
             return t && (null == t ? void 0 : t._source) ? (((null == t ? void 0 : t._index) === "feed" ? null == t ? void 0 : null === (e = t._source) || void 0 === e ? void 0 : e.permalink : null == t ? void 0 : null === (n = t._source) || void 0 === n ? void 0 : n.href) || "").replace(T.Z.surflineHost, "") : ""
         }
-          , nc = new Map;
-        nc.set("Surf Spots", "Surf Spots"),
-        nc.set("Regional Forecast", "Regional Forecasts"),
-        nc.set("Map Area", "Locations"),
-        nc.set("Travel Guide", "Travel"),
-        nc.set("Surf News", "Surf News");
-        var nf = function(t, e) {
+          , ng = new Map;
+        ng.set("Surf Spots", "Surf Spots"),
+        ng.set("Regional Forecast", "Regional Forecasts"),
+        ng.set("Map Area", "Locations"),
+        ng.set("Travel Guide", "Travel"),
+        ng.set("Surf News", "Surf News");
+        var ny = function(t, e) {
             return {
                 href: "/search/".concat(t, "#").concat((0,
-                e9.Z)(e)),
-                title: nc.get(e)
+                na.Z)(e)),
+                title: ng.get(e)
             }
         }
-          , nd = n(16479)
-          , np = n.n(nd)
-          , nh = function(t) {
+          , nb = n(16479)
+          , nx = n.n(nb)
+          , nw = function(t) {
             var e;
             return f()((e = {},
             (0,
-            ta.Z)(e, np().title, !0),
+            ta.Z)(e, nx().title, !0),
             (0,
-            ta.Z)(e, np()["title--news"], "feed" === t),
+            ta.Z)(e, nx()["title--news"], "feed" === t),
             e))
         }
-          , nm = function(t) {
-            var e, n = t.result, r = t.searchTerm, i = t.handleClick, o = n._index, a = n.isSuggestion, u = n._source, l = n._type, c = "feed" === o, f = na(null == u ? void 0 : u.content, null == u ? void 0 : u.name, a, c, r), d = no(null == u ? void 0 : u.cams, l || "", c, (null == u ? void 0 : u.insightsCameraId) || null), p = ni(null == u ? void 0 : u.breadCrumbs, c, null == u ? void 0 : u.tags), h = function(t) {
+          , nS = function(t) {
+            var e, n = t.result, r = t.searchTerm, i = t.handleClick, o = n._index, a = n.isSuggestion, u = n._source, l = n._type, c = "feed" === o, f = np(null == u ? void 0 : u.content, null == u ? void 0 : u.name, a, c, r), d = nd(null == u ? void 0 : u.cams, l || "", c, (null == u ? void 0 : u.insightsCameraId) || null), p = nf(null == u ? void 0 : u.breadCrumbs, c, null == u ? void 0 : u.tags), h = function(t) {
                 i && i(n),
                 t.preventDefault()
             };
             return (0,
             s.jsx)("li", {
-                className: np().result,
+                className: nx().result,
                 children: (0,
                 s.jsxs)(I.Z, {
-                    component: tv.Z,
-                    href: nl(n) || "",
-                    className: np().link,
+                    component: t_.Z,
+                    href: nv(n) || "",
+                    className: nx().link,
                     variant: "body1",
                     onClick: h,
                     children: [d, (0,
                     s.jsxs)("div", {
-                        className: nh(null !== (e = null == n ? void 0 : n._index) && void 0 !== e ? e : ""),
+                        className: nw(null !== (e = null == n ? void 0 : n._index) && void 0 !== e ? e : ""),
                         children: [f, (0,
                         s.jsx)("span", {
-                            className: np().subtitle,
+                            className: nx().subtitle,
                             children: p
                         })]
                     })]
                 })
             })
         }
-          , nv = n(53021)
-          , ng = n.n(nv)
-          , ny = function(t) {
-            return f()(ng().section, (0,
-            ta.Z)({}, ng()["section--".concat((0,
-            e9.Z)(t))], "surf news" === t.toLocaleLowerCase()))
+          , n_ = n(53021)
+          , nC = n.n(n_)
+          , nE = function(t) {
+            return f()(nC().section, (0,
+            ta.Z)({}, nC()["section--".concat((0,
+            na.Z)(t))], "surf news" === t.toLocaleLowerCase()))
         }
-          , nb = function(t) {
+          , nT = function(t) {
             var e, n = t.closeSearch, r = t.searchTerm, i = t.sectionLimit, o = t.sectionResults, a = t.sectionTitle, u = t.viewAllLink, l = t.handleResultClick, c = (0,
-            e2.B)().isMobile, f = function() {
+            e9.B)().isMobile, f = function() {
                 var t;
                 return n(),
-                ne(window, window ? window.location.href : "", {
+                nu(window, window ? window.location.href : "", {
                     searchId: "",
                     searchResultRank: null,
                     destinationPage: "/search/".concat(r),
@@ -75302,18 +75403,18 @@ object-assign
             };
             return (0,
             s.jsxs)("div", {
-                className: ny(a),
+                className: nE(a),
                 children: [(0,
                 s.jsx)(I.Z, {
                     variant: "h5",
-                    className: ng().title,
+                    className: nC().title,
                     children: a
                 }), o.length ? (0,
                 s.jsx)("ul", {
-                    className: ng().results,
+                    className: nC().results,
                     children: o.map(function(t, n) {
                         return (0,
-                        s.jsx)(nm, {
+                        s.jsx)(nS, {
                             result: t,
                             searchTerm: r,
                             handleClick: l
@@ -75321,14 +75422,14 @@ object-assign
                     })
                 }) : (0,
                 s.jsx)(I.Z, {
-                    className: ng().noResults,
+                    className: nC().noResults,
                     component: "span",
                     variant: "body1",
                     children: "No results found"
                 }), o.length >= i ? (0,
                 s.jsx)(I.Z, {
-                    className: ng().viewAll,
-                    component: tv.Z,
+                    className: nC().viewAll,
+                    component: t_.Z,
                     href: u.href || "",
                     onClick: f,
                     variant: "subtitle1",
@@ -75336,14 +75437,14 @@ object-assign
                 }) : null]
             })
         }
-          , nx = n(76918)
-          , nw = n.n(nx)
-          , nS = function(t) {
-            return f()(nw().siteSearch, (0,
-            ta.Z)({}, nw()["siteSearch--mobile"], "mobile" === t))
+          , nM = n(76918)
+          , nk = n.n(nM)
+          , nL = function(t) {
+            return f()(nk().siteSearch, (0,
+            ta.Z)({}, nk()["siteSearch--mobile"], "mobile" === t))
         }
-          , n_ = 6e4
-          , nC = function(t) {
+          , nA = 6e4
+          , nj = function(t) {
             var e, n = t.searchIsOpen, r = t.serviceUrl, o = t.closeSearch, l = t.viewport, c = (0,
             h.useRouter)(), d = (0,
             u.useState)(!0), p = d[0], m = d[1], v = (0,
@@ -75351,17 +75452,17 @@ object-assign
             u.useState)(""), w = x[0], S = x[1], C = (0,
             u.useState)(null), E = C[0], T = C[1], M = (0,
             u.useState)(null), k = M[0], L = M[1], A = (0,
-            e2.B)().isMobile, O = (0,
-            e3.C)(e4.Q), P = (0,
-            e3.C)(e4.e), I = (0,
+            e9.B)().isMobile, O = (0,
+            nt.C)(ne.Q), P = (0,
+            nt.C)(ne.e), I = (0,
             u.useMemo)(function() {
                 return 200 !== O && !(0,
-                th.isNil)(O) || P
+                tw.isNil)(O) || P
             }, [P, O]), N = new Map, D = (0,
             u.useMemo)(function() {
                 return "/search/".concat(w)
             }, [w]), Z = "on" === (0,
-            ts.NJ)()[tu.SL_WEB_WAVE_POOL_SEARCH_RESULTS], R = (0,
+            tp.NJ)()[ts.SL_WEB_WAVE_POOL_SEARCH_RESULTS], R = (0,
             u.useMemo)(function() {
                 return w ? [w, {}, {
                     size: 10,
@@ -75369,33 +75470,33 @@ object-assign
                     includeWavePools: Z
                 }, ] : void 0
             }, [Z, w]), F = (0,
-            e1.ZP)(R, function(t) {
+            e7.ZP)(R, function(t) {
                 var e = (0,
                 a.Z)(t, 3)
                   , n = e[0]
                   , r = e[1]
                   , i = e[2];
                 return (0,
-                e5.w)(n, r, i)
+                nn.w)(n, r, i)
             }, {
                 revalidateIfStale: !1,
                 revalidateOnFocus: !1,
                 revalidateOnMount: !0,
                 revalidateOnReconnect: !1,
                 errorRetryCount: 0,
-                dedupingInterval: n_
+                dedupingInterval: nA
             }), z = F.data, B = F.isLoading, U = (0,
-            th.debounce)((e = (0,
-            tW.Z)(function(t) {
+            tw.debounce)((e = (0,
+            tX.Z)(function(t) {
                 var e, n, i;
                 return (0,
-                tq.__generator)(this, function(o) {
+                tJ.__generator)(this, function(o) {
                     switch (o.label) {
                     case 0:
                         return [4, S(i = null !== (n = null == t ? void 0 : null === (e = t.target) || void 0 === e ? void 0 : e.value) && void 0 !== n ? n : "")];
                     case 1:
                         return o.sent(),
-                        nr(r, i, g, z),
+                        nc(r, i, g, z),
                         [2]
                     }
                 })
@@ -75408,7 +75509,7 @@ object-assign
                 c.push(D))
             }, H = function() {
                 o(),
-                j.Z && ne(window, window ? window.location.href : "", {
+                j.Z && nu(window, window ? window.location.href : "", {
                     searchId: "",
                     searchResultRank: null,
                     destinationPage: "/search/".concat(w),
@@ -75418,8 +75519,8 @@ object-assign
                     isMobileView: A
                 })
             }, W = function(t) {
-                var e, n, i = t._type, a = t._index, s = t.itemSectionIndex, u = "feed" === a, l = nl(t);
-                return (j.Z && ne(window, r, {
+                var e, n, i = t._type, a = t._index, s = t.itemSectionIndex, u = "feed" === a, l = nv(t);
+                return (j.Z && nu(window, r, {
                     searchId: g,
                     searchResultRank: s,
                     destinationPage: l,
@@ -75435,7 +75536,7 @@ object-assign
             return ((0,
             _.Z)(function() {
                 y((0,
-                eJ.Z)()),
+                e6.Z)()),
                 m(!1)
             }),
             (0,
@@ -75445,7 +75546,7 @@ object-assign
                 (null == document ? void 0 : null === (u = document.body) || void 0 === u ? void 0 : null === (c = u.style) || void 0 === c ? void 0 : c.position) && (document.body.style.position = "fixed")),
                 L(null == document ? void 0 : null === (t = document.documentElement) || void 0 === t ? void 0 : null === (e = t.style) || void 0 === e ? void 0 : e.overflow),
                 (null == document ? void 0 : null === (i = document.documentElement) || void 0 === i ? void 0 : null === (o = i.style) || void 0 === o ? void 0 : o.overflow) && (document.documentElement.style.overflow = "hidden"),
-                nn(r, {
+                nl(r, {
                     searchId: g
                 })),
                 j.Z && !n && ("mobile" === l && (null == document ? void 0 : null === (d = document.body) || void 0 === d ? void 0 : null === (p = d.style) || void 0 === p ? void 0 : p.position) && E && (document.body.style.position = E),
@@ -75453,8 +75554,8 @@ object-assign
                 S(""))
             }, [k, E, g, n, r, l]),
             p) ? null : (0,
-            s.jsx)(tL.Z, {
-                className: nS(l || ""),
+            s.jsx)(tD.Z, {
+                className: nL(l || ""),
                 fullScreen: !0,
                 onClose: o,
                 open: n,
@@ -75462,19 +75563,19 @@ object-assign
                 s.jsxs)("div", {
                     children: [(0,
                     s.jsx)("div", {
-                        className: nw().searchTop,
+                        className: nk().searchTop,
                         children: (0,
                         s.jsxs)("div", {
                             className: "sl-section-container",
                             children: [(0,
                             s.jsx)("button", {
                                 type: "button",
-                                className: nw().searchClose,
+                                className: nk().searchClose,
                                 onClick: o,
                                 children: (0,
                                 s.jsx)(Y.Tw, {})
                             }), (0,
-                            s.jsx)(e7, {
+                            s.jsx)(no, {
                                 handleViewAllClick: H,
                                 searchTerm: w,
                                 viewAllLink: D,
@@ -75484,22 +75585,22 @@ object-assign
                         })
                     }), (0,
                     s.jsx)("div", {
-                        className: f()("sl-section-container", nw().results),
+                        className: f()("sl-section-container", nk().results),
                         children: z && (null == w ? void 0 : w.length) && !B ? z.reduce(function(t, e, n) {
-                            var r, a = nu(e), u = a.sectionLimit, l = a.sectionResults, c = a.sectionTitle, f = (0,
+                            var r, a = nm(e), u = a.sectionLimit, l = a.sectionResults, c = a.sectionTitle, f = (0,
                             i.Z)({}, t);
                             return f.totalCount = (null !== (r = null == f ? void 0 : f.totalCount) && void 0 !== r ? r : 0) + l.length,
                             N.set(c, t.totalCount),
                             (0,
-                            th.isArray)(null == f ? void 0 : f.sections) || (f.sections = []),
+                            tw.isArray)(null == f ? void 0 : f.sections) || (f.sections = []),
                             "Regional Forecast" !== c && f.sections.push((0,
-                            s.jsx)(nb, {
+                            s.jsx)(nT, {
                                 closeSearch: o,
                                 searchTerm: w,
                                 sectionLimit: u,
                                 sectionResults: l,
                                 sectionTitle: c,
-                                viewAllLink: nf(w, c),
+                                viewAllLink: ny(w, c),
                                 handleResultClick: W
                             }, n)),
                             t
@@ -75509,22 +75610,22 @@ object-assign
                             totalCount: 0
                         }).sections : (0,
                         s.jsxs)("div", {
-                            className: nw().resultsPlaceholder,
+                            className: nk().resultsPlaceholder,
                             children: [(0,
                             s.jsx)("p", {
                                 children: "Search for surf spots, travel maps, regional forecasts and surf news."
                             }), B && (0,
-                            s.jsx)(e0.Z, {
-                                className: nw().loading
+                            s.jsx)(e8.Z, {
+                                className: nk().loading
                             })]
                         })
                     })]
                 })
             })
         }
-          , nE = n(51883)
-          , nT = n.n(nE)
-          , nM = function(t) {
+          , nO = n(51883)
+          , nP = n.n(nO)
+          , nI = function(t) {
             var e = t.accountAlert
               , n = void 0 !== e && e
               , r = t.accountWarning
@@ -75536,33 +75637,33 @@ object-assign
               , l = !u && n || i || a
               , c = function() {
                 var t;
-                return f()(nT().ring, (t = {},
+                return f()(nP().ring, (t = {},
                 (0,
-                ta.Z)(t, nT()["ring--premium-plus"], u && o),
+                ta.Z)(t, nP()["ring--premium-plus"], u && o),
                 (0,
-                ta.Z)(t, nT()["ring--premium"], u),
+                ta.Z)(t, nP()["ring--premium"], u),
                 (0,
-                ta.Z)(t, nT()["ring--alert"], !u && n),
+                ta.Z)(t, nP()["ring--alert"], !u && n),
                 (0,
-                ta.Z)(t, nT()["ring--warning"], i),
+                ta.Z)(t, nP()["ring--warning"], i),
                 t))
             }
               , d = function() {
                 var t;
-                return f()(nT().notification, (t = {},
+                return f()(nP().notification, (t = {},
                 (0,
-                ta.Z)(t, nT()["ring--alert"], !u && n),
+                ta.Z)(t, nP()["ring--alert"], !u && n),
                 (0,
-                ta.Z)(t, nT()["ring--warning"], i),
+                ta.Z)(t, nP()["ring--warning"], i),
                 (0,
-                ta.Z)(t, nT()["notification--warning"], a),
+                ta.Z)(t, nP()["notification--warning"], a),
                 (0,
-                ta.Z)(t, nT()["notification-ring--warning"], a),
+                ta.Z)(t, nP()["notification-ring--warning"], a),
                 t))
             };
             return (0,
             s.jsxs)("svg", {
-                className: nT().notificationSvg,
+                className: nP().notificationSvg,
                 width: "34px",
                 height: "34px",
                 role: "img",
@@ -75587,10 +75688,10 @@ object-assign
                         cx: "16",
                         cy: "13.6",
                         r: "6.1",
-                        className: nT().userIcon
+                        className: nP().userIcon
                     }), (0,
                     s.jsx)("path", {
-                        className: nT().userIcon,
+                        className: nP().userIcon,
                         d: "M26.4493244,27.5833333 C25.9299768,25.0267564 21.4813083,22.9 16,22.9 C10.5186917,22.9 6.07002319,25.0267564 5.55067563,27.5833333",
                         stroke: "#000"
                     })]
@@ -75605,11 +75706,11 @@ object-assign
                 }) : null]
             })
         }
-          , nk = n(75270)
-          , nL = n(3001)
-          , nA = n(59788)
-          , nj = n.n(nA)
-          , nO = function(t) {
+          , nN = n(75270)
+          , nD = n(3001)
+          , nZ = n(59788)
+          , nR = n.n(nZ)
+          , nF = function(t) {
             var e = t.accountWarning
               , n = void 0 !== e && e
               , r = t.entitlements
@@ -75634,15 +75735,15 @@ object-assign
               , k = (0,
             h.useRouter)()
               , L = (0,
-            e3.T)()
+            nt.T)()
               , A = (0,
             K.uE)()
               , j = (0,
-            tc.VG)(i)
+            tg.VG)(i)
               , O = (0,
-            tc.dM)(i)
+            tg.dM)(i)
               , P = (0,
-            tc.Bq)(i)
+            tg.Bq)(i)
               , N = i.includes("sl_forecast_only")
               , D = j && !O || N
               , Z = !O && (i.includes("sl_forecast_only") || a || D)
@@ -75679,7 +75780,7 @@ object-assign
                 t.preventDefault(),
                 B(_, function() {
                     return L((0,
-                    nL.st)({
+                    nD.st)({
                         releaseAnnouncementDate: null == y ? void 0 : y.date
                     }))
                 }, "New Release", (null == y ? void 0 : y.url) || "https://go.surfline.com/whatsnew")
@@ -75689,7 +75790,7 @@ object-assign
                 t.preventDefault(),
                 B(E, function() {
                     return L((0,
-                    nL.st)({
+                    nD.st)({
                         premiumPerkDate: null == x ? void 0 : x.date
                     }))
                 }, "Premium Perks", (null == x ? void 0 : x.url) || "http://surfline.com/lp/perks")
@@ -75700,7 +75801,7 @@ object-assign
                 null == window || null === (e = window.appboy) || void 0 === e || e.wipeData(),
                 null == window || null === (n = window.Sprig) || void 0 === n || n.call(window, "logoutUser"),
                 (0,
-                nk.en)(),
+                nN.en)(),
                 setTimeout(function() {
                     return window.location.assign("/logout")
                 }, 300)
@@ -75712,8 +75813,8 @@ object-assign
               , q = function() {
                 if (n)
                     return (0,
-                    s.jsx)(tv.Z, {
-                        className: f()(nj().notification, nj().notificationWarning),
+                    s.jsx)(t_.Z, {
+                        className: f()(nR().notification, nR().notificationWarning),
                         href: "/account/subscription",
                         isExternal: !0,
                         children: (0,
@@ -75729,9 +75830,9 @@ object-assign
                     s.jsx)("div", {
                         className: f()((t = {},
                         (0,
-                        ta.Z)(t, nj().premiumStatus, !0),
+                        ta.Z)(t, nR().premiumStatus, !0),
                         (0,
-                        ta.Z)(t, nj().premiumPlusStatus, O),
+                        ta.Z)(t, nR().premiumPlusStatus, O),
                         t)),
                         children: (0,
                         s.jsx)(I.Z, {
@@ -75742,8 +75843,8 @@ object-assign
                     })
                 }
                 return !g || (null == g ? void 0 : g.isEmailVerified) ? null : (0,
-                s.jsx)(tv.Z, {
-                    className: f()(nj().notification, "quiver-user-menu__notification"),
+                s.jsx)(t_.Z, {
+                    className: f()(nR().notification, "quiver-user-menu__notification"),
                     href: "/account/edit-profile",
                     isExternal: !0,
                     children: (0,
@@ -75754,24 +75855,24 @@ object-assign
                     })
                 })
             }
-              , Y = tD(M);
+              , Y = tV(M);
             return (0,
-            s.jsxs)(eR, {
+            s.jsxs)(eW, {
                 position: "right",
                 testId: "user-menu",
                 children: [m ? (0,
-                s.jsx)(eG, {
-                    links: tO,
+                s.jsx)(e0, {
+                    links: tF,
                     onClick: l
                 }) : null, g && d ? (0,
-                s.jsx)(eG, {
+                s.jsx)(e0, {
                     children: (0,
                     s.jsxs)("div", {
                         className: f()((0,
-                        ta.Z)({}, nj().userDetailsSectionPremiumPlus, O)),
+                        ta.Z)({}, nR().userDetailsSectionPremiumPlus, O)),
                         children: [(0,
                         s.jsxs)("div", {
-                            className: f()(nj().userName, "quiver-user-menu__user-name"),
+                            className: f()(nR().userName, "quiver-user-menu__user-name"),
                             children: [(0,
                             s.jsx)(I.Z, {
                                 component: "span",
@@ -75785,7 +75886,7 @@ object-assign
                             })]
                         }), (0,
                         s.jsx)("div", {
-                            className: f()(nj().userEmail, "quiver-user-menu__user-email"),
+                            className: f()(nR().userEmail, "quiver-user-menu__user-email"),
                             children: (0,
                             s.jsx)(I.Z, {
                                 component: "span",
@@ -75795,15 +75896,15 @@ object-assign
                         }), q()]
                     })
                 }) : null, Z ? (0,
-                s.jsx)(eG, {
+                s.jsx)(e0, {
                     children: (0,
-                    s.jsx)(eB, {
+                    s.jsx)(eY, {
                         href: F,
                         isExternal: !0,
                         onClick: z,
                         children: (0,
                         s.jsx)("div", {
-                            className: f()(nj().cta),
+                            className: f()(nR().cta),
                             children: (0,
                             s.jsx)(I.Z, {
                                 color: "text.primary",
@@ -75816,52 +75917,52 @@ object-assign
                 }) : null, g ? (0,
                 s.jsxs)(s.Fragment, {
                     children: [(0,
-                    s.jsx)(eG, {
+                    s.jsx)(e0, {
                         links: Y,
                         onClick: l
                     }), y ? (0,
-                    s.jsx)(eG, {
+                    s.jsx)(e0, {
                         children: (0,
-                        s.jsx)(eB, {
+                        s.jsx)(eY, {
                             href: "https://go.surfline.com/whatsnew",
                             onClick: U,
                             isExternal: !0,
                             children: (0,
                             s.jsxs)("div", {
-                                className: nj().featureRelease,
+                                className: nR().featureRelease,
                                 children: [(0,
                                 s.jsx)("div", {
                                     children: (null == y ? void 0 : y.title) || "What's New"
                                 }), _ ? (0,
-                                s.jsx)(eH, {}) : null]
+                                s.jsx)(eK, {}) : null]
                             })
                         })
                     }) : null, x ? (0,
-                    s.jsx)(eG, {
+                    s.jsx)(e0, {
                         children: (0,
-                        s.jsx)(eB, {
+                        s.jsx)(eY, {
                             href: "http://surfline.com/lp/perks",
                             onClick: V,
                             isExternal: !0,
                             children: (0,
                             s.jsxs)("div", {
-                                className: nj().premiumPerks,
+                                className: nR().premiumPerks,
                                 children: [(0,
                                 s.jsx)("div", {
                                     children: "Perks"
                                 }), E ? (0,
-                                s.jsx)(eH, {}) : null]
+                                s.jsx)(eK, {}) : null]
                             })
                         })
                     }) : null, (0,
-                    s.jsx)(eG, {
+                    s.jsx)(e0, {
                         children: (0,
-                        s.jsx)(eB, {
+                        s.jsx)(eY, {
                             href: "https://support.surfline.com/hc/en-us",
                             isExternal: !0,
                             children: (0,
                             s.jsx)("div", {
-                                className: nj().premiumPerks,
+                                className: nR().premiumPerks,
                                 children: (0,
                                 s.jsx)("div", {
                                     children: "Help Center"
@@ -75869,17 +75970,17 @@ object-assign
                             })
                         })
                     }), (0,
-                    s.jsx)(eG, {
-                        links: tZ,
+                    s.jsx)(e0, {
+                        links: tH,
                         onClick: l
                     }), (0,
-                    s.jsx)(eG, {
-                        links: tR,
+                    s.jsx)(e0, {
+                        links: tW,
                         onClick: l
                     }), (0,
-                    s.jsx)(eG, {
+                    s.jsx)(e0, {
                         children: (0,
-                        s.jsx)(eB, {
+                        s.jsx)(eY, {
                             href: "#logout",
                             onClick: H,
                             children: "Sign Out"
@@ -75888,34 +75989,34 @@ object-assign
                 }) : null]
             })
         }
-          , nP = function(t) {
+          , nz = function(t) {
             return !!t && !!t.length && ((0,
-            tc.VG)(t) || (0,
-            tc.dM)(t) || t.includes("sl_youth") || t.includes("sl_vip") || t.includes("sl_vip_advertiser"))
+            tg.VG)(t) || (0,
+            tg.dM)(t) || t.includes("sl_youth") || t.includes("sl_vip") || t.includes("sl_vip_advertiser"))
         }
-          , nI = function(t) {
+          , nB = function(t) {
             return !!t && !!t.length && t.includes("sl_forecast_only")
         }
-          , nN = n(14293)
-          , nD = n.n(nN)
-          , nZ = function() {
+          , nU = n(14293)
+          , nV = n.n(nU)
+          , nH = function() {
             var t = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : null;
-            if (nD()(t) || "/" === t)
+            if (nV()(t) || "/" === t)
                 return "".concat(T.Z.surflineHost, "/sign-in");
             var e = "".concat(T.Z.surflineHost).concat(t);
             return "".concat(T.Z.surflineHost, "/sign-in?redirectUrl=").concat(encodeURIComponent(e))
         }
-          , nR = n(98887)
-          , nF = n.n(nR)
-          , nz = {
+          , nW = n(98887)
+          , nq = n.n(nW)
+          , nG = {
             location: "button top"
         }
-          , nB = 992
-          , nU = function(t) {
+          , nY = 992
+          , n$ = function(t) {
             (0,
-            tM.Z)(n, t);
+            tI.Z)(n, t);
             var e = (0,
-            tk.Z)(n);
+            tN.Z)(n);
             function n(t) {
                 var r;
                 return (0,
@@ -75974,7 +76075,7 @@ object-assign
                 }
                 ,
                 r.updateScrollLock = function() {
-                    r.state.renderMobileMenu && window.innerWidth > nB && r.removeMobileMenu()
+                    r.state.renderMobileMenu && window.innerWidth > nY && r.removeMobileMenu()
                 }
                 ,
                 r.handleClickedLink = function(t) {
@@ -76002,7 +76103,7 @@ object-assign
                 r.renderCamsReportsMenu = function() {
                     var t, e = r.state, n = e.camsReportsMenuState, i = e.signInHref, o = r.props, a = o.user, u = o.settings, l = o.serviceConfig, c = o.userSettings;
                     return (0,
-                    s.jsx)(eN, {
+                    s.jsx)(eU, {
                         loggedIn: !!a,
                         navigationSettings: null == u ? void 0 : u.navigation,
                         recentlyVisited: null == u ? void 0 : null === (t = u.recentlyVisited) || void 0 === t ? void 0 : t.spots,
@@ -76029,7 +76130,7 @@ object-assign
                       , f = null != u && !!u.date && (null == a ? void 0 : a.releaseAnnouncementDate) !== (null == u ? void 0 : u.date)
                       , d = null != l && !!l.date && (null == a ? void 0 : a.premiumPerkDate) !== (null == l ? void 0 : l.date);
                     return (0,
-                    s.jsx)(nO, {
+                    s.jsx)(nF, {
                         user: e,
                         entitlements: n,
                         freeTrialEligible: i,
@@ -76046,14 +76147,14 @@ object-assign
                 ,
                 r.renderMapsMenu = function() {
                     return (0,
-                    s.jsx)(eY, {
+                    s.jsx)(e1, {
                         onClickLink: r.handleClickedLink
                     })
                 }
                 ,
                 r.renderNewsMenu = function() {
                     return (0,
-                    s.jsx)(eX, {
+                    s.jsx)(e5, {
                         onClickLink: r.handleClickedLink
                     })
                 }
@@ -76074,7 +76175,7 @@ object-assign
                 r.handleClickTrial = function() {
                     return r.handleClickedLink({
                         name: "Clicked Subscribe CTA",
-                        properties: nz
+                        properties: nG
                     }, !0)
                 }
                 ,
@@ -76112,7 +76213,7 @@ object-assign
                             parents: []
                         }
                     },
-                    mobileBreakpoint: nB,
+                    mobileBreakpoint: nY,
                     mobileMenuTitle: null,
                     renderMobileMenu: null,
                     signInHref: "/sign-in",
@@ -76129,13 +76230,13 @@ object-assign
                 this.setViewport();
                 var t = this.context;
                 this.setState({
-                    signInHref: nZ(t.asPath)
+                    signInHref: nH(t.asPath)
                 }),
                 null == window || window.addEventListener("resize", this.resizeListener)
             }
             ,
             r.componentDidUpdate = function(t, e) {
-                var n = nZ(this.context.asPath);
+                var n = nH(this.context.asPath);
                 n !== e.signInHref && this.setState({
                     signInHref: n
                 })
@@ -76147,10 +76248,10 @@ object-assign
             }
             ,
             r.render = function() {
-                var t, e = this, r = this.state, a = r.renderMobileMenu, u = r.mobileMenuTitle, l = r.searchIsOpen, c = r.signInHref, d = r.viewport, p = this.props, h = p.accountAlert, m = p.accountWarning, v = p.conditionColorsClass, g = p.entitlements, y = p.freeTrialEligible, b = p.hideCTA, x = p.latestFeatureRelease, w = p.latestPremiumPerkRelease, S = p.serviceConfig, _ = p.user, C = p.userSettings, E = nI(g), T = (0,
-                tc.Bq)(g), M = null != x && !!x.date && (null == C ? void 0 : C.releaseAnnouncementDate) !== (null == x ? void 0 : x.date), L = null != w && !!w.date && (null == C ? void 0 : C.premiumPerkDate) !== (null == w ? void 0 : w.date), A = (0,
-                tc.dM)(g), j = _ ? (0,
-                s.jsx)(nM, {
+                var t, e = this, r = this.state, a = r.renderMobileMenu, u = r.mobileMenuTitle, l = r.searchIsOpen, c = r.signInHref, d = r.viewport, p = this.props, h = p.accountAlert, m = p.accountWarning, v = p.conditionColorsClass, g = p.entitlements, y = p.freeTrialEligible, b = p.hideCTA, x = p.latestFeatureRelease, w = p.latestPremiumPerkRelease, S = p.serviceConfig, _ = p.user, C = p.userSettings, E = nB(g), T = (0,
+                tg.Bq)(g), M = null != x && !!x.date && (null == C ? void 0 : C.releaseAnnouncementDate) !== (null == x ? void 0 : x.date), L = null != w && !!w.date && (null == C ? void 0 : C.premiumPerkDate) !== (null == w ? void 0 : w.date), A = (0,
+                tg.dM)(g), j = _ ? (0,
+                s.jsx)(nI, {
                     accountAlert: h,
                     accountWarning: m,
                     isPremiumPlusUser: A,
@@ -76158,15 +76259,15 @@ object-assign
                 }) : null;
                 return (0,
                 s.jsxs)("header", {
-                    className: f()("quiver-new-navigation-bar", nF().navigationBar),
+                    className: f()("quiver-new-navigation-bar", nq().navigationBar),
                     children: [(0,
                     s.jsxs)("div", {
-                        className: nF().content,
+                        className: nq().content,
                         children: [(0,
                         s.jsx)("div", {
-                            className: nF().logoDesktop,
+                            className: nq().logoDesktop,
                             children: (0,
-                            s.jsx)(tv.Z, {
+                            s.jsx)(t_.Z, {
                                 href: "/",
                                 isExternal: !0,
                                 children: (0,
@@ -76174,9 +76275,9 @@ object-assign
                             })
                         }), (0,
                         s.jsx)("div", {
-                            className: nF().logoMobile,
+                            className: nq().logoMobile,
                             children: (0,
-                            s.jsx)(tv.Z, {
+                            s.jsx)(t_.Z, {
                                 href: "/",
                                 isExternal: !0,
                                 children: (0,
@@ -76184,66 +76285,66 @@ object-assign
                             })
                         }), (0,
                         s.jsxs)("div", {
-                            className: nF().navigation,
+                            className: nq().navigation,
                             children: [(0,
-                            s.jsx)(eK, {
+                            s.jsx)(e4, {
                                 linkDisplay: "Cams & Forecasts",
                                 href: "/surf-reports-forecasts-cams",
                                 children: (0,
                                 s.jsx)("div", {
-                                    className: f()(nF().menuWrapper, "sl-menu-wrapper"),
+                                    className: f()(nq().menuWrapper, "sl-menu-wrapper"),
                                     children: this.renderCamsReportsMenu()
                                 })
                             }), (0,
-                            s.jsx)(eK, {
+                            s.jsx)(e4, {
                                 linkDisplay: "Maps",
                                 href: "/surf-reports-forecasts-cams-map",
                                 children: (0,
                                 s.jsx)("div", {
-                                    className: f()(nF().menuWrapper, "sl-menu-wrapper"),
+                                    className: f()(nq().menuWrapper, "sl-menu-wrapper"),
                                     children: (0,
-                                    s.jsx)(eY, {
+                                    s.jsx)(e1, {
                                         onClickLink: this.handleClickedLink
                                     })
                                 })
                             }), (0,
-                            s.jsx)(eK, {
+                            s.jsx)(e4, {
                                 linkDisplay: "Stories",
                                 href: "/surf-news",
                                 children: (0,
                                 s.jsx)("div", {
-                                    className: f()(nF().menuWrapper, "sl-menu-wrapper"),
+                                    className: f()(nq().menuWrapper, "sl-menu-wrapper"),
                                     children: (0,
-                                    s.jsx)(eX, {
+                                    s.jsx)(e5, {
                                         onClickLink: this.handleClickedLink
                                     })
                                 })
                             }), (0,
-                            s.jsx)(eK, {
+                            s.jsx)(e4, {
                                 linkDisplay: "Travel",
                                 href: "/travel",
                                 onClick: this.handleClickTravel,
                                 children: (0,
                                 s.jsx)("div", {
-                                    className: f()(nF().menuWrapper, "sl-menu-wrapper")
+                                    className: f()(nq().menuWrapper, "sl-menu-wrapper")
                                 })
                             })]
                         }), (0,
                         s.jsxs)("div", {
-                            className: nF().siteSearch,
+                            className: nq().siteSearch,
                             children: [(0,
                             s.jsxs)("div", (0,
                             o.Z)((0,
                             i.Z)({}, (0,
-                            tg.ZP)(function() {
+                            tC.ZP)(function() {
                                 return e.setState({
                                     searchIsOpen: !0
                                 })
                             }, "button")), {
-                                className: nF().searchButton,
+                                className: nq().searchButton,
                                 children: [(0,
                                 s.jsx)(Y.ol, {
-                                    className: nF().searchButtonIcon
+                                    className: nq().searchButtonIcon
                                 }), (0,
                                 s.jsx)(I.Z, {
                                     variant: "footnote",
@@ -76251,7 +76352,7 @@ object-assign
                                     children: "Search"
                                 })]
                             })), (0,
-                            s.jsx)(nC, {
+                            s.jsx)(nj, {
                                 closeSearch: this.handleCloseSearch,
                                 serviceUrl: null !== (t = null == S ? void 0 : S.serviceUrl) && void 0 !== t ? t : "",
                                 searchIsOpen: l,
@@ -76259,10 +76360,10 @@ object-assign
                             })]
                         }), (0,
                         s.jsx)("div", {
-                            className: nF().cta,
-                            children: b || _ && nP(g) ? null : (0,
+                            className: nq().cta,
+                            children: b || _ && nz(g) ? null : (0,
                             s.jsx)(N.Z, {
-                                className: nF().ctaLink,
+                                className: nq().ctaLink,
                                 href: "/upgrade",
                                 onClick: this.handleClickTrial,
                                 size: "small",
@@ -76271,9 +76372,9 @@ object-assign
                             })
                         }), _ ? (0,
                         s.jsx)("div", {
-                            className: nF().account,
+                            className: nq().account,
                             children: (0,
-                            s.jsx)(eK, {
+                            s.jsx)(e4, {
                                 testId: "navigation-item-user",
                                 href: "/account",
                                 isAvatar: !0,
@@ -76284,7 +76385,7 @@ object-assign
                                 tabIndex: 0,
                                 children: (0,
                                 s.jsx)("div", {
-                                    className: f()(nF().menuWrapper, "sl-menu-wrapper"),
+                                    className: f()(nq().menuWrapper, "sl-menu-wrapper"),
                                     children: this.renderUserMenu()
                                 })
                             })
@@ -76299,38 +76400,38 @@ object-assign
                                 component: "a",
                                 ref: this.signInLinkRef,
                                 href: c,
-                                className: nF().signin,
+                                className: nq().signin,
                                 children: "Sign In"
                             })
                         })]
                     }), (0,
                     s.jsx)("div", {
-                        className: nF().mobile,
+                        className: nq().mobile,
                         children: (0,
                         s.jsx)("div", {
-                            className: nF().mobileContent,
+                            className: nq().mobileContent,
                             children: (0,
                             s.jsx)("div", {
-                                className: nF().mobileContainer,
+                                className: nq().mobileContainer,
                                 children: (0,
                                 s.jsxs)("div", {
-                                    className: nF().mobileNav,
+                                    className: nq().mobileNav,
                                     children: [(0,
-                                    s.jsx)(tL.Z, {
+                                    s.jsx)(tD.Z, {
                                         open: null !== a,
                                         children: null !== a && (0,
                                         s.jsx)("div", {
-                                            className: f()(nF().mobileNavMenu, v),
+                                            className: f()(nq().mobileNavMenu, v),
                                             children: (0,
                                             s.jsxs)("div", {
-                                                className: nF().mobileNavMenuInner,
+                                                className: nq().mobileNavMenuInner,
                                                 children: [(0,
                                                 s.jsxs)("a", (0,
                                                 o.Z)((0,
                                                 i.Z)({
-                                                    className: nF().mobileNavMenuClose
+                                                    className: nq().mobileNavMenuClose
                                                 }, (0,
-                                                tg.ZP)(function() {
+                                                tC.ZP)(function() {
                                                     return e.handleClickedLink({
                                                         name: "Clicked Main Nav",
                                                         properties: {
@@ -76343,7 +76444,7 @@ object-assign
                                                     children: [(0,
                                                     s.jsx)("span", {}), (0,
                                                     s.jsx)(I.Z, {
-                                                        className: nF().mobileNavMenuCloseTitle,
+                                                        className: nq().mobileNavMenuCloseTitle,
                                                         component: "span",
                                                         variant: "subHeadline",
                                                         children: u
@@ -76353,7 +76454,7 @@ object-assign
                                             })
                                         })
                                     }), (0,
-                                    s.jsx)(eK, {
+                                    s.jsx)(e4, {
                                         href: "/surf-reports-forecasts-cams",
                                         linkDisplay: "Cams & Forecasts",
                                         onClick: this.handleClickReports,
@@ -76361,7 +76462,7 @@ object-assign
                                         tabIndex: 0,
                                         testId: "mobile-navigation-item"
                                     }), (0,
-                                    s.jsx)(eK, {
+                                    s.jsx)(e4, {
                                         href: "/surf-reports-forecasts-cams-map",
                                         linkDisplay: "Maps",
                                         onClick: this.handleClickMaps,
@@ -76369,7 +76470,7 @@ object-assign
                                         tabIndex: 0,
                                         testId: "mobile-navigation-item"
                                     }), (0,
-                                    s.jsx)(eK, {
+                                    s.jsx)(e4, {
                                         href: "/surf-news",
                                         linkDisplay: "Stories",
                                         onClick: this.handleClickStories,
@@ -76377,7 +76478,7 @@ object-assign
                                         tabIndex: 0,
                                         testId: "mobile-navigation-item"
                                     }), (0,
-                                    s.jsx)(eK, {
+                                    s.jsx)(e4, {
                                         href: "/travel",
                                         linkDisplay: "Travel",
                                         onClick: this.handleClickTravel,
@@ -76394,7 +76495,7 @@ object-assign
             ,
             n
         }(u.Component);
-        nU.defaultProps = {
+        n$.defaultProps = {
             accountAlert: !1,
             accountWarning: !1,
             badge: null,
@@ -76406,7 +76507,7 @@ object-assign
             user: null,
             latestFeatureRelease: {}
         },
-        nU.getSignInEventProperties = function() {
+        n$.getSignInEventProperties = function() {
             return {
                 pageName: window.location.pathname,
                 tabName: "Sign In",
@@ -76416,16 +76517,16 @@ object-assign
             }
         }
         ,
-        nU.getUpgradeCTA = function(t, e, n, r) {
+        n$.getUpgradeCTA = function(t, e, n, r) {
             return t || e ? "Upgrade now" : !r || n ? "Start Free Trial" : "Go Premium"
         }
         ,
-        nU.contextType = tA.RouterContext;
-        var nV = n(88305)
-          , nH = n(62435)
-          , nW = n(27397)
-          , nq = n(95553)
-          , nG = function(t) {
+        n$.contextType = tZ.RouterContext;
+        var nQ = n(88305)
+          , nK = n(62435)
+          , nX = n(27397)
+          , nJ = n(95553)
+          , n0 = function(t) {
             var e = t.accountSharingBannerConfig
               , n = t.entitlements
               , r = null;
@@ -76447,12 +76548,12 @@ object-assign
             }) || (r = null)),
             r
         }
-          , nY = n(21737)
-          , n$ = n(93946)
-          , nQ = function(t, e) {
+          , n1 = n(21737)
+          , n2 = n(93946)
+          , n3 = function(t, e) {
             return "quiver-notification quiver-notification--".concat(t, " quiver-notification--").concat(e)
         }
-          , nK = function(t) {
+          , n4 = function(t) {
             var e = t.children
               , n = t.closable
               , r = void 0 !== n && n
@@ -76476,10 +76577,10 @@ object-assign
                 return "error" === l ? "error" : "info"
             }, [l]);
             return p ? null : (0,
-            s.jsx)(nY.Z, {
-                className: nQ(l, o),
+            s.jsx)(n1.Z, {
+                className: n3(l, o),
                 action: r ? (0,
-                s.jsx)(n$.Z, {
+                s.jsx)(n2.Z, {
                     "aria-label": "close",
                     color: "inherit",
                     href: "#",
@@ -76495,10 +76596,10 @@ object-assign
                 children: e
             })
         }
-          , nX = n(50594)
-          , nJ = n(3354)
-          , n0 = n.n(nJ)
-          , n1 = function(t) {
+          , n5 = n(50594)
+          , n6 = n(3354)
+          , n8 = n.n(n6)
+          , n7 = function(t) {
             var e = t.message
               , n = t.url
               , r = t.showButton
@@ -76530,24 +76631,24 @@ object-assign
             u.useMemo)(function() {
                 return (0,
                 i.Z)({
-                    className: a ? n0().notificationContentWithButton : n0().notificationContent,
+                    className: a ? n8().notificationContentWithButton : n8().notificationContent,
                     icon: !1
                 }, f && {
                     action: (0,
-                    s.jsx)(n$.Z, {
+                    s.jsx)(n2.Z, {
                         "aria-label": "close",
                         onClick: b,
                         size: "small",
                         children: (0,
-                        s.jsx)(nX.Z, {})
+                        s.jsx)(n5.Z, {})
                     })
                 })
             }, [f, b, a]);
             return g ? (0,
             s.jsx)("div", {
-                className: n0().notificationBanner,
+                className: n8().notificationBanner,
                 children: (0,
-                s.jsx)(nY.Z, (0,
+                s.jsx)(n1.Z, (0,
                 o.Z)((0,
                 i.Z)({}, w), {
                     children: a ? (0,
@@ -76558,9 +76659,9 @@ object-assign
                             role: "alert",
                             children: e
                         }), (0,
-                        s.jsx)(tv.Z, {
+                        s.jsx)(t_.Z, {
                             href: p || "#",
-                            className: n0().link,
+                            className: n8().link,
                             target: "_blank",
                             children: (0,
                             s.jsx)(I.Z, {
@@ -76572,19 +76673,19 @@ object-assign
                         s.jsx)(N.Z, {
                             variant: "secondary",
                             size: "small",
-                            className: n0().button,
+                            className: n8().button,
                             href: n,
                             onClick: x,
                             children: (0,
                             s.jsx)("span", {
-                                className: n0().buttonText,
+                                className: n8().buttonText,
                                 children: l
                             })
                         })]
                     }) : (0,
-                    s.jsx)(tv.Z, {
+                    s.jsx)(t_.Z, {
                         href: n,
-                        className: n0().link,
+                        className: n8().link,
                         children: (0,
                         s.jsx)(I.Z, {
                             variant: "callout1",
@@ -76596,12 +76697,12 @@ object-assign
                 }))
             }) : null
         }
-          , n2 = n(82234)
-          , n3 = n.n(n2)
-          , n4 = {
+          , n9 = n(82234)
+          , rt = n.n(n9)
+          , re = {
             location: "upsell bar"
         }
-          , n5 = function(t) {
+          , rn = function(t) {
             var e = t.card
               , n = void 0 === e ? {
                 name: S.Qb.NOTIFICATION_BAR,
@@ -76625,7 +76726,7 @@ object-assign
             u.useCallback)(function(t) {
                 t.preventDefault(),
                 (0,
-                nV.Z)(n),
+                nQ.Z)(n),
                 setTimeout(function() {
                     var t, e;
                     (null == n ? void 0 : null === (t = n.extras) || void 0 === t ? void 0 : t.href__url) && (null === (e = (0,
@@ -76634,7 +76735,7 @@ object-assign
             }, [n])
               , x = (0,
             u.useMemo)(function() {
-                return g && f && c ? nG({
+                return g && f && c ? n0({
                     accountSharingBannerConfig: f,
                     entitlements: c
                 }) : null
@@ -76659,19 +76760,19 @@ object-assign
               , C = (0,
             u.useMemo)(function() {
                 return (null == n ? void 0 : n.extras) && (0,
-                s.jsx)(nK, {
+                s.jsx)(n4, {
                     closable: !0,
                     type: "large",
                     level: "information",
                     onCloseComplete: function() {
                         return (0,
-                        nH.Z)(S.Qb.NOTIFICATION_BAR)
+                        nK.Z)(S.Qb.NOTIFICATION_BAR)
                     },
                     children: (0,
                     s.jsx)(k.Z, {
                         ref: d,
                         eventName: S.Kt,
-                        eventProperties: n4,
+                        eventProperties: re,
                         children: (0,
                         s.jsx)("a", {
                             ref: d,
@@ -76692,7 +76793,7 @@ object-assign
                     children: [(null == a ? void 0 : a.alert) && (null == a ? void 0 : a.message) && (0,
                     s.jsx)("div", {
                         children: (0,
-                        s.jsx)(n1, {
+                        s.jsx)(n7, {
                             message: a.message,
                             url: "/account/subscription#payment-details",
                             dismissible: !0
@@ -76700,7 +76801,7 @@ object-assign
                     }), g && x && (0,
                     s.jsx)("div", {
                         children: (0,
-                        s.jsx)(n1, {
+                        s.jsx)(n7, {
                             message: x.ctaBodyText,
                             subMessage: x.ctaBodyLinkText,
                             subMessageLink: x.ctaBodyLinkHref,
@@ -76717,7 +76818,7 @@ object-assign
             u.useMemo)(function() {
                 return "on" === o ? null : (null == a ? void 0 : a.alert) || g ? E : (null == n ? void 0 : n.extras) !== null ? (h || (m(!0),
                 (0,
-                nW.Z)([n])),
+                nX.Z)([n])),
                 C) : null
             }, [n, h, C, o, a, g, E, ])
               , M = (0,
@@ -76730,7 +76831,7 @@ object-assign
             }, [T]),
             (0,
             s.jsx)("div", {
-                className: n3().notificaitonBarController,
+                className: rt().notificaitonBarController,
                 children: (0,
                 s.jsx)("div", {
                     className: "quiver-notification-bar",
@@ -76738,138 +76839,116 @@ object-assign
                 })
             })
         }
-          , n6 = (0,
-        nq.Z)(n5)
-          , n8 = n(78130)
-          , n7 = n.n(n8)
-          , n9 = function(t) {
-            var e = t.isCTAVisible
-              , n = t.isFavoritesBarVisible
-              , r = void 0 === n || n
-              , i = t.isVisible
-              , o = (0,
-            m.v9)(y.HF, m.wU)
-              , a = (0,
-            m.v9)(y.Ox, m.wU)
-              , l = (0,
-            m.v9)(y.M_, m.wU)
-              , c = (0,
-            m.v9)(y.Px, m.wU)
-              , d = (0,
-            m.v9)(y.pO, m.wU)
-              , p = (0,
-            m.v9)(y.nS, m.wU)
-              , h = (0,
-            m.v9)(K.hC)
-              , v = (0,
-            m.v9)(y.A$, m.wU)
-              , g = (0,
-            tl.Z)().themeClassName
-              , b = (0,
+          , rr = (0,
+        nJ.Z)(rn)
+          , ri = n(78130)
+          , ro = n.n(ri)
+          , ra = function(t) {
+            var e, n = t.isCTAVisible, r = t.isFavoritesBarVisible, i = void 0 === r || r, o = t.isVisible, a = (0,
+            m.v9)(y.HF, m.wU), l = (0,
+            m.v9)(y.Ox, m.wU), c = (0,
+            m.v9)(y.M_, m.wU), d = (0,
+            m.v9)(y.Px, m.wU), p = (0,
+            m.v9)(y.pO, m.wU), h = (0,
+            m.v9)(y.nS, m.wU), v = (0,
+            m.v9)(K.hC), g = (0,
+            m.v9)(y.A$, m.wU), b = (0,
+            tu.Z)().themeClassName, x = tv(), w = (0,
             u.useMemo)(function() {
-                return l && !d
-            }, [l, d])
-              , x = null == v ? void 0 : v.alert
-              , w = eM("spotsTaxonomyLocation")
-              , S = eM("forecastsTaxonomyLocation")
-              , _ = (0,
+                return c && !p
+            }, [c, p]), S = null == g ? void 0 : g.alert, _ = eI("spotsTaxonomyLocation"), C = eI("forecastsTaxonomyLocation"), E = (0,
             u.useMemo)(function() {
                 return {
-                    units: null == p ? void 0 : p.units,
+                    units: null == h ? void 0 : h.units,
                     navigation: {
-                        spotsTaxonomyLocation: null != w ? w : void 0,
-                        forecastsTaxonomyLocation: null != S ? S : void 0
+                        spotsTaxonomyLocation: null != _ ? _ : void 0,
+                        forecastsTaxonomyLocation: null != C ? C : void 0
                     },
-                    recentlyVisited: null == p ? void 0 : p.recentlyVisited
+                    recentlyVisited: null == h ? void 0 : h.recentlyVisited
                 }
-            }, [S, w, null == p ? void 0 : p.recentlyVisited, null == p ? void 0 : p.units, ])
-              , C = (0,
-            ts.NJ)()
-              , E = C[tu.RELEASE_ANNOUNCEMENT]
-              , M = C[tu.PREMIUM_PERKS]
-              , k = (0,
-            tc.dM)(o)
-              , L = (0,
+            }, [C, _, null == h ? void 0 : h.recentlyVisited, null == h ? void 0 : h.units, ]), M = (0,
+            tp.NJ)(), k = M[ts.RELEASE_ANNOUNCEMENT], L = M[ts.PREMIUM_PERKS], A = (0,
+            tg.dM)(a), j = (0,
             u.useMemo)(function() {
                 return (0,
-                ts.ak)(E)
-            }, [E])
-              , A = (0,
+                tp.ak)(k)
+            }, [k]), O = (0,
             u.useMemo)(function() {
                 return (0,
-                ts.ak)(M)
-            }, [M])
-              , j = !h && k
-              , O = C[tu.SL_WEB_ACCOUNT_SHARING_BANNER]
-              , P = (0,
+                tp.ak)(L)
+            }, [L]), P = !v && A, I = M[ts.SL_WEB_ACCOUNT_SHARING_BANNER], N = (0,
             u.useMemo)(function() {
                 return (0,
-                ts.ak)(O)
-            }, [O]);
+                tp.ak)(I)
+            }, [I]);
             return (0,
             s.jsxs)("header", {
-                className: f()(n7().header, (0,
-                ta.Z)({}, n7().headerHidden, !i)),
+                className: f()(ro().header, (e = {},
+                (0,
+                ta.Z)(e, ro().headerHidden, !o),
+                (0,
+                ta.Z)(e, "sl-kbyg-web-green", x),
+                e)),
                 children: [(0,
-                s.jsx)(n6, {
-                    user: l,
-                    warning: v,
-                    entitlements: o,
-                    accountSharingBannerConfig: P
+                s.jsx)(rr, {
+                    user: c,
+                    warning: g,
+                    entitlements: a,
+                    accountSharingBannerConfig: N
                 }), (0,
-                s.jsx)(nU, {
-                    user: l,
-                    settings: _,
-                    hideCTA: !e,
-                    entitlements: o,
+                s.jsx)(n$, {
+                    user: c,
+                    settings: E,
+                    hideCTA: !n,
+                    entitlements: a,
                     serviceConfig: {
                         serviceUrl: T.Z.servicesURL
                     },
-                    freeTrialEligible: c,
-                    accountAlert: b,
-                    accountWarning: x,
-                    conditionColorsClass: g,
-                    userSettings: p,
-                    latestFeatureRelease: L,
-                    latestPremiumPerkRelease: A,
-                    showManageMembersLink: j
-                }), r && (0,
-                s.jsx)(tT, {
-                    settings: _,
-                    favorites: a,
-                    user: l
+                    freeTrialEligible: d,
+                    accountAlert: w,
+                    accountWarning: S,
+                    conditionColorsClass: b,
+                    userSettings: h,
+                    latestFeatureRelease: j,
+                    latestPremiumPerkRelease: O,
+                    showManageMembersLink: P
+                }), i && (0,
+                s.jsx)(tP, {
+                    settings: E,
+                    favorites: l,
+                    user: c
                 })]
             })
         }
-          , rt = function(t) {
+          , rs = function(t) {
             var e = t.isError;
             return (0,
             s.jsx)("div", {
                 children: (0,
-                s.jsx)(tf.Z, {
+                s.jsx)(ty.Z, {
                     error: e,
                     errorBoundaryId: "header",
                     render: function() {
                         return (0,
                         s.jsx)(W.Z, {
-                            className: n7().headerError,
+                            className: ro().headerError,
                             children: (0,
-                            s.jsx)(td.Z, {
+                            s.jsx)(tb.Z, {
                                 dataTestId: "error-message"
                             })
                         })
                     },
                     children: (0,
-                    s.jsx)(n9, (0,
+                    s.jsx)(ra, (0,
                     i.Z)({}, t))
                 })
             })
         }
-          , re = n(4298)
-          , rn = n.n(re)
-          , rr = function() {
+          , ru = n(4298)
+          , rl = n.n(ru)
+          , rc = function() {
             return (0,
-            s.jsx)(rn(), {
+            s.jsx)(rl(), {
                 id: "zendesk",
                 strategy: "afterInteractive",
                 dangerouslySetInnerHTML: {
@@ -76877,8 +76956,8 @@ object-assign
                 }
             })
         }
-          , ri = n(21627)
-          , ro = function(t, e) {
+          , rf = n(21627)
+          , rd = function(t, e) {
             var n = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : {
                 attributes: !0,
                 characterData: !0,
@@ -76897,7 +76976,7 @@ object-assign
                 return null
             }, [e, n])
         }
-          , ra = function(t) {
+          , rp = function(t) {
             var e = arguments.length > 1 && void 0 !== arguments[1] && arguments[1];
             switch (t) {
             case "/":
@@ -76948,13 +77027,13 @@ object-assign
                 return
             }
         }
-          , rs = function() {
+          , rh = function() {
             var t, e, n = (0,
             h.useRouter)(), r = (0,
             K.o5)().hasAdFreePermissions, i = (0,
             K.uE)(), o = (0,
-            e3.C)(y.HF, m.wU), a = (0,
-            tc.Bq)(o), l = (0,
+            nt.C)(y.HF, m.wU), a = (0,
+            tg.Bq)(o), l = (0,
             u.useRef)(null), c = (0,
             u.useState)(0), f = c[0], d = c[1], p = (0,
             u.useRef)(void 0), v = (0,
@@ -76963,14 +77042,14 @@ object-assign
             b.Z)(), E = (0,
             u.useMemo)(function() {
                 if ((null === (t = n.query) || void 0 === t ? void 0 : t.native) !== "true") {
-                    var t, e, r = ra(n.pathname, !!(null === (e = n.query) || void 0 === e ? void 0 : e.qaFlag));
+                    var t, e, r = rp(n.pathname, !!(null === (e = n.query) || void 0 === e ? void 0 : e.qaFlag));
                     return !1 === v.current && (p.current = r,
                     v.current = !0),
                     r
                 }
             }, [n.pathname, null === (t = n.query) || void 0 === t ? void 0 : t.native, null === (e = n.query) || void 0 === e ? void 0 : e.qaFlag]), T = (0,
             u.useMemo)(function() {
-                return !r && (!!a || !!i && null != E && !!E.showToPremium || !i && !!E)
+                return !r && (!!a && !!E || !!i && null != E && !!E.showToPremium || !i && !!E)
             }, [E, r, i, a]), M = (0,
             u.useMemo)(function() {
                 return !r && E && (!i || a || (null == E ? void 0 : E.showToPremium)) && E.reserveHeight ? {
@@ -76986,7 +77065,7 @@ object-assign
                 var t, e = null == l ? void 0 : null === (t = l.current) || void 0 === t ? void 0 : t.querySelector("iframe"), n = null == e ? void 0 : e.offsetHeight;
                 n && n > f && d(n)
             }, [f]);
-            ro(l, L);
+            rd(l, L);
             var A = (0,
             u.useCallback)(function() {
                 var t;
@@ -77003,12 +77082,12 @@ object-assign
             (0,
             _.Z)(function() {
                 S && S.addEventListener("resize", (0,
-                th.throttle)(L, 250))
+                tw.throttle)(L, 250))
             }),
             (0,
             C.Z)(function() {
                 S && S.removeEventListener("resize", (0,
-                th.throttle)(L, 250))
+                tw.throttle)(L, 250))
             }),
             (0,
             s.jsx)("div", {
@@ -77017,34 +77096,34 @@ object-assign
                 style: M,
                 ref: l,
                 children: T && !!(null == E ? void 0 : E.adConfigName) && !!(null == E ? void 0 : E.adTarget) && (0,
-                s.jsx)(ri.Z, {
+                s.jsx)(rf.Z, {
                     adConfigName: null == E ? void 0 : E.adConfigName,
                     adTarget: null == E ? void 0 : E.adTarget,
                     adKey: x
                 })
             })
         }
-          , ru = n(63426)
-          , rl = n(49833)
-          , rc = 6e5
-          , rf = function() {
+          , rm = n(63426)
+          , rv = n(49833)
+          , rg = 6e5
+          , ry = function() {
             var t, e = (0,
             m.I0)();
             (0,
             _.Z)(function() {
                 t = setTimeout(function() {
                     e((0,
-                    rl.NH)())
-                }, rc)
+                    rv.NH)())
+                }, rg)
             }),
             (0,
             C.Z)(function() {
                 clearTimeout(t)
             })
         }
-          , rd = function() {
+          , rb = function() {
             var t = (0,
-            e3.C)(function(t) {
+            nt.C)(function(t) {
                 return t.analytics.ready
             })
               , e = (0,
@@ -77055,7 +77134,7 @@ object-assign
                     var n = (0,
                     b.Z)()
                       , r = (0,
-                    nk.tQ)();
+                    nN.tQ)();
                     j.Z && (null == n ? void 0 : n.analytics) && (null == n ? void 0 : n.analytics.user) && r && "logged_in" === r.type && r.userId && (n.analytics.identify(r.userId, {
                         sourceOrigin: "KBYG"
                     }),
@@ -77063,16 +77142,16 @@ object-assign
                 }
             }, [t])
         }
-          , rp = function(t) {
+          , rx = function(t) {
             var e = t.children
               , n = (0,
-            e3.C)(e4.Q);
-            rd(),
-            rf();
+            nt.C)(ne.Q);
+            rb(),
+            ry();
             var r = (0,
             u.useCallback)(function() {
                 return 200 !== n ? (0,
-                s.jsx)(ru.Z, {
+                s.jsx)(rm.Z, {
                     statusCode: n
                 }) : e
             }, [n, e]);
@@ -77082,7 +77161,7 @@ object-assign
                 s.jsx)("div", {
                     className: "sl-kbyg-page-container",
                     children: (0,
-                    s.jsx)(tf.Z, {
+                    s.jsx)(ty.Z, {
                         error: 500 === n,
                         errorBoundaryId: "kbyg-page-container",
                         children: r()
@@ -77093,17 +77172,17 @@ object-assign
                 })]
             })
         }
-          , rh = n(19155)
-          , rm = n(21190)
-          , rv = n(51722)
-          , rg = n(54208)
-          , ry = function(t) {
+          , rw = n(19155)
+          , rS = n(21190)
+          , r_ = n(51722)
+          , rC = n(54208)
+          , rE = function(t) {
             var e = (0,
-            m.v9)(rg.YD)
+            m.v9)(rC.YD)
               , n = (0,
-            m.v9)(rg.Kp)
+            m.v9)(rC.Kp)
               , r = (0,
-            m.v9)(rg.Dr)
+            m.v9)(rC.Dr)
               , i = "windStation" === t ? "Oh no! No data found" : "Oh buoy! No data found"
               , o = "windStation" === t ? "Loading wind stations..." : "Loading Buoys...";
             return r ? {
@@ -77117,33 +77196,33 @@ object-assign
                 message: e
             } : {}
         }
-          , rb = n(35791)
-          , rx = n.n(rb)
-          , rw = function(t) {
+          , rT = n(35791)
+          , rM = n.n(rT)
+          , rk = function(t) {
             var e, n = t.isError, r = t.isLoading, i = t.isMessage;
             return f()((e = {},
             (0,
-            ta.Z)(e, rx().slMapNotification, !0),
+            ta.Z)(e, rM().slMapNotification, !0),
             (0,
-            ta.Z)(e, rx().slMapNotificationError, n),
+            ta.Z)(e, rM().slMapNotificationError, n),
             (0,
-            ta.Z)(e, rx().slMapNotificationLoading, r),
+            ta.Z)(e, rM().slMapNotificationLoading, r),
             (0,
-            ta.Z)(e, rx().slMapNotificationWithMessage, i),
+            ta.Z)(e, rM().slMapNotificationWithMessage, i),
             e))
         }
-          , rS = function(t) {
+          , rL = function(t) {
             var e = t.hide
               , n = void 0 !== e && e
-              , r = ry(t.mapMode)
+              , r = rE(t.mapMode)
               , i = r.message
               , o = r.isError
               , a = r.isLoading
               , u = r.isMessage;
             return n ? null : (0,
-            s.jsx)(rm.M, {
+            s.jsx)(rS.M, {
                 children: i && (0,
-                s.jsx)(rv.E.dialog, {
+                s.jsx)(r_.E.dialog, {
                     initial: {
                         opacity: 0,
                         y: -10,
@@ -77163,26 +77242,26 @@ object-assign
                             ease: "easeInOut"
                         }
                     },
-                    className: rw({
+                    className: rk({
                         isError: !!o,
                         isLoading: !!a,
                         isMessage: !!u
                     }),
                     children: (0,
                     s.jsx)("p", {
-                        className: rx().slMapNotificationMessage,
+                        className: rM().slMapNotificationMessage,
                         children: i
                     })
                 })
             })
         }
-          , r_ = n(23727)
-          , rC = n(45697)
-          , rE = n.n(rC)
-          , rT = n(50549)
-          , rM = function(t) {
+          , rA = n(23727)
+          , rj = n(45697)
+          , rO = n.n(rj)
+          , rP = n(50549)
+          , rI = function(t) {
             return t.show ? (0,
-            s.jsx)(rT.Z, {
+            s.jsx)(rP.Z, {
                 className: "sl-map-placeholder",
                 style: {
                     position: "absolute",
@@ -77193,13 +77272,13 @@ object-assign
                 }
             }) : null
         };
-        rM.propTypes = {
-            show: rE().bool
+        rI.propTypes = {
+            show: rO().bool
         },
-        rM.defaultProps = {
+        rI.defaultProps = {
             show: !1
         };
-        var rk, rL = rM, rA = n(71347), rj = n(38341), rO = n(73023), rP = function() {
+        var rN, rD = rI, rZ = n(71347), rR = n(38341), rF = n(73023), rz = function() {
             var t = (0,
             h.useRouter)().asPath
               , e = (0,
@@ -77219,31 +77298,31 @@ object-assign
             C.Z)(function() {
                 e && e.document.body.classList.remove("sl-hide-ze-widget", "sl-map-page", "sl-map-v2")
             })
-        }, rI = function(t, e) {
+        }, rB = function(t, e) {
             return l().Children.map(t, function(t) {
                 return l().isValidElement(t) ? l().cloneElement(t, e) : t
             })
-        }, rN = n(18169), rD = '<a href="https://www.maptiler.com/copyright" target="_blank">\xa9 MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">\xa9 OpenStreetMap</a> contributors', rZ = "".concat(T.Z.mapTileUrl, "/256/{z}/{x}/{y}@2x.png?key=").concat(T.Z.mapTileKey), rR = n(76021), rF = function() {
+        }, rU = n(18169), rV = '<a href="https://www.maptiler.com/copyright" target="_blank">\xa9 MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">\xa9 OpenStreetMap</a> contributors', rH = "".concat(T.Z.mapTileUrl, "/256/{z}/{x}/{y}@2x.png?key=").concat(T.Z.mapTileKey), rW = n(76021), rq = function() {
             var t = (0,
             m.I0)();
             (0,
             C.Z)(function() {
                 t((0,
-                rR.t5)())
+                rW.t5)())
             })
-        }, rz = function() {
+        }, rG = function() {
             var t = (0,
             a.Z)((0,
-            rj.Z)(), 1)[0]
+            rR.Z)(), 1)[0]
               , e = (0,
-            rO.Z)()
+            rF.Z)()
               , n = e.location
               , r = e.locationLoaded;
             (0,
             u.useEffect)(function() {
                 t && n && r && t.setView(n.center, n.zoom)
             }, [t, n, r])
-        }, rB = function(t) {
+        }, rY = function(t) {
             var e, n = t.getCenter(), r = n.lat;
             return {
                 center: {
@@ -77252,7 +77331,7 @@ object-assign
                 },
                 zoom: t.getZoom()
             }
-        }, rU = function(t) {
+        }, r$ = function(t) {
             var e = t.getBounds();
             return {
                 north: e.getNorth(),
@@ -77260,35 +77339,35 @@ object-assign
                 east: e.getEast(),
                 west: e.getWest()
             }
-        }, rV = function() {
+        }, rQ = function() {
             var t = (0,
             a.Z)((0,
-            rj.Z)(), 1)[0]
+            rR.Z)(), 1)[0]
               , e = (0,
             m.I0)()
               , n = (0,
-            rO.Z)()
+            rF.Z)()
               , r = n.location
               , i = n.locationLoaded;
             (0,
             u.useEffect)(function() {
                 t && i && e((0,
-                rR.nr)(rU(t)))
+                rW.nr)(r$(t)))
             }, [e, i, r, t])
-        }, rH = n(96058), rW = function() {
+        }, rK = n(96058), rX = function() {
             var t = (0,
             m.I0)()
               , e = (0,
             a.Z)((0,
-            rj.Z)(), 1)[0]
+            rR.Z)(), 1)[0]
               , n = (0,
-            rO.Z)().location
+            rF.Z)().location
               , r = (0,
             u.useCallback)(function(e) {
                 (0,
-                rH.W4)(e) !== (0,
-                rH.W4)(n) && t((0,
-                rR.fZ)(e))
+                rK.W4)(e) !== (0,
+                rK.W4)(n) && t((0,
+                rW.fZ)(e))
             }, [t, n])
               , i = (0,
             u.useRef)(r);
@@ -77300,68 +77379,68 @@ object-assign
             u.useEffect)(function() {
                 if (e) {
                     var t = (0,
-                    th.debounce)(function() {
-                        i.current(rB(e))
+                    tw.debounce)(function() {
+                        i.current(rY(e))
                     }, 750);
                     e.on("moveend", t)
                 }
             }, [e])
-        }, rq = n(88719), rG = n.n(rq), rY = function(t, e) {
+        }, rJ = n(88719), r0 = n.n(rJ), r1 = function(t, e) {
             var n;
-            return f()("sl-map-page", "sl-map-page-v2", rG().slMapPageV2, (n = {},
+            return f()("sl-map-page", "sl-map-page-v2", r0().slMapPageV2, (n = {},
             (0,
-            ta.Z)(n, rG().slMapPageV2Loading, t),
+            ta.Z)(n, r0().slMapPageV2Loading, t),
             (0,
-            ta.Z)(n, rG().slMapPageV2Error, e),
+            ta.Z)(n, r0().slMapPageV2Error, e),
             n))
-        }, r$ = function() {
-            return f()("sl-left-rail", rG().slMapV2LeftRail)
-        }, rQ = function(t) {
+        }, r2 = function() {
+            return f()("sl-left-rail", r0().slMapV2LeftRail)
+        }, r3 = function(t) {
             var e = t.children
               , n = t.mapMode
               , r = void 0 === n ? "buoy" : n
               , u = (0,
             a.Z)((0,
-            rj.Z)(), 2)
+            rR.Z)(), 2)
               , l = u[0]
               , c = u[1]
               , f = (0,
-            rg.oN)()
+            rC.oN)()
               , d = (0,
-            rg.Bn)();
-            rP(),
-            rF(),
+            rC.Bn)();
             rz(),
-            rV(),
-            rW();
+            rq(),
+            rG(),
+            rQ(),
+            rX();
             var p = (0,
-            rO.Z)().location
-              , h = rI(e, {
+            rF.Z)().location
+              , h = rB(e, {
                 map: l
             });
             return (0,
             s.jsxs)("div", {
-                className: rY(!!f, !!d),
+                className: r1(!!f, !!d),
                 children: [p && (0,
-                s.jsx)(r_.Z, {
+                s.jsx)(rA.Z, {
                     location: p,
                     mapMode: r
                 }), (0,
-                s.jsxs)(rA.Z, {
+                s.jsxs)(rZ.Z, {
                     side: "right",
-                    className: rG().slMapV2RightRail,
+                    className: r0().slMapV2RightRail,
                     children: [(0,
-                    s.jsx)(rL, {
+                    s.jsx)(rD, {
                         show: !l
                     }), (0,
-                    s.jsx)(rh.D5, {
+                    s.jsx)(rw.D5, {
                         center: p.center,
                         zoom: p.zoom,
                         mapProps: (0,
                         o.Z)((0,
-                        i.Z)({}, rN.Z), {
+                        i.Z)({}, rU.Z), {
                             placeholder: (0,
-                            s.jsx)(rL, {
+                            s.jsx)(rD, {
                                 show: !0
                             }),
                             whenCreated: function(t) {
@@ -77371,44 +77450,44 @@ object-assign
                             preferCanvas: !1
                         }),
                         children: (0,
-                        s.jsx)(rh.Im, {
-                            attribution: rD,
-                            url: rZ
+                        s.jsx)(rw.Im, {
+                            attribution: rV,
+                            url: rH
                         })
                     }), (0,
-                    s.jsx)(rS, {
+                    s.jsx)(rL, {
                         hide: !l,
                         mapMode: r
                     })]
                 }), (0,
-                s.jsx)(rA.Z, {
+                s.jsx)(rZ.Z, {
                     side: "left",
-                    className: r$(),
+                    className: r2(),
                     children: h
                 })]
             })
-        }, rK = n(19845), rX = n.n(rK), rJ = n(40044), r0 = n(88078), r1 = n(51233), r2 = n(10760), r3 = n(95304), r4 = n(73485), r5 = n(80377), r6 = n(45105), r8 = n(68006), r7 = n(9757), r9 = n(93944), it = n(23131), ie = n.n(it), ir = function() {
+        }, r4 = n(19845), r5 = n.n(r4), r6 = n(40044), r8 = n(88078), r7 = n(51233), r9 = n(10760), it = n(95304), ie = n(73485), ir = n(80377), ii = n(45105), io = n(68006), ia = n(9757), is = n(93944), iu = n(23131), il = n.n(iu), ic = function() {
             return (0,
             s.jsx)(W.Z, {
-                className: ie().loadingIcon,
+                className: il().loadingIcon,
                 children: (0,
-                s.jsx)(e0.Z, {
+                s.jsx)(e8.Z, {
                     size: 20,
                     sx: {
                         color: "grey"
                     }
                 })
             })
-        }, ii = function(t) {
+        }, id = function(t) {
             var e = t.spotId
               , n = (0,
-            e3.T)()
+            nt.T)()
               , r = (0,
-            r7.y)(e)
+            ia.y)(e)
               , i = (0,
-            r9.Sz)()
+            is.Sz)()
               , o = (0,
-            e3.C)(y.M_)
+            nt.C)(y.M_)
               , a = (0,
             h.useRouter)()
               , l = (0,
@@ -77428,9 +77507,9 @@ object-assign
                 if (o)
                     r ? (m(!0),
                     n((0,
-                    nL.rM)(e))) : (f(!0),
+                    nD.rM)(e))) : (f(!0),
                     n((0,
-                    nL.o7)(e)));
+                    nD.o7)(e)));
                 else if (j.Z) {
                     var t = (0,
                     b.Z)()
@@ -77441,13 +77520,13 @@ object-assign
               , g = (0,
             u.useMemo)(function() {
                 return c || p ? (0,
-                s.jsx)(ir, {}) : r ? (0,
-                s.jsx)(r8.Z, {}) : (0,
-                s.jsx)(r6.Z, {})
+                s.jsx)(ic, {}) : r ? (0,
+                s.jsx)(io.Z, {}) : (0,
+                s.jsx)(ii.Z, {})
             }, [r, c, p]);
             return (0,
             s.jsx)(N.Z, {
-                className: i ? "" : ie().favoriteButton,
+                className: i ? "" : il().favoriteButton,
                 disableRipple: !0,
                 disableFocusRipple: !0,
                 onClick: v,
@@ -77457,25 +77536,25 @@ object-assign
                 disabled: c || p,
                 children: i && (r ? "Favorite" : "Add favorite")
             })
-        }, io = n(84808), ia = n(11535), is = n(96514), iu = n(90629), il = n(7982), ic = n(84118), id = n(23599), ip = n(23795), ih = n(60181), im = n(23508), iv = n(66221), ig = n(7927), iy = n(12779), ib = n(53416), ix = n.n(ib), iw = rX().bind(ix()), iS = function(t, e) {
+        }, ip = n(84808), ih = n(11535), im = n(96514), iv = n(90629), ig = n(7982), iy = n(84118), ib = n(23599), ix = n(23795), iw = n(60181), iS = n(23508), i_ = n(66221), iC = n(7927), iE = n(12779), iT = n(53416), iM = n.n(iT), ik = r5().bind(iM()), iL = function(t, e) {
             var n;
-            return iw((n = {},
+            return ik((n = {},
             (0,
             ta.Z)(n, t, !0),
             (0,
             ta.Z)(n, "sl-conditions-color--".concat((0,
-            r3.z)(e), "-background"), !0),
+            it.z)(e), "-background"), !0),
             n))
-        }, i_ = function(t) {
+        }, iA = function(t) {
             var e = t.open;
             return (0,
             s.jsx)("span", {
-                className: ix().endIcon,
+                className: iM().endIcon,
                 children: e ? (0,
-                s.jsx)(ih.Z, {}) : (0,
-                s.jsx)(im.Z, {})
+                s.jsx)(iw.Z, {}) : (0,
+                s.jsx)(iS.Z, {})
             })
-        }, iC = function(t) {
+        }, ij = function(t) {
             var e = t.nearbySpots
               , n = t.rawUnits
               , r = (0,
@@ -77485,7 +77564,7 @@ object-assign
               , c = (0,
             u.useRef)(null)
               , f = (0,
-            iv.Z)((null == n ? void 0 : n.toUpperCase()) || "")
+            i_.Z)((null == n ? void 0 : n.toUpperCase()) || "")
               , d = function() {
                 l(function(t) {
                     return !t
@@ -77496,10 +77575,10 @@ object-assign
             }
               , h = function(t) {
                 return (0,
-                iy.VK)({}, {
+                iE.VK)({}, {
                     _id: t._id,
                     name: (0,
-                    e9.Z)(t.name)
+                    na.Z)(t.name)
                 })
             }
               , m = (0,
@@ -77509,15 +77588,15 @@ object-assign
                 !0 === m.current && !1 === a && c.current.focus(),
                 m.current = a
             }, [a]);
-            var v = iw(ix().nearbySpotsButton, (0,
-            ta.Z)({}, ix().isOpen, !!a));
+            var v = ik(iM().nearbySpotsButton, (0,
+            ta.Z)({}, iM().isOpen, !!a));
             return (0,
-            s.jsx)(r1.Z, {
+            s.jsx)(r7.Z, {
                 children: (0,
                 s.jsxs)("div", {
                     children: [(0,
-                    s.jsx)(io.Z, {
-                        className: ix().nearbySpotsBackdrop,
+                    s.jsx)(ip.Z, {
+                        className: iM().nearbySpotsBackdrop,
                         open: a
                     }), (0,
                     s.jsxs)(N.Z, {
@@ -77532,7 +77611,7 @@ object-assign
                         disableRipple: !0,
                         disableTouchRipple: !0,
                         endIcon: (0,
-                        s.jsx)(i_, {
+                        s.jsx)(iA, {
                             open: a
                         }),
                         onClick: d,
@@ -77540,14 +77619,14 @@ object-assign
                         variant: "secondary",
                         children: [(0,
                         s.jsx)("span", {
-                            className: ix().popoverTriangle,
+                            className: iM().popoverTriangle,
                             style: {
                                 opacity: a ? 1 : 0
                             }
                         }), "Nearby spots"]
                     }), (0,
-                    s.jsx)(ia.Z, {
-                        className: ix().popperWrapper,
+                    s.jsx)(ih.Z, {
+                        className: iM().popperWrapper,
                         open: a,
                         anchorEl: c.current,
                         role: void 0,
@@ -77558,29 +77637,29 @@ object-assign
                             var n = t.TransitionProps;
                             return t.placement,
                             (0,
-                            s.jsx)(is.Z, (0,
+                            s.jsx)(im.Z, (0,
                             o.Z)((0,
                             i.Z)({}, n), {
                                 style: {
                                     transformOrigin: "left top"
                                 },
                                 children: (0,
-                                s.jsx)(iu.Z, {
-                                    className: ix().paper,
+                                s.jsx)(iv.Z, {
+                                    className: iM().paper,
                                     children: (0,
-                                    s.jsx)(il.d, {
+                                    s.jsx)(ig.d, {
                                         onClickAway: p,
                                         children: (0,
-                                        s.jsx)(ic.Z, {
+                                        s.jsx)(iy.Z, {
                                             autoFocusItem: a,
                                             id: "composition-menu",
                                             "aria-labelledby": "composition-button",
-                                            className: ix().menuWrap,
+                                            className: iM().menuWrap,
                                             children: null == e ? void 0 : e.map(function(t) {
                                                 var e, n, r, i, o;
                                                 return (0,
-                                                s.jsxs)(id.Z, {
-                                                    className: ix().nearbySpotLink,
+                                                s.jsxs)(ib.Z, {
+                                                    className: iM().nearbySpotLink,
                                                     href: h(t),
                                                     onClick: function() {
                                                         (0,
@@ -77591,21 +77670,21 @@ object-assign
                                                     },
                                                     title: "".concat(t.name, " Surf Report and Forecast"),
                                                     disableRipple: !0,
-                                                    component: ip.Z,
+                                                    component: ix.Z,
                                                     children: [(0,
                                                     s.jsx)("div", {
-                                                        className: iS("conditionsBlock", (null == t ? void 0 : null === (e = t.conditions) || void 0 === e ? void 0 : e.value) || "")
+                                                        className: iL("conditionsBlock", (null == t ? void 0 : null === (e = t.conditions) || void 0 === e ? void 0 : e.value) || "")
                                                     }), (0,
                                                     s.jsx)(I.Z, {
                                                         variant: "body",
-                                                        className: ix().nearbySpotsLinkName,
+                                                        className: iM().nearbySpotsLinkName,
                                                         noWrap: !0,
                                                         children: null == t ? void 0 : t.name
                                                     }), (0,
-                                                    ig.Z)(null == t ? void 0 : null === (n = t.waveHeight) || void 0 === n ? void 0 : n.max, f) ? (0,
+                                                    iC.Z)(null == t ? void 0 : null === (n = t.waveHeight) || void 0 === n ? void 0 : n.max, f) ? (0,
                                                     s.jsx)(I.Z, {
                                                         variant: "callout1",
-                                                        className: ix().surfHeightOverrides,
+                                                        className: iM().surfHeightOverrides,
                                                         children: "Flat"
                                                     }) : (0,
                                                     s.jsxs)(I.Z, {
@@ -77613,12 +77692,12 @@ object-assign
                                                         children: [Math.round(null == t ? void 0 : null === (r = t.waveHeight) || void 0 === r ? void 0 : r.min), "-", Math.round(null == t ? void 0 : null === (i = t.waveHeight) || void 0 === i ? void 0 : i.max), null == f ? void 0 : f.toLowerCase(), (null == t ? void 0 : null === (o = t.waveHeight) || void 0 === o ? void 0 : o.plus) ? "+" : ""]
                                                     }), t.cameras.length > 0 && !t.insightsCameraId && (0,
                                                     s.jsx)(Y.HT, {
-                                                        className: ix().iconWrapper,
+                                                        className: iM().iconWrapper,
                                                         isMultiCam: t.cameras.length > 1,
                                                         withText: t.cameras.length > 1
                                                     }), t.insightsCameraId && (0,
                                                     s.jsx)("span", {
-                                                        className: ix().insightsIconWrapper,
+                                                        className: iM().insightsIconWrapper,
                                                         children: (0,
                                                         s.jsx)(Y.v2, {})
                                                     })]
@@ -77632,29 +77711,29 @@ object-assign
                     })]
                 })
             })
-        }, iE = n(88581), iT = n(67286), iM = n(67743), ik = n(99368), iL = n(79014), iA = function(t) {
+        }, iO = n(88581), iP = n(67286), iI = n(67743), iN = n(99368), iD = n(79014), iZ = function(t) {
             return "active" === t
-        }, ij = {
+        }, iR = {
             CHARTS: "charts",
             REGIONAL_ANALYSIS: "regional analysis",
             SPOT: "spot",
             SPOT_GUIDE: "spot_guide",
             SPOT_CHARTS: "spot_charts"
-        }, iO = function(t) {
+        }, iF = function(t) {
             var e = t.hasLiveCam
               , n = t.pageType
-              , r = iA(t.subregionForecastStatus);
+              , r = iZ(t.subregionForecastStatus);
             switch (n) {
             case "regional analysis":
                 return {
                     tab: 1,
-                    subtitle: "".concat(iM.Z.RegionalForecast.header.titleSuffix)
+                    subtitle: "".concat(iI.Z.RegionalForecast.header.titleSuffix)
                 };
             case "spot_charts":
             case "charts":
                 return {
                     tab: r ? 2 : 1,
-                    subtitle: "".concat(iM.Z.RegionalForecast.header.titleSuffix)
+                    subtitle: "".concat(iI.Z.RegionalForecast.header.titleSuffix)
                 };
             case "spot_guide":
                 return {
@@ -77667,7 +77746,7 @@ object-assign
                     subtitle: "Surf Report".concat(e ? ", Surf Forecast & Surf Cam" : " and Surf Forecast")
                 }
             }
-        }, iP = function() {
+        }, iz = function() {
             var t = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 0
               , e = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : 0
               , n = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : 7;
@@ -77678,7 +77757,7 @@ object-assign
                 },
                 zoom: n
             }
-        }, iI = function(t) {
+        }, iB = function(t) {
             var e = t.isRegionalCharts
               , n = void 0 !== e && e
               , r = t.spotId
@@ -77691,10 +77770,10 @@ object-assign
               , f = void 0 !== c && c
               , d = 7
               , p = [{
-                text: iM.Z.SpotPage.forecastHeaderLinkText.spot,
+                text: iI.Z.SpotPage.forecastHeaderLinkText.spot,
                 title: "".concat(s, " Surf Report and Forecast"),
                 path: (0,
-                iL.VK)({
+                iD.VK)({
                     view: f ? "table" : void 0
                 }, {
                     _id: r || "",
@@ -77702,11 +77781,11 @@ object-assign
                 }),
                 newWindow: !1
             }, ];
-            if (iA(u) && (null == l ? void 0 : l._id) && p.push({
-                text: iM.Z.SpotPage.forecastHeaderLinkText.regionalAnalysis,
+            if (iZ(u) && (null == l ? void 0 : l._id) && p.push({
+                text: iI.Z.SpotPage.forecastHeaderLinkText.regionalAnalysis,
                 title: "".concat(s, ", ").concat(l.name, " Regional Surf Forecast"),
                 path: (0,
-                iL.xA)({
+                iD.xA)({
                     subregionId: l._id,
                     subregionName: l.name,
                     spotId: r
@@ -77723,29 +77802,29 @@ object-assign
                   , y = g.lat
                   , b = g.lon
                   , x = {
-                    text: iM.Z.SpotPage.forecastHeaderLinkText.charts,
+                    text: iI.Z.SpotPage.forecastHeaderLinkText.charts,
                     title: "".concat(s, " Surf Forecast Charts"),
                     path: (0,
-                    ik.ZP)(m, h || "", "wave-height", (0,
-                    i.Z)({}, iP(y, b, d)), r),
+                    iN.ZP)(m, h || "", "wave-height", (0,
+                    i.Z)({}, iz(y, b, d)), r),
                     newWindow: !1
                 };
                 p.push(x)
             } else {
-                var w = iP(o, a, d);
+                var w = iz(o, a, d);
                 p.push({
-                    text: iM.Z.SpotPage.forecastHeaderLinkText.charts,
-                    title: iM.Z.SpotPage.forecastHeaderLinkText.charts,
+                    text: iI.Z.SpotPage.forecastHeaderLinkText.charts,
+                    title: iI.Z.SpotPage.forecastHeaderLinkText.charts,
                     path: (0,
-                    iL.dl)(r || "", s || "", "wave-height", w),
+                    iD.dl)(r || "", s || "", "wave-height", w),
                     newWindow: !1
                 })
             }
             var S = {
-                text: iM.Z.SpotPage.forecastHeaderLinkText.guide,
-                title: iM.Z.SpotPage.forecastHeaderLinkText.guide,
+                text: iI.Z.SpotPage.forecastHeaderLinkText.guide,
+                title: iI.Z.SpotPage.forecastHeaderLinkText.guide,
                 path: (0,
-                iL.XZ)({
+                iD.XZ)({
                     spotName: s || "",
                     spotId: r || ""
                 }),
@@ -77753,32 +77832,32 @@ object-assign
             };
             return p.push(S),
             p
-        }, iN = n(22099), iD = n.n(iN), iZ = rX().bind(iD()), iR = function(t, e) {
+        }, iU = n(22099), iV = n.n(iU), iH = r5().bind(iV()), iW = function(t, e) {
             var n;
-            return iZ((n = {},
+            return iH((n = {},
             (0,
             ta.Z)(n, t, !0),
             (0,
             ta.Z)(n, "sl-conditions-color--".concat((0,
-            r3.z)(e), "-background"), !0),
+            it.z)(e), "-background"), !0),
             n))
-        }, iF = function(t) {
-            var e, n, r = t.conditions, i = t.hasLiveCam, o = t.isRegionalCharts, a = void 0 !== o && o, l = t.pageTitle, c = t.pageType, f = void 0 === c ? ij.SPOT : c, d = t.spot, p = t.subregionOverview, m = (0,
+        }, iq = function(t) {
+            var e, n, r = t.conditions, i = t.hasLiveCam, o = t.isRegionalCharts, a = void 0 !== o && o, l = t.pageTitle, c = t.pageType, f = void 0 === c ? iR.SPOT : c, d = t.spot, p = t.subregionOverview, m = (0,
             h.useRouter)(), v = (0,
-            ts.NJ)(), g = (0,
-            r9.Sz)(), b = (0,
+            tp.NJ)(), g = (0,
+            is.Sz)(), b = (0,
             K.vX)(), x = (0,
-            e3.C)(iT._1), w = (0,
-            e3.C)(y.nS), _ = !(0,
-            e3.C)(y.M_), C = (0,
-            iE.Z)(_).preferredForecastViewLocalStorage, E = !(null == d ? void 0 : d._id) || !(null == d ? void 0 : d.name), T = f === ij.SPOT, M = f === ij.SPOT_GUIDE, k = f === ij.SPOT_CHARTS, L = f === ij.REGIONAL_ANALYSIS, A = (null == m ? void 0 : null === (e = m.query) || void 0 === e ? void 0 : e.view) === "table", j = (0,
+            nt.C)(iP._1), w = (0,
+            nt.C)(y.nS), _ = !(0,
+            nt.C)(y.M_), C = (0,
+            iO.Z)(_).preferredForecastViewLocalStorage, E = !(null == d ? void 0 : d._id) || !(null == d ? void 0 : d.name), T = f === iR.SPOT, M = f === iR.SPOT_GUIDE, k = f === iR.SPOT_CHARTS, L = f === iR.REGIONAL_ANALYSIS, A = (null == m ? void 0 : null === (e = m.query) || void 0 === e ? void 0 : e.view) === "table", j = (0,
             u.useMemo)(function() {
                 return L ? "active" : p.forecastSummary.forecastStatus.status
-            }, [L, p]), O = x && g && (T || M || k), P = iO({
+            }, [L, p]), O = x && g && (T || M || k), P = iF({
                 hasLiveCam: i,
                 pageType: f,
                 subregionForecastStatus: j
-            }), I = iI({
+            }), I = iB({
                 isRegionalCharts: a,
                 spotId: null == d ? void 0 : d._id,
                 spotLat: null == d ? void 0 : d.lat,
@@ -77791,7 +77870,7 @@ object-assign
             u.useState)(P.tab), D = N[0], Z = N[1], R = (0,
             u.useMemo)(function() {
                 return (null == x ? void 0 : x.length) ? (0,
-                tj.Z)(x) : []
+                tR.Z)(x) : []
             }, [x]), F = (0,
             u.useCallback)(function(t, e) {
                 Z(e)
@@ -77799,9 +77878,9 @@ object-assign
             u.useMemo)(function() {
                 return I.map(function(t) {
                     return (0,
-                    s.jsx)(rJ.Z, {
-                        className: iD().tab,
-                        LinkComponent: tv.Z,
+                    s.jsx)(r6.Z, {
+                        className: iV().tab,
+                        LinkComponent: t_.Z,
                         disableFocusRipple: !0,
                         disableRipple: !0,
                         label: t.text,
@@ -77817,9 +77896,9 @@ object-assign
             }, [P.tab, D]),
             (0,
             s.jsxs)(W.Z, {
-                className: iD().forecastHeaderWrapper,
+                className: iV().forecastHeaderWrapper,
                 children: [E ? (0,
-                s.jsx)(r0.Z, {
+                s.jsx)(r8.Z, {
                     variant: "rectangular",
                     width: "100%",
                     height: 50,
@@ -77830,42 +77909,42 @@ object-assign
                 }) : (0,
                 s.jsxs)(s.Fragment, {
                     children: [T && (0,
-                    s.jsx)(r4.Z, {
+                    s.jsx)(ie.Z, {
                         card: {
                             name: S.Qb.SPOT_HEADER,
                             extras: null
                         },
                         testId: "banner-braze-card",
-                        className: iD().contentCard
+                        className: iV().contentCard
                     }), (0,
-                    s.jsxs)(r1.Z, {
+                    s.jsxs)(r7.Z, {
                         direction: "row",
                         justifyContent: "space-between",
-                        className: iD().headerTitle,
+                        className: iV().headerTitle,
                         children: [(0,
-                        s.jsxs)(r1.Z, {
-                            className: iD().headerDetails,
+                        s.jsxs)(r7.Z, {
+                            className: iV().headerDetails,
                             direction: "row",
                             children: [(0,
                             s.jsx)(W.Z, {
-                                className: iR("conditionsBlock", r)
+                                className: iW("conditionsBlock", r)
                             }), (0,
-                            s.jsx)(r5.Z, {
+                            s.jsx)(ir.Z, {
                                 title: l,
                                 subtitle: P.subtitle,
                                 isDesktop: g
                             })]
                         }), O ? (0,
-                        s.jsx)(iC, {
+                        s.jsx)(ij, {
                             nearbySpots: R,
                             rawUnits: null == w ? void 0 : null === (n = w.units) || void 0 === n ? void 0 : n.surfHeight
                         }) : null, (T || M || k) && (0,
-                        s.jsx)(ii, {
+                        s.jsx)(id, {
                             spotId: null == d ? void 0 : d._id
                         })]
                     })]
                 }), (null == d ? void 0 : d._id) ? (0,
-                s.jsxs)(r2.Z, {
+                s.jsxs)(r9.Z, {
                     "aria-label": "sub navigation",
                     indicatorColor: "secondary",
                     onChange: F,
@@ -77873,18 +77952,18 @@ object-assign
                     textColor: "secondary",
                     value: D,
                     variant: "scrollable",
-                    children: [z, d.insightsCameraId && "on" === v[tu.SL_WEB_REWIND_RECAPS] && (0,
-                    s.jsx)(rJ.Z, {
-                        className: iD().tab,
+                    children: [z, d.insightsCameraId && "on" === v[ts.SL_WEB_REWIND_RECAPS] && (0,
+                    s.jsx)(r6.Z, {
+                        className: iV().tab,
                         label: "Rewind Recaps",
-                        LinkComponent: tv.Z,
+                        LinkComponent: t_.Z,
                         disableFocusRipple: !0,
                         disableRipple: !0,
                         href: "/rewind-recaps?spotId=".concat(d._id),
                         target: "_blank"
                     }, "forecast-header-tab")]
                 }) : (0,
-                s.jsx)(r0.Z, {
+                s.jsx)(r8.Z, {
                     variant: "rectangular",
                     width: "100%",
                     height: 40,
@@ -77894,11 +77973,11 @@ object-assign
                     }
                 })]
             })
-        }, iz = n(37885), iB = function(t) {
+        }, iG = n(37885), iY = function(t) {
             var e, n, r = t.children, i = (0,
-            e3.C)(iT.md), o = (0,
-            e3.C)(iT.NI), a = (0,
-            e3.C)(iz.em);
+            nt.C)(iP.md), o = (0,
+            nt.C)(iP.NI), a = (0,
+            nt.C)(iG.em);
             return (0,
             s.jsx)("div", {
                 className: "sl-subregion-forecast-page",
@@ -77908,24 +77987,24 @@ object-assign
                     s.jsx)("section", {
                         className: "sl-section-container",
                         children: (0,
-                        s.jsx)(iF, {
+                        s.jsx)(iq, {
                             conditions: null == o ? void 0 : null === (e = o.conditions) || void 0 === e ? void 0 : e.value,
                             hasLiveCam: (null == i ? void 0 : null === (n = i.cameras) || void 0 === n ? void 0 : n.length) > 0,
                             pageTitle: (null == i ? void 0 : i.name) ? "".concat(null == i ? void 0 : i.name, " Surf Report") : "Surf Charts",
-                            pageType: ij.SPOT_CHARTS,
+                            pageType: iR.SPOT_CHARTS,
                             spot: i,
                             subregionOverview: a
                         })
                     }), r]
                 })
             })
-        }, iU = n(151), iV = n(78915), iH = n(54378), iW = function(t) {
+        }, i$ = n(151), iQ = n(78915), iK = n(54378), iX = function(t) {
             var e, n, r = t.children, i = (0,
-            e3.T)(), o = (0,
-            e3.C)(iT.md), a = (0,
-            e3.C)(iT.NI), l = (0,
-            e3.C)(iz.em), c = (0,
-            e3.C)(iH.ZP), f = o && o.subregion ? o.subregion._id : null, d = (0,
+            nt.T)(), o = (0,
+            nt.C)(iP.md), a = (0,
+            nt.C)(iP.NI), l = (0,
+            nt.C)(iG.em), c = (0,
+            nt.C)(iK.ZP), f = o && o.subregion ? o.subregion._id : null, d = (0,
             u.useCallback)(function(t) {
                 (0,
                 G.L9)("Clicked Swell Alert Card", {
@@ -77940,7 +78019,7 @@ object-assign
             return (0,
             _.Z)(function() {
                 o && i((0,
-                iU.aV)(o._id, "spot"))
+                i$.aV)(o._id, "spot"))
             }),
             (0,
             s.jsxs)(W.Z, {
@@ -77948,36 +78027,36 @@ object-assign
                 s.jsxs)("section", {
                     className: "sl-section-container",
                     children: [c.length ? (0,
-                    s.jsx)(iV.Z, {
+                    s.jsx)(iQ.Z, {
                         onClickCard: d,
                         events: c
                     }) : null, (0,
-                    s.jsx)(iF, {
+                    s.jsx)(iq, {
                         conditions: null == a ? void 0 : null === (e = a.conditions) || void 0 === e ? void 0 : e.value,
                         hasLiveCam: (null == o ? void 0 : null === (n = o.cameras) || void 0 === n ? void 0 : n.length) > 0,
                         pageTitle: "".concat(null == o ? void 0 : o.name, " Surf Guide"),
-                        pageType: ij.SPOT_GUIDE,
+                        pageType: iR.SPOT_GUIDE,
                         spot: o,
                         subregionOverview: l
                     })]
                 }), r]
             })
-        }, iq = n(51268), iG = n(83230), iY = n(34778), i$ = n.n(iY), iQ = function(t) {
+        }, iJ = n(51268), i0 = n(83230), i1 = n(34778), i2 = n.n(i1), i3 = function(t) {
             var e, n, r = t.children, i = (0,
-            e3.T)(), o = (0,
-            e3.C)(iT.md), a = (0,
-            e3.C)(iT.NI), l = (0,
-            e3.C)(iz.em), c = (0,
-            e3.C)(iH.ZP), f = o && o.subregion ? o.subregion._id : null, d = (0,
-            ts.NJ)(), p = (0,
-            e3.C)(y.PR), h = null == p ? void 0 : p.location, m = (null == h ? void 0 : h.time_zone) || "America/Los_Angeles", v = (0,
+            nt.T)(), o = (0,
+            nt.C)(iP.md), a = (0,
+            nt.C)(iP.NI), l = (0,
+            nt.C)(iG.em), c = (0,
+            nt.C)(iK.ZP), f = o && o.subregion ? o.subregion._id : null, d = (0,
+            tp.NJ)(), p = (0,
+            nt.C)(y.PR), h = null == p ? void 0 : p.location, m = (null == h ? void 0 : h.time_zone) || "America/Los_Angeles", v = (0,
             u.useMemo)(function() {
-                return d[tu.SL_WEB_PREMIUMPLUS_LIMITED_TIME_ACCESS] ? (0,
-                ts.ak)(d[tu.SL_WEB_PREMIUMPLUS_LIMITED_TIME_ACCESS]) : null
+                return d[ts.SL_WEB_PREMIUMPLUS_LIMITED_TIME_ACCESS] ? (0,
+                tp.ak)(d[ts.SL_WEB_PREMIUMPLUS_LIMITED_TIME_ACCESS]) : null
             }, [d]), g = (0,
             u.useMemo)(function() {
-                return !!v && !!d[tu.SL_WEB_PREMIUMPLUS_LIMITED_TIME_ACCESS] && (0,
-                iG.Z)(v, m)
+                return !!v && !!d[ts.SL_WEB_PREMIUMPLUS_LIMITED_TIME_ACCESS] && (0,
+                i0.Z)(v, m)
             }, [v, d, m]), b = function(t) {
                 (0,
                 G.L9)("Clicked Swell Alert Card", {
@@ -77992,39 +78071,39 @@ object-assign
             return (0,
             _.Z)(function() {
                 o && i((0,
-                iU.aV)(o._id, "spot"))
+                i$.aV)(o._id, "spot"))
             }),
             (0,
             s.jsxs)(W.Z, {
-                className: i$().pageWrapper,
+                className: i2().pageWrapper,
                 children: [g && (0,
-                s.jsx)(iq.Z, {
+                s.jsx)(iJ.Z, {
                     splitConfig: v
                 }), (0,
                 s.jsxs)("section", {
                     className: "sl-section-container",
                     children: [c.length ? (0,
-                    s.jsx)(iV.Z, {
+                    s.jsx)(iQ.Z, {
                         onClickCard: b,
                         events: c
                     }) : null, (0,
-                    s.jsx)(iF, {
+                    s.jsx)(iq, {
                         conditions: null == a ? void 0 : null === (e = a.conditions) || void 0 === e ? void 0 : e.value,
                         hasLiveCam: (null == o ? void 0 : null === (n = o.cameras) || void 0 === n ? void 0 : n.length) > 0,
                         pageTitle: "".concat(null == o ? void 0 : o.name, " Surf Report & Forecast"),
-                        pageType: ij.SPOT,
+                        pageType: iR.SPOT,
                         spot: o,
                         subregionOverview: l
                     })]
                 }), r]
             })
-        }, iK = n(77808), iX = function(t) {
+        }, i4 = n(77808), i5 = function(t) {
             var e, n, r = t.children, i = t.isChartsPage, o = (0,
             h.useRouter)(), a = (0,
-            e3.C)(iz.em, m.wU), l = (0,
-            e3.C)(iH.ZP), c = (0,
-            e3.C)(iz.Wd), f = (0,
-            e3.C)(iz.oc), d = o.query, p = d.native, v = d.spotId, g = d.subregionId, y = c || f, b = null == a ? void 0 : a.spots, x = null == a ? void 0 : a.primarySpot, w = (null == b ? void 0 : b.find(function(t) {
+            nt.C)(iG.em, m.wU), l = (0,
+            nt.C)(iK.ZP), c = (0,
+            nt.C)(iG.Wd), f = (0,
+            nt.C)(iG.oc), d = o.query, p = d.native, v = d.spotId, g = d.subregionId, y = c || f, b = null == a ? void 0 : a.spots, x = null == a ? void 0 : a.primarySpot, w = (null == b ? void 0 : b.find(function(t) {
                 return t._id === x
             })) || (null == b ? void 0 : b[0]), S = null == w ? void 0 : w.conditions, _ = (0,
             u.useMemo)(function() {
@@ -78056,52 +78135,52 @@ object-assign
                 s.jsxs)("section", {
                     className: "sl-section-container",
                     children: [!i && l.length ? (0,
-                    s.jsx)(iV.Z, {
+                    s.jsx)(iQ.Z, {
                         onClickCard: function(t) {
                             return E(t)
                         },
                         events: l
                     }) : null, (0,
-                    s.jsx)(iF, {
+                    s.jsx)(iq, {
                         conditions: null !== (n = null == S ? void 0 : S.value) && void 0 !== n ? n : "",
                         hasLiveCam: null == w ? void 0 : null === (e = w.cameras) || void 0 === e ? void 0 : e.length,
                         isRegionalCharts: !v,
                         pageTitle: "".concat(null == a ? void 0 : a.name),
-                        pageType: i ? ij.CHARTS : ij.REGIONAL_ANALYSIS,
+                        pageType: i ? iR.CHARTS : iR.REGIONAL_ANALYSIS,
                         spot: _ || C,
                         subregionOverview: a
                     }), y && (0,
-                    s.jsx)(iK.Z, {})]
+                    s.jsx)(i4.Z, {})]
                 }), r]
             })
-        }, iJ = n(77734), i0 = n(49348), i1 = n(48346), i2 = function() {
+        }, i6 = n(77734), i8 = n(49348), i7 = n(48346), i9 = function() {
             try {
                 var t, e, n = (0,
-                nk.yQ)();
+                nN.yQ)();
                 n && (null === (t = (0,
-                i1.Z)()) || void 0 === t || null === (e = t.getUser()) || void 0 === e || e.addAlias(n, "segmentAnonymousId"))
+                i7.Z)()) || void 0 === t || null === (e = t.getUser()) || void 0 === e || e.addAlias(n, "segmentAnonymousId"))
             } catch (r) {}
-        }, i3 = function() {
+        }, ot = function() {
             var t;
             null === (t = (0,
-            i1.Z)()) || void 0 === t || t.requestContentCardsRefresh()
-        }, i4 = n(19258), i5 = n.n(i4), i6 = n(38589), i8 = n.n(i6), i7 = new tp.Z, i9 = function(t, e) {
+            i7.Z)()) || void 0 === t || t.requestContentCardsRefresh()
+        }, oe = n(19258), on = n.n(oe), or = n(38589), oi = n.n(or), oo = new tx.Z, oa = function(t, e) {
             var n, r = (0,
-            nk.tQ)() || {}, i = r.anonymousId, o = r.email, a = o && ((0,
-            th.endsWith)(o, "@surfline.com") || (0,
-            th.endsWith)(o, "@magicseaweed.com"));
+            nN.tQ)() || {}, i = r.anonymousId, o = r.email, a = o && ((0,
+            tw.endsWith)(o, "@surfline.com") || (0,
+            tw.endsWith)(o, "@magicseaweed.com"));
             if ((null == e ? void 0 : e.logrocket) === "on" || a) {
                 n = !0;
                 var s = new Date;
                 s.setDate(s.getDate() + 1),
-                i7.set("log_rocket_enabled", !0, {
+                oo.set("log_rocket_enabled", !0, {
                     path: "/",
                     expires: s
                 })
             } else
-                n = "true" === i7.get("log_rocket_enabled");
+                n = "true" === oo.get("log_rocket_enabled");
             if (n) {
-                i5().init(T.Z.appKeys.logrocket, {
+                on().init(T.Z.appKeys.logrocket, {
                     network: {
                         requestSanitizer: function(t) {
                             return t.headers["X-Auth-AccessToken"] = "redacted",
@@ -78124,45 +78203,45 @@ object-assign
                         }
                     }
                 }),
-                i8()(i5());
+                oi()(on());
                 var u = t.getState()
                   , l = (0,
                 y.M_)(u)
                   , c = (0,
                 K.ZW)(u);
-                l && i5().identify((null == l ? void 0 : l._id) || i || "Unidentified"),
-                c && i5().track("User Logged Out", {
+                l && on().identify((null == l ? void 0 : l._id) || i || "Unidentified"),
+                c && on().track("User Logged Out", {
                     anonymousId: i || "Unidentified"
                 })
             }
-        }, ot = function(t) {
+        }, os = function(t) {
             var e = setTimeout(function() {
                 var t;
                 null === (t = (0,
-                b.Z)()) || void 0 === t || t.document.dispatchEvent(new CustomEvent(i0.D.BRAZE_TIMEOUT))
+                b.Z)()) || void 0 === t || t.document.dispatchEvent(new CustomEvent(i8.D.BRAZE_TIMEOUT))
             }, 3e3)
               , n = function() {
                 null === (n = (0,
-                b.Z)()) || void 0 === n || n.document.dispatchEvent(new CustomEvent(i0.D.BRAZE_LOADED)),
-                i2();
+                b.Z)()) || void 0 === n || n.document.dispatchEvent(new CustomEvent(i8.D.BRAZE_LOADED)),
+                i9();
                 var n, r, i, o = (0,
                 y.PR)(t.getState()).subdivisionCode;
                 null === (i = null === (r = (0,
-                i1.Z)()) || void 0 === r ? void 0 : r.getUser()) || void 0 === i || i.setCustomUserAttribute("location.lastSubdivisionOne", o),
+                i7.Z)()) || void 0 === r ? void 0 : r.getUser()) || void 0 === i || i.setCustomUserAttribute("location.lastSubdivisionOne", o),
                 setTimeout(function() {
                     var t, e;
                     (null === (e = null === (t = (0,
-                    i1.Z)()) || void 0 === t ? void 0 : t.getCachedContentCards()) || void 0 === e ? void 0 : e.cards.length) || i3()
+                    i7.Z)()) || void 0 === t ? void 0 : t.getCachedContentCards()) || void 0 === e ? void 0 : e.cards.length) || ot()
                 }, 6e3),
                 clearTimeout(e)
             };
             (0,
-            nk.eU)(n)
-        }, oe = (rk = (0,
-        tW.Z)(function(t, e, n) {
+            nN.eU)(n)
+        }, ou = (rN = (0,
+        tX.Z)(function(t, e, n) {
             var r, i, o, a;
             return (0,
-            tq.__generator)(this, function(s) {
+            tJ.__generator)(this, function(s) {
                 switch (s.label) {
                 case 0:
                     if (!j.Z)
@@ -78171,25 +78250,25 @@ object-assign
                 case 1:
                     s.trys.push([1, 6, , 7]),
                     (0,
-                    nk.Hf)((0,
-                    th.once)(function() {
-                        ot(t),
-                        i9(t, e.query),
+                    nN.Hf)((0,
+                    tw.once)(function() {
+                        os(t),
+                        oa(t, e.query),
                         n()
                     })),
                     s.label = 2;
                 case 2:
                     return s.trys.push([2, 4, , 5]),
                     [4, (0,
-                    nk.xj)({
+                    nN.xj)({
                         authorizationKey: T.Z.splitio,
                         user: (0,
                         y.PR)(t.getState()),
                         splitFilters: (0,
-                        tj.Z)((0,
-                        nk.G_)(tu)).concat((0,
-                        tj.Z)((0,
-                        nk.Zq)()))
+                        tR.Z)((0,
+                        nN.G_)(ts)).concat((0,
+                        tR.Z)((0,
+                        nN.Zq)()))
                     })];
                 case 3:
                     return s.sent(),
@@ -78210,48 +78289,48 @@ object-assign
             })
         }),
         function(t, e, n) {
-            return rk.apply(this, arguments)
+            return rN.apply(this, arguments)
         }
-        ), on = function(t) {
+        ), ol = function(t) {
             var e = t.message
               , n = t.stack;
             return !!((null == e ? void 0 : e.includes("undefined is not an object (evaluating 'b[b.length-1].step')")) || (null == n ? void 0 : n.includes("chrome-extension://")) || (null == n ? void 0 : n.includes("imasdk.googleapis.com")) || (null == n ? void 0 : n.includes("googleads.g.doubleclick.net")) || (null == e ? void 0 : e.includes("Network timeout //imasdk.googleapis.com/js/sdkloader/ima3.js")) || (null == n ? void 0 : n.includes("profitwell.com")) || (null == e ? void 0 : e.includes("Cannot read properties of undefined (reading 'realBitrate')")) || (null == e ? void 0 : e.includes("Cannot read properties of undefined (reading 'end')")) || (null == e ? void 0 : e.includes("Cannot read property 'end' of undefined")) || (null == e ? void 0 : e.includes("s is undefined")) || (null == e ? void 0 : e.includes("Invalid target for null#on; must be a DOM node or evented object")) || (null == e ? void 0 : e.includes("The play() request was interrupted by a call to pause()")) || (null == e ? void 0 : e.includes("The play() request was interrupted by a new load request")) || (null == e ? void 0 : e.includes("undefined is not an object (evaluating 'n.length')")) || (null == e ? void 0 : e.includes("Cannot read properties of undefined (reading 'length')")) || (null == e ? void 0 : e.includes("Cannot read properties of null (reading 'postMessage')")) || (null == e ? void 0 : e.includes("n is undefined")) || (null == e ? void 0 : e.includes("Can't find variable: tlAdhesion")) || (null == e ? void 0 : e.includes("tlAdhesion is not defined")) || (null == e ? void 0 : e.includes("trackAdhesionQuatiles.dispatchQuartileEvents is not a function")) || (null == e ? void 0 : e.includes("undefined is not an object (evaluating 'd.WindowAdaptor.workingDocument().activeElement')")) || (null == e ? void 0 : e.includes("WindowAdaptor.workingDocument() is undefined")) || (null == e ? void 0 : e.includes('Unhandled Promise Rejection: {"isTrusted":true')) || (null == e ? void 0 : e.includes("null is not an object (evaluating 'this.topWindow().scrollX')")) || (null == e ? void 0 : e.includes("null is not an object (evaluating 'this.topWindow().removeEventListener')")) || (null == e ? void 0 : e.includes("null is not an object (evaluating '(this.xdom?t:t.parent).document')")) || (null == e ? void 0 : e.includes("Can't find variable: _AutofillCallbackHandler")) || (null == e ? void 0 : e.includes("Can't find variable: setTimeout")) || (null == e ? void 0 : e.includes("setTimeout is not defined")) || (null == e ? void 0 : e.includes("setTimeout is not a function")) || (null == e ? void 0 : e.includes("null is not an object (evaluating 'adChoicesText.className=\"invisible\"')")) || (null == e ? void 0 : e.includes("Uncaught TypeError: Cannot read properties of undefined (reading 'triggered')")) || (null == e ? void 0 : e.includes("undefined is not an object (evaluating 'Object.keys(p1086785317[p1086785283[oIndex4_]])'")) || (null == n ? void 0 : n.includes("ads.blogherads.com")) || (null == n ? void 0 : n.includes("apstag.js")) || (null == n ? void 0 : n.includes("cdn.adsafeprotected.com")) || (null == n ? void 0 : n.includes("cdn.browsiprod.com")) || (null == n ? void 0 : n.includes("cdn.flashtalking.com")) || (null == n ? void 0 : n.includes("p.ad.gt")) || (null == n ? void 0 : n.includes("static.yieldmo.com")) || (null == n ? void 0 : n.includes("tagan.adlightning.com")) || (null == n ? void 0 : n.includes("tahoe-analytics.publishers")) || (null == n ? void 0 : n.includes("d15kdpgjg3unno.cloudfront.net")) || (null == e ? void 0 : e.includes("Cannot read properties of undefined (reading '_leaflet_pos')")) || (null == e ? void 0 : e.includes("undefined is not an object (evaluating 't._leaflet_pos')")) || (null == e ? void 0 : e.includes("NetworkError when attempting to fetch resource")) || (null == e ? void 0 : e.includes("Failed to execute 'querySelectorAll' on 'Document': 'div:has(> iframe[id=")) || (null == e ? void 0 : e.includes("ResizeObserver loop limit exceeded")) || (null == e ? void 0 : e.includes("ResizeObserver loop completed with undelivered notifications.")) || (null == e ? void 0 : e.includes('Blocked a frame with origin "https://www.surfline.com" from accessing a cross-origin frame.')) || (null == e ? void 0 : e.includes('Blocked a restricted frame with origin "https://www.surfline.com" from accessing another frame.')) || (null == e ? void 0 : e.includes("Failed to execute 'invoke' on 'CreateHTMLCallback': The provided callback is no longer runnable")) || (null == e ? void 0 : e.includes("Script error")) && !(null == n ? void 0 : n.includes("cdn-surfline.com")))
-        }, or = function() {
+        }, oc = function() {
             if (j.Z) {
                 var t = (0,
                 b.Z)();
-                (null == t ? void 0 : t.newrelic) && t.newrelic.setErrorHandler(on),
+                (null == t ? void 0 : t.newrelic) && t.newrelic.setErrorHandler(ol),
                 t && !t.onerror && (t.onerror = function(t, e, n, r, i) {
                     return console.error("win.onerror handler", t, i, e, n, r),
-                    on({
+                    ol({
                         message: t
                     })
                 }
                 )
             }
-        }, oi = n(48711), oo = "undefined" != typeof document, oa = function() {
+        }, of = n(48711), od = "undefined" != typeof document, op = function() {
             var t;
-            if (oo) {
+            if (od) {
                 var e = document.querySelector('meta[name="emotion-insertion-point"]');
                 t = null != e ? e : void 0
             }
             return (0,
-            oi.Z)({
+            of.Z)({
                 key: "mui-style",
                 insertionPoint: t
             })
         };
         n(34714),
         n(84336);
-        var os = function(t) {
+        var oh = function(t) {
             return f()({
                 "quiver-page-container__content": !0,
                 "quiver-page-container__content--native": t
             })
         };
-        or();
-        var ou = oa()
-          , ol = function(t) {
+        oc();
+        var om = op()
+          , ov = function(t) {
             var e = t.Component
               , n = t.pageProps
               , r = t.isNative
@@ -78279,13 +78358,13 @@ object-assign
               , A = n.isSubregionForecastPage
               , j = n.mapMode
               , O = (0,
-            tl.Z)().themeClassName
+            tu.Z)().themeClassName
               , P = (0,
             K.uE)()
               , I = (0,
-            e3.C)(y.HF, m.wU)
+            nt.C)(y.HF, m.wU)
               , N = (0,
-            tc.Bq)(I)
+            tg.Bq)(I)
               , D = !P || N
               , Z = (0,
             u.useMemo)(function() {
@@ -78299,42 +78378,42 @@ object-assign
             s.jsxs)("div", {
                 className: O,
                 children: [x && (0,
-                s.jsx)(rs, {}), (0,
-                s.jsx)(rt, {
+                s.jsx)(rh, {}), (0,
+                s.jsx)(rs, {
                     isCTAVisible: S,
                     isFavoritesBarVisible: d,
                     isVisible: Z
                 }), (0,
-                s.jsx)(rr, {}), D && (0,
+                s.jsx)(rc, {}), D && (0,
                 s.jsx)(z, {}), (0,
                 s.jsxs)("main", {
-                    className: os(r),
+                    className: oh(r),
                     children: [(0,
-                    s.jsx)(rp, {
+                    s.jsx)(rx, {
                         children: E ? (0,
-                        s.jsx)(rQ, {
+                        s.jsx)(r3, {
                             mapMode: j,
                             children: (0,
                             s.jsx)(e, (0,
                             i.Z)({}, n))
                         }) : A || T || c ? (0,
-                        s.jsx)(iX, {
+                        s.jsx)(i5, {
                             isChartsPage: c,
                             children: (0,
                             s.jsx)(e, (0,
                             i.Z)({}, n))
                         }) : k ? (0,
-                        s.jsx)(iW, {
+                        s.jsx)(iX, {
                             children: (0,
                             s.jsx)(e, (0,
                             i.Z)({}, n))
                         }) : M ? (0,
-                        s.jsx)(iB, {
+                        s.jsx)(iY, {
                             children: (0,
                             s.jsx)(e, (0,
                             i.Z)({}, n))
                         }) : L ? (0,
-                        s.jsx)(iQ, {
+                        s.jsx)(i3, {
                             children: (0,
                             s.jsx)(e, (0,
                             i.Z)({}, n))
@@ -78352,11 +78431,11 @@ object-assign
                 })]
             })
         }
-          , oc = function(t) {
+          , og = function(t) {
             var e = t.Component
               , n = t.device
               , r = t.emotionCache
-              , l = void 0 === r ? ou : r
+              , l = void 0 === r ? om : r
               , c = t.isNative
               , f = t.pageProps
               , d = t.serverTreatments
@@ -78390,7 +78469,7 @@ object-assign
                 })
             }))
               , R = (0,
-            iJ.oR)(Z.current)
+            i6.oR)(Z.current)
               , F = (0,
             a.Z)(v(function() {
                 (null == P ? void 0 : P.__USER_REDUX__) && E(!0)
@@ -78398,7 +78477,7 @@ object-assign
             return (0,
             u.useEffect)(function() {
                 C && (F(),
-                oe(R, D, function() {
+                ou(R, D, function() {
                     return R.dispatch((0,
                     w.R)())
                 }))
@@ -78477,13 +78556,13 @@ object-assign
                         disableCssBaseline: !T,
                         ssr: !0,
                         children: (0,
-                        s.jsx)(ts.Gj, {
+                        s.jsx)(tp.Gj, {
                             value: N,
                             children: (0,
                             s.jsx)(m.zt, {
                                 store: R,
                                 children: (0,
-                                s.jsx)(ol, {
+                                s.jsx)(ov, {
                                     Component: e,
                                     device: I,
                                     isNative: c,
@@ -79026,7 +79105,6 @@ object-assign
               // hasWaveEnergyPermissions: !!r(a.r.WAVE_ENERGY)
             }
         })
-        
           , m = (0,
         i.P1)(f, function(t) {
             return !!(null == t ? void 0 : t.find(function(t) {
@@ -82415,20 +82493,13 @@ object-assign
         i.WAVE_CONSISTENCY = "sl_wave-consistency",
         i.WAVE_ENERGY = "sl_wave-energy"
     },
-    17485: function(t, e, n) {
+    52994: function(t, e, n) {
         "use strict";
-        n.d(e, {
-            Z: function() {
-                return m
-            }
-        });
         var r = n(26042)
           , i = n(69396)
           , o = n(10253)
           , a = n(29815)
-          , s = function(t, e) {
-            return t.includes("sl_vip_advertiser") ? "VIP_ADVERTISER" : t.includes("sl_vip") ? "VIP" : t.includes("sl_premium_ads") ? "PREMIUM_WITH_ADS" : t.includes("sl_premium") || t.includes("sl_youth") ? "PREMIUM" : e ? "REGISTERED" : "ANONYMOUS"
-        }
+          , s = n(38161)
           , u = {
             adUnit: "/1024858/Horizontal_Variable",
             adId: "Horizontal_Variable",
@@ -82961,11 +83032,14 @@ object-assign
             return (0,
             i.Z)((0,
             r.Z)({}, f[t]), {
-                adId: h(null === (e = f[t]) || void 0 === e ? void 0 : e.adId, s(o, a)),
-                adTargets: p(n, s(o, a), l),
+                adId: h(null === (e = f[t]) || void 0 === e ? void 0 : e.adId, (0,
+                s.Z)(o, a)),
+                adTargets: p(n, (0,
+                s.Z)(o, a), l),
                 adViewType: l
             })
-        }
+        };
+        e.Z = m
     },
     72269: function(t, e) {
         "use strict";
@@ -83439,6 +83513,13 @@ object-assign
             return null == t ? null : t === r.Jv ? r.bR : t
         };
         e.Z = i
+    },
+    38161: function(t, e) {
+        "use strict";
+        var n = function(t, e) {
+            return t.includes("sl_vip_advertiser") ? "VIP_ADVERTISER" : t.includes("sl_vip") ? "VIP" : t.includes("sl_premium_ads") ? "PREMIUM_WITH_ADS" : t.includes("sl_premium") || t.includes("sl_youth") ? "PREMIUM" : e ? "REGISTERED" : "ANONYMOUS"
+        };
+        e.Z = n
     },
     18169: function(t, e) {
         "use strict";
@@ -100702,7 +100783,6 @@ and ensure you are accounting for this risk.
         "use strict";
         t.exports = JSON.parse('{"name":"@surfline/quiver-assets","version":"0.26.0","description":"a collection of assets to distribute through a CDN","main":"dist","scripts":{"build":"babel ./src --ignore *.spec.js --out-dir ./dist","check-coverage":"babel-istanbul check-coverage --statements 90 --branches 75","clean:build":"rm -rf dist","clean:coverage":"rm -rf coverage","coverage":"babel-istanbul cover _mocha -- \\"src/**/*.spec.js\\"","lint":"eslint src && echo \\"eslint: no lint errors\\"","lint:fix":"eslint src --fix","postpublish":"sh ./scripts/deploy-assets.sh && sh ../../scripts/git-tag-version.sh","prebuild":"npm run clean:build","prepublishOnly":"npm ci && npm run build","test":"mocha \\"src/**/*.spec.js\\" --require babel-register","test:coverage":"npm run clean:coverage && npm run coverage && npm run check-coverage","test:unit":"npm run test","test:watch":"mocha \\"src/**/*.spec.js\\" --require babel-register --watch"},"publishConfig":{"registry":"https://surfline.jfrog.io/surfline/api/npm/npm-local/"},"files":["README.md","dist/","productcdn.scss","futuradem.scss","futurasurfline.scss"],"devDependencies":{"babel-cli":"6.24.1","babel-core":"6.24.1","babel-eslint":"7.2.3","babel-istanbul":"0.12.2","babel-plugin-transform-async-to-generator":"6.24.1","babel-plugin-transform-regenerator":"6.24.1","babel-plugin-transform-runtime":"6.23.0","babel-preset-es2015":"6.24.1","babel-preset-stage-0":"6.24.1","babel-register":"6.24.1","babel-runtime":"6.23.0","chai":"3.5.0","dirty-chai":"1.2.2","eslint":"3.19.0","eslint-config-airbnb-base":"11.1.3","eslint-plugin-import":"2.2.0","mocha":"3.3.0","query-ast":"1.0.1","scss-parser":"1.0.0"},"gitHead":"e729f66f21fb4179118961718e50769d3db3e663"}')
     }
-    
 }, function(t) {
     var e = function(e) {
         return t(t.s = e)
@@ -100714,4 +100794,4 @@ and ensure you are accounting for this risk.
     _N_E = t.O()
 }
 ]);
-//# sourceMappingURL=_app-32e12d9c0d5386ee.js.map
+//# sourceMappingURL=_app-8b2efe528292e39e.js.map
