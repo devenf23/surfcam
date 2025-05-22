@@ -63696,7 +63696,7 @@ object-assign
                 return f
             }
         });
-        var r, i = n(47568), o = n(70655), a = n(19990), s = (r = (0,
+        var r, i = n(47568), o = n(70655), a = n(20965), s = (r = (0,
         i.Z)(function(t, e) {
             return (0,
             o.__generator)(this, function(n) {
@@ -63763,7 +63763,7 @@ object-assign
                 return d
             }
         });
-        var r, i = n(47568), o = n(70655), a = n(19990), s = (r = (0,
+        var r, i = n(47568), o = n(70655), a = n(20965), s = (r = (0,
         i.Z)(function(t, e) {
             return (0,
             o.__generator)(this, function(n) {
@@ -63922,7 +63922,7 @@ object-assign
         });
         var r = n(47568)
           , i = n(70655)
-          , o = n(19990)
+          , o = n(20965)
           , a = function(t) {
             return (0,
             o.ZP)("/location/view/worldtaxonomy?", {
@@ -63970,7 +63970,7 @@ object-assign
           , o = n(70655)
           , a = n(9669)
           , s = n.n(a)
-          , u = n(19990)
+          , u = n(20965)
           , l = function() {
             var t, e = (0,
             u.BS)();
@@ -64152,7 +64152,7 @@ object-assign
                 showMinutes: !0,
                 period: x
             }
-        }, x = n(19990), w = n(1568), S = (0,
+        }, x = n(20965), w = n(1568), S = (0,
         x.hP)(), _ = 1200, C = (0,
         u.LC)({
             reducerPath: "buoysAPI",
@@ -64241,7 +64241,7 @@ object-assign
         var r = n(26042)
           , i = n(69396)
           , o = n(34273)
-          , a = n(19990)
+          , a = n(20965)
           , s = function(t, e, n, s) {
             var u = arguments.length > 4 && void 0 !== arguments[4] && arguments[4]
               , l = {}
@@ -64316,7 +64316,7 @@ object-assign
                 return f
             }
         });
-        var r, i = n(47568), o = n(26042), a = n(70655), s = n(34273), u = n(19990), l = function(t, e) {
+        var r, i = n(47568), o = n(26042), a = n(70655), s = n(34273), u = n(20965), l = function(t, e) {
             var n = arguments.length > 2 && void 0 !== arguments[2] && arguments[2];
             return (0,
             u.ZP)("/feed/local?".concat((0,
@@ -64405,7 +64405,7 @@ object-assign
           , i = n(26042)
           , o = n(69396)
           , a = n(70655)
-          , s = n(19990)
+          , s = n(20965)
           , u = n(34273)
           , l = function(t) {
             var e, n = t.corrected, r = t.days, a = t.id, u = t.intervalHours, l = t.kbygQueryParams, c = t.noCache, f = void 0 === c ? "false" : c, d = t.startDate, p = t.units, h = t.observationClarity, m = !!(null == p ? void 0 : p.waveHeight), v = {};
@@ -64699,20 +64699,20 @@ object-assign
         var r = n(47568)
           , i = n(70655);
         n(94301);
-        var o, a, s, u = n(19990), l = n(49230), c = n(86692), f = (o = (0,
+        var o, a, s, u = n(20965), l = n(49230), c = n(86692), f = (o = (0,
         r.Z)(function(t) {
-            var e, n, r, o, a, s;
+            var e, n, r, o, a, s, l;
             return (0,
             i.__generator)(this, function(i) {
                 return e = t.north,
                 n = t.south,
                 r = t.east,
                 o = t.west,
-                a = t.observationClarity,
-                s = "/kbyg/mapview?south=".concat(n, "&west=").concat(o, "&north=").concat(e, "&east=").concat(r),
-                !0 === a && (s = "".concat(s, "&observationClarity=true")),
+                s = void 0 === (a = t.observationClarity) || a,
+                l = "/kbyg/mapview?south=".concat(n, "&west=").concat(o, "&north=").concat(e, "&east=").concat(r),
+                !0 === s && (l = "".concat(l, "&observationClarity=true")),
                 [2, (0,
-                u.ZP)(s)]
+                u.ZP)(l)]
             })
         }),
         function(t) {
@@ -64720,16 +64720,16 @@ object-assign
         }
         ), d = (a = (0,
         r.Z)(function(t) {
-            var e, n, r, o;
+            var e, n, r, o, a;
             return (0,
             i.__generator)(this, function(i) {
                 return e = t.lat,
                 n = t.lon,
-                r = t.observationClarity,
-                o = "/kbyg/mapview/spot?lat=".concat(e, "&lon=").concat(n),
-                !0 === r && (o = "".concat(o, "&observationClarity=true")),
+                o = void 0 === (r = t.observationClarity) || r,
+                a = "/kbyg/mapview/spot?lat=".concat(e, "&lon=").concat(n),
+                !0 === o && (a = "".concat(a, "&observationClarity=true")),
                 [2, (0,
-                u.ZP)(o)]
+                u.ZP)(a)]
             })
         }),
         function(t) {
@@ -64785,7 +64785,7 @@ object-assign
                 return p
             }
         });
-        var r, i = n(47568), o = n(26042), a = n(70655), s = n(72269), u = n(34273), l = n(26209), c = n(19990), f = function(t) {
+        var r, i = n(47568), o = n(26042), a = n(70655), s = n(72269), u = n(34273), l = n(26209), c = n(20965), f = function(t) {
             var e = t.clientIp
               , n = t.cookies
               , r = t.countryCode
@@ -64875,7 +64875,7 @@ object-assign
                 return s
             }
         });
-        var r, i = n(47568), o = n(70655), a = n(19990), s = (r = (0,
+        var r, i = n(47568), o = n(70655), a = n(20965), s = (r = (0,
         i.Z)(function(t, e) {
             var n, r, i, s, u, l, c, f = arguments;
             return (0,
@@ -64923,7 +64923,7 @@ object-assign
           , i = n(26042)
           , o = n(70655);
         n(94301);
-        var a, s = n(19990), u = n(49230), l = n(72269), c = n(26209), f = function(t) {
+        var a, s = n(20965), u = n(49230), l = n(72269), c = n(26209), f = function(t) {
             var e = t.clientIp
               , n = void 0 === e ? null : e
               , r = t.cookies
@@ -65551,7 +65551,7 @@ object-assign
     },
     21545: function(t, e, n) {
         "use strict";
-        var r, i = n(30848), o = n(19990), a = n(1568), s = (0,
+        var r, i = n(30848), o = n(20965), a = n(1568), s = (0,
         o.hP)(), u = (0,
         i.LC)({
             reducerPath: "windStationsAPI",
@@ -65594,7 +65594,7 @@ object-assign
         });
         e.Z = u
     },
-    19990: function(t, e, n) {
+    20965: function(t, e, n) {
         "use strict";
         n.d(e, {
             BN: function() {
@@ -65619,17 +65619,19 @@ object-assign
         var r, i = n(47568), o = n(26042), a = n(70655), s = n(94301), u = n.n(s), l = n(25501), c = n(80660), f = n(5019), d = n(49230), p = n(86692), h = function(t) {
             if (t.status >= 200 && t.status < 300)
                 return t;
-            var e = Error((null == t ? void 0 : t.statusText) ? "Base fetch error: ".concat(t.statusText) : "Base fetch error");
-            throw e.response = t,
-            e.statusCode = null == t ? void 0 : t.status,
-            e.statusCode >= 500 && (0,
-            p.Z)(e, "baseFetch", {
+            var e, n = Error((null == t ? void 0 : t.statusText) ? "Base fetch error: ".concat(t.statusText) : "Base fetch error");
+            n.response = t,
+            n.statusCode = null == t ? void 0 : t.status;
+            var r = {
                 reponseBody: null == t ? void 0 : t.body,
                 statusCode: null == t ? void 0 : t.status,
                 statusText: null == t ? void 0 : t.statusText,
                 url: null == t ? void 0 : t.url
-            }),
-            e
+            };
+            throw 503 === n.statusCode && (null == t ? void 0 : null === (e = t.url) || void 0 === e ? void 0 : e.includes("kbyg/forecast-content")) ? (0,
+            p.Z)(n, "baseFetch", r, !0) : n.statusCode >= 500 && (0,
+            p.Z)(n, "baseFetch", r),
+            n
         }, m = function(t) {
             return t.json()
         }, v = function(t) {
@@ -65673,6 +65675,8 @@ object-assign
                     }).then(function(t) {
                         return t.body
                     }).then(function(t) {
+                        if (!t)
+                            throw Error("Response body is null");
                         var e = t.getReader();
                         return new ReadableStream({
                             start: function(t) {
@@ -66276,7 +66280,7 @@ object-assign
         "use strict";
         n.d(e, {
             Z: function() {
-                return c
+                return f
             }
         });
         var r = n(51438)
@@ -66286,7 +66290,8 @@ object-assign
           , s = n(85893)
           , u = n(37667)
           , l = n(40725)
-          , c = function(t) {
+          , c = n(86692)
+          , f = function(t) {
             (0,
             i.Z)(n, t);
             var e = (0,
@@ -66318,11 +66323,9 @@ object-assign
                     (null == e ? void 0 : e.componentStack) && (l.componentStack = e.componentStack.toString()),
                     l.errorBoundaryId = i,
                     l.source = "ErrorBoundary";
-                    var c, f, d, p, h, m, v = null !== (f = null == t ? void 0 : t.message) && void 0 !== f ? f : t.toString();
-                    (null == u ? void 0 : null === (c = u.includes) || void 0 === c ? void 0 : c.call(u, v)) ? null === (d = window.newrelic) || void 0 === d || null === (p = d.recordCustomEvent) || void 0 === p || p.call(d, v, (0,
-                    o.Z)({
-                        error: t
-                    }, l)) : null === (h = window.newrelic) || void 0 === h || null === (m = h.noticeError) || void 0 === m || m.call(h, t, l)
+                    var f, d, p = null !== (d = null == t ? void 0 : t.message) && void 0 !== d ? d : t.toString();
+                    (0,
+                    c.Z)(t, "ErrorBoundary", l, null == u ? void 0 : null === (f = u.includes) || void 0 === f ? void 0 : f.call(u, p))
                 }
             }
             ,
@@ -72050,15 +72053,17 @@ object-assign
         "use strict";
         n.d(e, {
             Z: function() {
-                return s
+                return l
             },
             O: function() {
-                return o
+                return s
             }
         });
         var r = n(26042);
         n(11752);
-        var i = {
+        var i = n(6224)
+          , o = n(11301)
+          , a = {
             accountSettingsUrl: "/account/edit-settings",
             appStoreUrl: {
                 iOS: "https://apps.apple.com/app/apple-store/id393782096"
@@ -72076,8 +72081,8 @@ object-assign
             desktopWidth: 1201,
             desktopXLWidth: 1435,
             desktopXXLWidth: 1600,
-            facebookOGImage: "/facebook-og-default.png",
-            funnelUrl: n(11301).Z.funnelPath,
+            facebookOGImage: "".concat(i.Z, "/sharing/surfline.png"),
+            funnelUrl: o.Z.funnelPath,
             hostForSEO: "https://www.surfline.com",
             mapTileKey: "3tFgnOQBQixe61aigsBT",
             mapTileUrl: "https://api.maptiler.com/maps/062c0d04-1842-4a45-8181-c5bec3bf2214",
@@ -72123,10 +72128,10 @@ object-assign
             twitterOGImage: "/twitter-og-default.png",
             numberOfRewindDays: 5
         }
-          , o = "production"
-          , a = n(54237)("./".concat(o))
-          , s = (0,
-        r.Z)({}, i, a.default || {})
+          , s = "production"
+          , u = n(54237)("./".concat(s))
+          , l = (0,
+        r.Z)({}, a, u.default || {})
     },
     50714: function(t, e, n) {
         "use strict";
@@ -80090,7 +80095,7 @@ object-assign
             graphs: tg
         });
         n(96486);
-        var tb, tx, tw, tS, t_, tC, tE, tT, tM = n(47568), tk = n(70655), tL = n(34273), tA = n(19990);
+        var tb, tx, tw, tS, t_, tC, tE, tT, tM = n(47568), tk = n(70655), tL = n(34273), tA = n(20965);
         tb = (0,
         tM.Z)(function(t, e) {
             var n, r = arguments;
@@ -83574,18 +83579,20 @@ object-assign
           , i = n(69396)
           , o = n(32257)
           , a = function(t, e) {
-            var a = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : {}
-              , s = (0,
+            var a, s, u = arguments.length > 2 && void 0 !== arguments[2] ? arguments[2] : {}, l = arguments.length > 3 && void 0 !== arguments[3] && arguments[3], c = (0,
             i.Z)((0,
             r.Z)({
                 source: e
-            }, a), {
-                message: (null == t ? void 0 : t.message) || "Unknown error"
-            })
-              , u = (0,
+            }, u), {
+                message: null !== (s = null !== (a = null == t ? void 0 : t.message) && void 0 !== a ? a : null == t ? void 0 : t.toString()) && void 0 !== s ? s : "Unknown error"
+            }), f = (0,
             o.Z)();
-            u ? null == u || u.newrelic.noticeError(t, s) : Promise.resolve().then(n.t.bind(n, 69160, 23)).then(function(e) {
-                e.default.noticeError(t, s)
+            f ? l ? null == f || f.newrelic.recordCustomEvent("custom_".concat(e), (0,
+            r.Z)({
+                error: t
+            }, c)) : null == f || f.newrelic.noticeError(t, c) : Promise.resolve().then(n.t.bind(n, 69160, 23)).then(function(n) {
+                l ? n.default.recordCustomEvent("custom_".concat(e), (0,
+                r.Z)({}, c)) : n.default.noticeError(t, c)
             }).catch(function(t) {
                 console.error("Failed to import newrelic:", t)
             })
@@ -100777,7 +100784,7 @@ and ensure you are accounting for this risk.
     },
     78347: function(t) {
         "use strict";
-        t.exports = JSON.parse('{"name":"@surfline/quiver-assets","version":"2.2.0","description":"a collection of assets to distribute through a CDN","main":"dist","scripts":{"build":"babel ./src --ignore *.spec.js --out-dir ./dist","check-coverage":"babel-istanbul check-coverage --statements 90 --branches 75","clean:build":"rm -rf dist","clean:coverage":"rm -rf coverage","coverage":"babel-istanbul cover _mocha -- \\"src/**/*.spec.js\\"","lint":"eslint src && echo \\"eslint: no lint errors\\"","lint:fix":"eslint src --fix","postpublish":"sh ./scripts/deploy-assets.sh && sh ../../scripts/git-tag-version.sh","prebuild":"npm run clean:build","prepublishOnly":"npm ci && npm run build","test":"mocha \\"src/**/*.spec.js\\" --require babel-register","test:coverage":"npm run clean:coverage && npm run coverage && npm run check-coverage","test:unit":"npm run test","test:watch":"mocha \\"src/**/*.spec.js\\" --require babel-register --watch"},"publishConfig":{"registry":"https://surfline.jfrog.io/surfline/api/npm/npm-local/"},"files":["README.md","dist/","productcdn.scss","futuradem.scss","futurasurfline.scss"],"devDependencies":{"babel-cli":"6.24.1","babel-core":"6.24.1","babel-eslint":"7.2.3","babel-istanbul":"0.12.2","babel-plugin-transform-async-to-generator":"6.24.1","babel-plugin-transform-regenerator":"6.24.1","babel-plugin-transform-runtime":"6.23.0","babel-preset-es2015":"6.24.1","babel-preset-stage-0":"6.24.1","babel-register":"6.24.1","babel-runtime":"6.23.0","chai":"3.5.0","dirty-chai":"1.2.2","eslint":"3.19.0","eslint-config-airbnb-base":"11.1.3","eslint-plugin-import":"2.2.0","mocha":"3.3.0","query-ast":"1.0.1","scss-parser":"1.0.0"},"gitHead":"769caf8e107ed7bc56269a5e9ca9a483c601996d"}')
+        t.exports = JSON.parse('{"name":"@surfline/quiver-assets","version":"2.4.0","description":"a collection of assets to distribute through a CDN","main":"dist","scripts":{"build":"babel ./src --ignore *.spec.js --out-dir ./dist","check-coverage":"babel-istanbul check-coverage --statements 90 --branches 75","clean:build":"rm -rf dist","clean:coverage":"rm -rf coverage","coverage":"babel-istanbul cover _mocha -- \\"src/**/*.spec.js\\"","lint":"eslint src && echo \\"eslint: no lint errors\\"","lint:fix":"eslint src --fix","postpublish":"sh ./scripts/deploy-assets.sh && sh ../../scripts/git-tag-version.sh","prebuild":"npm run clean:build","prepublishOnly":"npm ci && npm run build","test":"mocha \\"src/**/*.spec.js\\" --require babel-register","test:coverage":"npm run clean:coverage && npm run coverage && npm run check-coverage","test:unit":"npm run test","test:watch":"mocha \\"src/**/*.spec.js\\" --require babel-register --watch"},"publishConfig":{"registry":"https://surfline.jfrog.io/surfline/api/npm/npm-local/"},"files":["README.md","dist/","productcdn.scss","futuradem.scss","futurasurfline.scss"],"devDependencies":{"babel-cli":"6.24.1","babel-core":"6.24.1","babel-eslint":"7.2.3","babel-istanbul":"0.12.2","babel-plugin-transform-async-to-generator":"6.24.1","babel-plugin-transform-regenerator":"6.24.1","babel-plugin-transform-runtime":"6.23.0","babel-preset-es2015":"6.24.1","babel-preset-stage-0":"6.24.1","babel-register":"6.24.1","babel-runtime":"6.23.0","chai":"3.5.0","dirty-chai":"1.2.2","eslint":"3.19.0","eslint-config-airbnb-base":"11.1.3","eslint-plugin-import":"2.2.0","mocha":"3.3.0","query-ast":"1.0.1","scss-parser":"1.0.0"},"gitHead":"d1d3637dbf73e8fa8ae7fc77038e4ee1d30c8b3d"}')
     },
     68706: function(t) {
         "use strict";
@@ -100794,4 +100801,4 @@ and ensure you are accounting for this risk.
     _N_E = t.O()
 }
 ]);
-//# sourceMappingURL=_app-8b2efe528292e39e.js.map
+//# sourceMappingURL=_app-2e77149b6996bee7.js.map
