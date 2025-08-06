@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tide Predictions - Monterey, CA</title>
+    <title>Tide Predictions - Santa Cruz, CA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -69,7 +69,7 @@
     <div class="container mx-auto">
         <header class="text-center mb-4">
             <h1 class="text-3xl font-bold text-blue-600">Tide Predictions</h1>
-            <p class="text-xl text-gray-600" id="chartTitle">Monterey, CA (Station 9413450)</p>
+            <p class="text-xl text-gray-600" id="chartTitle">Santa Cruz, CA (Station 9413745)</p>
             <div class="flex items-center justify-center space-x-2 my-2">
                 <button id="prevDayBtn" class="date-nav-button">&lt;</button>
                 <div id="dateDisplayContainer">
@@ -116,7 +116,7 @@
         // NOAA API Configuration
         const stationId = '9413745';
         const product = 'predictions';
-        const datum = 'STND';
+        const datum = '';
         const units = 'english';
         const timeZone = 'lst_ldt'; 
         const format = 'json';
