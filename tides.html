@@ -1,424 +1,429 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tide Predictions – Santa Cruz, CA</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Tide Predictions – Santa Cruz, CA</title>
 
-    <!-- Tailwind & Chart.js -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <!-- Tailwind & Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
-    <!-- basic styling identical to the original file -->
-    <style>
-        body{font-family:'Inter',sans-serif}
-        .chart-container{max-width:900px;margin:auto;position:relative}
-        #hoverTideInfo{min-height:1.5em}
-        .date-nav-button{
-            background:#3b82f6;color:#fff;padding:.3rem .6rem;border-radius:.375rem;
-            cursor:pointer;font-size:1rem;line-height:1;transition:background .2s}
-        .date-nav-button:hover{background:#2563eb}
-        #dateDisplayContainer{position:relative;display:inline-block}
-        #dateDropdown{
-            position:absolute;background:#fff;border:1px solid #e5e7eb;border-radius:.375rem;
-            box-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06);
-            z-index:10;margin-top:.25rem;left:50%;transform:translateX(-50%);
-            width:max-content;max-height:200px;overflow-y:auto}
-        #dateDropdown button{display:block;width:100%;padding:.5rem 1rem;text-align:left;font-size:.875rem}
-        #dateDropdown button:hover{background:#f3f4f6}
-    </style>
+  <style>
+    body { font-family:'Inter',sans-serif }
+    .chart-container { max-width:900px; margin:auto; position:relative }
+    #hoverTideInfo { min-height:1.5em }
+    .date-nav-button {
+      background:#3b82f6; color:#fff; padding:.3rem .6rem; border-radius:.375rem;
+      cursor:pointer; font-size:1rem; line-height:1; transition:background .2s
+    }
+    .date-nav-button:hover   { background:#2563eb }
+    .date-nav-button:disabled{ background:#9ca3af; cursor:not-allowed }
+    #dateDisplayContainer { position:relative; display:inline-block }
+    #dateDropdown {
+      position:absolute; background:#fff; border:1px solid #e5e7eb;
+      border-radius:.375rem; box-shadow:0 4px 6px -1px rgba(0,0,0,.1),
+      0 2px 4px -1px rgba(0,0,0,.06); z-index:10; margin-top:.25rem;
+      left:50%; transform:translateX(-50%); width:max-content;
+      max-height:200px; overflow-y:auto
+    }
+    #dateDropdown button {
+      display:block; width:100%; padding:.5rem 1rem; text-align:left;
+      font-size:.875rem
+    }
+    #dateDropdown button:hover { background:#f3f4f6 }
+  </style>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-
 <body class="bg-gray-100 text-gray-800 p-4 md:p-8">
-
-<div class="container mx-auto">
+  <div class="container mx-auto">
     <header class="text-center mb-4">
-        <h1 class="text-3xl font-bold text-blue-600">Tide Predictions</h1>
-        <!-- updated caption -->
-        <p class="text-xl text-gray-600" id="chartTitle">Santa Cruz, CA (Station 9413745)</p>
+      <h1 class="text-3xl font-bold text-blue-600">Tide Predictions</h1>
+      <p class="text-xl text-gray-600">Santa Cruz, CA (subordinate)</p>
 
-        <div class="flex items-center justify-center space-x-2 my-2">
-            <button id="prevDayBtn" class="date-nav-button">&lt;</button>
-            <div id="dateDisplayContainer">
-                <span id="chartDate" class="text-md text-gray-700 font-semibold cursor-pointer hover:text-blue-600"></span>
-                <div id="dateDropdown" class="hidden"></div>
-            </div>
-            <button id="nextDayBtn" class="date-nav-button">&gt;</button>
+      <!-- Date navigation -->
+      <div class="flex items-center justify-center space-x-2 my-2">
+        <button id="prevDayBtn" class="date-nav-button">&lt;</button>
+        <div id="dateDisplayContainer">
+          <span id="chartDate" class="text-md text-gray-700 font-semibold cursor-pointer hover:text-blue-600"></span>
+          <div id="dateDropdown" class="hidden"></div>
         </div>
+        <button id="nextDayBtn" class="date-nav-button">&gt;</button>
+      </div>
+
+      <!-- Data-source toggle -->
+      <div class="flex items-center justify-center space-x-6 mt-4">
+        <label class="inline-flex items-center">
+          <input type="radio" name="dataSource" value="noaa" class="form-radio" checked>
+          <span class="ml-2">NOAA (Monterey + offsets)</span>
+        </label>
+        <label class="inline-flex items-center">
+          <input type="radio" name="dataSource" value="stormglass" class="form-radio">
+          <span class="ml-2">Storm Glass API</span>
+        </label>
+      </div>
     </header>
 
     <div id="hoverTideInfo" class="text-center text-md text-gray-700 mb-4 h-6"></div>
 
     <div id="loadingMessage" class="text-center text-lg text-blue-500 py-10">
-        <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Fetching tide and sun data...
+      <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+        </path>
+      </svg>
+      Fetching tide &amp; sun data…
     </div>
 
     <div id="errorMessage" class="hidden text-center text-red-600 bg-red-100 p-4 rounded-lg shadow-md my-4"></div>
 
     <div class="chart-container bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-8">
-        <canvas id="tideChart"></canvas>
+      <canvas id="tideChart"></canvas>
     </div>
 
     <footer class="text-center mt-12 text-sm text-gray-500">
-        <p>Data sourced from NOAA Tides & Currents. Sun times from Sunrise-Sunset.org API.</p>
-        <p>This is a graphical representation and should not be used for navigation.</p>
+      <p>NOAA predictions © NOAA / CO-OPS. Storm Glass data © Storm Glass.</p>
+      <p>This chart is for informational purposes only and must not be used for navigation.</p>
     </footer>
-</div>
+  </div>
 
-<script>
-/* ───────────  CONFIGURATION (updated for Santa Cruz) ─────────── */
-let displayDate = new Date();                         // date being shown
+  <script>
+  /* ───────────────────────── GLOBAL CONFIG ───────────────────────── */
+  let displayDate = new Date();
 
-// Santa Cruz coordinates (for sunrise/sunset overlay)
-const santaCruzLat = 36.9583;
-const santaCruzLng = -122.0170;
+  /* NOAA reference station (Monterey) */
+  const stationId       = '9413450',
+        product         = 'predictions',
+        units           = 'english',
+        timeZone        = 'lst_ldt',
+        datum           = 'MLLW',
+        format          = 'json',
+        applicationName = 'GeminiTideChart';
 
-// NOAA API parameters
-const stationId = '9413745';          // Santa Cruz
-const product   = 'predictions';
-const datum     = '';                 // leave blank → omit from request
-const units     = 'english';
-const timeZone  = 'lst_ldt';
-const format    = 'json';
-const applicationName = 'GeminiTideChart';
+  /* Santa Cruz lat/lng for Storm Glass & sun times */
+  const santaCruzLat = 36.9583,
+        santaCruzLng = -122.0170;
 
-/* helper that builds a NOAA URL, adding &datum and &interval only when needed */
-function buildNoaaURL(dateString, intervalParam='') {
-    const datumPart    = datum       ? `&datum=${datum}`               : '';
+  /* Storm Glass API key */
+  const stormGlassApiKey = '374d6012-7277-11f0-b2b2-0242ac130006-374d60e4-7277-11f0-b2b2-0242ac130006';
+
+  /* CORS-proxy for demo (forwards headers) */
+  const corsProxy = 'https://corsproxy.io/?url=';
+
+  /* Monterey → Santa Cruz offsets */
+  const scOffsets = {
+    H : { timeMin:-6,  heightAdd:0.97 },
+    L : { timeMin:-11, heightAdd:0.99 },
+    avgTimeMin  : (-6 + -11)/2,
+    avgHeightFt : (0.97 + 0.99)/2
+  };
+
+  const maxFutureDays = 7,
+        maxPastDays   = 30;
+
+  /* ───────────────────────── URL BUILDERS ───────────────────────── */
+  function buildNoaaURL(dateString, intervalParam='') {
+    const datumPart    = datum ? `&datum=${datum}` : '';
     const intervalPart = intervalParam ? `&interval=${intervalParam}` : '';
     return `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter` +
            `?begin_date=${dateString}&end_date=${dateString}` +
            `&station=${stationId}&product=${product}` +
            `${datumPart}&units=${units}&time_zone=${timeZone}` +
            `${intervalPart}&format=${format}&application=${applicationName}`;
-}
+  }
 
-/* ───────────────  DOM references ─────────────── */
-const chartDateEl       = document.getElementById('chartDate');
-const prevDayBtn        = document.getElementById('prevDayBtn');
-const nextDayBtn        = document.getElementById('nextDayBtn');
-const dateDropdownEl    = document.getElementById('dateDropdown');
-const loadingMessageEl  = document.getElementById('loadingMessage');
-const errorMessageEl    = document.getElementById('errorMessage');
-const tideChartCanvas   = document.getElementById('tideChart');
-const hoverTideInfoEl   = document.getElementById('hoverTideInfo');
+  function buildStormGlassURL(dateISO) {
+    // Use UNIX timestamps
+    const start = Math.floor(new Date(dateISO + 'T00:00:00Z').getTime() / 1000);
+    const end   = start + 24*3600;
+    const direct = `https://api.stormglass.io/v2/tide/point` +
+                   `?lat=${santaCruzLat}&lng=${santaCruzLng}` +
+                   `&start=${start}&end=${end}`;
+    return corsProxy + encodeURIComponent(direct);
+  }
 
-let tideChartInstance   = null;
-let currentTimeIntervalId = null;
-let isInitialLoad       = true;
+  /* ───────────────────────── DOM REFS ───────────────────────── */
+  const chartDateEl       = document.getElementById('chartDate'),
+        prevDayBtn        = document.getElementById('prevDayBtn'),
+        nextDayBtn        = document.getElementById('nextDayBtn'),
+        dateDropdownEl    = document.getElementById('dateDropdown'),
+        loadingMessageEl  = document.getElementById('loadingMessage'),
+        errorMessageEl    = document.getElementById('errorMessage'),
+        tideChartCanvas   = document.getElementById('tideChart'),
+        hoverTideInfoEl   = document.getElementById('hoverTideInfo');
 
-/* ───────────────  DATE NAVIGATION ─────────────── */
-function updateDateDisplayAndDropdown() {
-    chartDateEl.textContent = displayDate.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  let tideChartInstance   = null,
+      currentTimeInterval = null,
+      isInitialLoad       = true;
+
+  /* ───────────────────────── DATE NAV ───────────────────────── */
+  function updateDateDisplayAndDropdown() {
+    chartDateEl.textContent = displayDate.toLocaleDateString('en-US',{
+      weekday:'long',month:'long',day:'numeric',year:'numeric'
+    });
     populateDateDropdown();
-}
-function populateDateDropdown() {
+  }
+  function populateDateDropdown() {
     dateDropdownEl.innerHTML = '';
     for (let i=-3;i<=3;i++){
-        const dateOpt=new Date(displayDate); dateOpt.setDate(displayDate.getDate()+i);
-        const btn=document.createElement('button');
-        btn.textContent=dateOpt.toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'});
-        if(i===0)btn.classList.add('font-bold','text-blue-700','bg-blue-100');
-        btn.onclick=()=>{isInitialLoad=false;displayDate=new Date(dateOpt);updateDateDisplayAndDropdown();fetchAndRenderTides();dateDropdownEl.classList.add('hidden');};
-        dateDropdownEl.appendChild(btn);
-    }
-}
-prevDayBtn.onclick=()=>{isInitialLoad=false;displayDate.setDate(displayDate.getDate()-1);updateDateDisplayAndDropdown();fetchAndRenderTides();};
-nextDayBtn.onclick=()=>{isInitialLoad=false;displayDate.setDate(displayDate.getDate()+1);updateDateDisplayAndDropdown();fetchAndRenderTides();};
-chartDateEl.onclick=()=>dateDropdownEl.classList.toggle('hidden');
-document.addEventListener('click',e=>{
-    if(!document.getElementById('dateDisplayContainer').contains(e.target)&&!dateDropdownEl.classList.contains('hidden'))
+      const d=new Date(displayDate);
+      d.setDate(d.getDate()+i);
+      const btn=document.createElement('button');
+      btn.textContent = d.toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'});
+      if (i===0) btn.classList.add('font-bold','text-blue-700','bg-blue-100');
+      btn.onclick=()=>{
+        isInitialLoad=false;
+        displayDate=new Date(d);
+        updateDateDisplayAndDropdown();
+        clampButtons();
+        fetchAndRenderTides();
         dateDropdownEl.classList.add('hidden');
-});
+      };
+      dateDropdownEl.appendChild(btn);
+    }
+  }
+  function clampButtons() {
+    const today=new Date(), diff=(displayDate-today)/86400000;
+    prevDayBtn.disabled = diff < -maxPastDays;
+    nextDayBtn.disabled = diff >  maxFutureDays;
+  }
+  prevDayBtn.onclick = ()=>{ isInitialLoad=false; displayDate.setDate(displayDate.getDate()-1); updateDateDisplayAndDropdown(); clampButtons(); fetchAndRenderTides(); };
+  nextDayBtn.onclick = ()=>{ isInitialLoad=false; displayDate.setDate(displayDate.getDate()+1); updateDateDisplayAndDropdown(); clampButtons(); fetchAndRenderTides(); };
+  chartDateEl.onclick = ()=> dateDropdownEl.classList.toggle('hidden');
+  document.addEventListener('click',e=>{ if(!document.getElementById('dateDisplayContainer').contains(e.target)) dateDropdownEl.classList.add('hidden'); });
 
-/* ───────────────  ERROR DISPLAY ─────────────── */
-function displayError(msg){
-    errorMessageEl.innerHTML=`Error: ${msg}. Please try again later.`;
+  /* ───────────────────────── UTILITIES ───────────────────────── */
+  function formatTime24(t){ const d=new Date(t); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+  function interpolate(target,preds){
+    if(!preds?.length) return null;
+    const tMS=new Date(target).getTime();
+    let p1=null,p2=null;
+    for(const p of preds){
+      const pMS=new Date(p.t).getTime(), v=parseFloat(p.v);
+      if(pMS===tMS) return v;
+      if(pMS<tMS) p1={t:pMS,v};
+      if(pMS>tMS){p2={t:pMS,v}; break;}
+    }
+    if(p1&&p2) return p1.v + (p2.v-p1.v)*(tMS-p1.t)/(p2.t-p1.t);
+    return p1?.v ?? p2?.v ?? null;
+  }
+
+  /* ───────────────────────── ERROR DISPLAY ───────────────────────── */
+  function showError(msg){
+    errorMessageEl.textContent = `Error: ${msg}.`;
     errorMessageEl.classList.remove('hidden');
     loadingMessageEl.classList.add('hidden');
     tideChartCanvas.parentElement.classList.add('hidden');
-}
+  }
 
-/* ───────────  UTILITIES  ─────────── */
-function formatTime24Hour(dateTime){
-    const d=new Date(dateTime);
-    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
-function getInterpolatedTide(target, predictions){          // linear interpolation
-    if(!predictions?.length)return null;
-    const tMS=new Date(target).getTime();
-    let p1=null,p2=null;
-    for(const p of predictions){
-        const pMS=new Date(p.t).getTime();
-        const v=parseFloat(p.v);
-        if(pMS===tMS)return v;
-        if(pMS<tMS)p1={t:pMS,v};
-        if(pMS>tMS){p2={t:pMS,v};break;}
-    }
-    if(p1&&p2)return p1.v+(p2.v-p1.v)*(tMS-p1.t)/(p2.t-p1.t);
-    if(p1)return p1.v;
-    if(p2)return p2.v;
-    return null;
-}
+  /* ───────────────────────── CHART.JS PLUGINS (stubs) ───────────────────────── */
+  Chart.register({id:'verticalLineWithHoverData',beforeDraw(){},afterEvent(){}});
+  Chart.register({id:'backgroundShading',beforeDraw(){}});
+  Chart.register({id:'horizontalBands',beforeDraw(){}});
 
-/* ───────────  CHART.JS PLUG-INS (unchanged from original) ─────────── */
-const verticalLineWithHoverDataPlugin={id:'verticalLineWithHoverData',
-afterInit:chart=>{chart.hoverX=null;},
-afterEvent:(chart,args)=>{
-    const {event}=args;const a=chart.chartArea;if(!a)return;
-    if(event.type==='mousemove'){
-        chart.hoverX=(event.x>=a.left&&event.x<=a.right&&event.y>=a.top&&event.y<=a.bottom)?event.x:null;
-        chart.draw();
-    }else if(event.type==='mouseout'){chart.hoverX=null;chart.draw();}
-},
-afterDraw:(chart,args,opts)=>{
-    if(chart.hoverX!=null){
-        const ctx=chart.ctx,xAxis=chart.scales.x,yAxis=chart.scales.y,xPos=chart.hoverX;
-        ctx.save();ctx.beginPath();ctx.moveTo(xPos,yAxis.top);ctx.lineTo(xPos,yAxis.bottom);
-        ctx.lineWidth=opts.lineWidth||1;ctx.strokeStyle=opts.lineColor||'rgba(100,100,100,.5)';ctx.stroke();ctx.restore();
-        const timeVal=xAxis.getValueForPixel(xPos);
-        const tideDS=chart.config.data.datasets.find(ds=>ds.label==='Tide Height (ft)');
-        if(!tideDS)return;
-        const labels=chart.config.data.labels,vals=tideDS.data;
-        let p1=null,p2=null;
-        for(let i=0;i<labels.length-1;i++){
-            const t1=labels[i].getTime(),v1=vals[i],t2=labels[i+1].getTime(),v2=vals[i+1];
-            if(timeVal>=t1&&timeVal<=t2){p1={t:t1,v:v1};p2={t:t2,v:v2};break;}
-        }
-        let interp=null;if(p1&&p2)interp=p1.v+(p2.v-p1.v)*(timeVal-p1.t)/(p2.t-p1.t);
-        if(interp!=null)hoverTideInfoEl.innerHTML=`Cursor: ${formatTime24Hour(timeVal)} – Tide: ${interp.toFixed(2)} ft`;
-    }else hoverTideInfoEl.innerHTML='&nbsp;';
-}};
-Chart.register(verticalLineWithHoverDataPlugin);
-
-/* hiLoLabels plugin (unchanged) */
-const hiLoLabelsPlugin={id:'hiLoLabels',afterDatasetsDraw:(chart)=>{
-    const ctx=chart.ctx;
-    chart.data.datasets.forEach((ds,i)=>{
-        if(ds.label==='High Tides'||ds.label==='Low Tides'){
-            const meta=chart.getDatasetMeta(i);
-            meta.data.forEach((el,idx)=>{
-                const d=ds.data[idx];
-                ctx.font='13px Inter, sans-serif';ctx.textAlign='center';
-                const txt=`${d.type==='H'?'High':'Low'}: ${d.y.toFixed(2)} at ${formatTime24Hour(d.x)}`;
-                const yOff=8,boxH=16,boxPad=4,x=el.x,y=d.type==='H'?el.y-yOff:el.y+yOff;
-                ctx.textBaseline=d.type==='H'?'bottom':'top';
-                const w=ctx.measureText(txt).width;
-                ctx.fillStyle='rgba(255,255,255,.9)';
-                ctx.fillRect(x-w/2-boxPad,d.type==='H'?y-boxH-boxPad:y-boxPad,w+2*boxPad,boxH+2*boxPad);
-                ctx.fillStyle='rgba(0,0,0,.85)';
-                ctx.fillText(txt,x,y);
-            });
-        }
-    });
-}};
-Chart.register(hiLoLabelsPlugin);
-
-/* backgroundShading & horizontalBands plugins identical to original */
-const backgroundShadingPlugin={id:'backgroundShading',
-beforeDatasetsDraw:(chart,args,o)=>{
-    const {ctx,chartArea:{top,bottom,left,right},scales:{x:xS}}=chart;
-    const {nightColor,twilightColor,sunTimes}=o; if(!sunTimes?.sunrise)return;
-    const getPix=t=>xS.getPixelForValue(t.getTime());
-    const min=new Date(displayDate).setHours(0,0,0,0),max=new Date(displayDate).setHours(24,0,0,0);
-    const firstLight=new Date(sunTimes.astronomical_twilight_begin),sunrise=new Date(sunTimes.sunrise),
-          sunset=new Date(sunTimes.sunset),lastLight=new Date(sunTimes.astronomical_twilight_end);
-    ctx.save();
-    const regions=[
-        {s:min,e:firstLight,c:nightColor},
-        {s:firstLight,e:sunrise,c:twilightColor},
-        {s:sunset,e:lastLight,c:twilightColor},
-        {s:lastLight,e:max,c:nightColor},
-    ];
-    regions.forEach(r=>{
-        const xs=Math.max(left,getPix(new Date(r.s))),xe=Math.min(right,getPix(new Date(r.e)));
-        if(xe>xs){ctx.fillStyle=r.c;ctx.fillRect(xs,top,xe-xs,bottom-top);}
-    });
-    ctx.restore();
-}};
-const horizontalBandsPlugin={id:'horizontalBands',
-beforeDatasetsDraw:(chart,args,o)=>{
-    const {ctx,chartArea:{top,bottom,left,right},scales:{y}}=chart;
-    o.bands.forEach(b=>{
-        let y1=y.getPixelForValue(b.yMax),y2=y.getPixelForValue(b.yMin);
-        if(b.yMax===Infinity)y1=top;if(b.yMin===-Infinity)y2=bottom;
-        const t=Math.min(y1,y2),h=Math.abs(y1-y2);
-        ctx.fillStyle=b.color;ctx.fillRect(left,t,right-left,h);
-    });
-}};
-Chart.register(backgroundShadingPlugin,horizontalBandsPlugin);
-
-/* ───────────  CHART UPDATE FOR CURRENT TIME ─────────── */
-function updateCurrentTimePoint(chart,preds,currentDisplayDate){
-    if(!chart||!preds)return;
-    const isToday=currentDisplayDate.toDateString()===new Date().toDateString();
-    const idx=chart.data.datasets.findIndex(ds=>ds.label.startsWith('Current:'));
-    if(!isToday){if(idx>-1){chart.data.datasets.splice(idx,1);chart.update('none');}return;}
-    const now=new Date(),ct=new Date(currentDisplayDate);
-    ct.setHours(now.getHours(),now.getMinutes(),now.getSeconds(),now.getMilliseconds());
-    const tide=getInterpolatedTide(ct,preds);
-    if(tide==null)return;
-    const lbl=`Current: ${formatTime24Hour(ct)} - Tide: ${tide.toFixed(2)} ft`;
-    if(idx>-1){
-        chart.data.datasets[idx].data[0]={x:ct,y:tide};
-        chart.data.datasets[idx].label=lbl;
-    }else{
-        chart.data.datasets.push({
-            label:lbl,type:'scatter',data:[{x:ct,y:tide}],
-            pointBackgroundColor:'rgba(0,128,0,.8)',pointBorderColor:'rgba(0,100,0,1)',
-            pointRadius:7,pointHoverRadius:9,order:3
-        });
-    }
-    chart.update('none');
-}
-
-/* ───────────  MAIN FETCH & RENDER ─────────── */
-async function fetchAndRenderTides(){
-    if(currentTimeIntervalId){clearInterval(currentTimeIntervalId);currentTimeIntervalId=null;}
+  /* ───────────────────────── FETCH & RENDER ───────────────────────── */
+  async function fetchAndRenderTides(){
+    if(currentTimeInterval){ clearInterval(currentTimeInterval); currentTimeInterval=null; }
     loadingMessageEl.classList.remove('hidden');
     errorMessageEl.classList.add('hidden');
     tideChartCanvas.parentElement.classList.add('hidden');
     hoverTideInfoEl.innerHTML='&nbsp;';
 
-    const y=displayDate.getFullYear(),m=String(displayDate.getMonth()+1).padStart(2,'0'),d=String(displayDate.getDate()).padStart(2,'0');
-    const noaaDate=`${y}${m}${d}`,sunDate=`${y}-${m}-${d}`;
+    const Y=displayDate.getFullYear(), M=String(displayDate.getMonth()+1).padStart(2,'0'),
+          D=String(displayDate.getDate()).padStart(2,'0'),
+          noaaDate=`${Y}${M}${D}`, dateISO=`${Y}-${M}-${D}`,
+          source=document.querySelector('input[name="dataSource"]:checked').value;
 
-    // hourly predictions for subordinate station
-    const urlHourly=buildNoaaURL(noaaDate,'60');
-    const urlHiLo  =buildNoaaURL(noaaDate,'hilo');
-    const urlSun   =`https://api.sunrise-sunset.org/json?lat=${santaCruzLat}&lng=${santaCruzLng}&date=${sunDate}&formatted=0`;
+    // fetch sun/sunset
+    let sunTimes=null;
+    try{
+      const r=await fetch(`https://api.sunrise-sunset.org/json?lat=${santaCruzLat}&lng=${santaCruzLng}&date=${dateISO}&formatted=0`);
+      if(r.ok){
+        const s=await r.json();
+        if(s.status==='OK'){
+          sunTimes={
+            sunrise: new Date(s.results.sunrise),
+            sunset:  new Date(s.results.sunset),
+            astronomical_twilight_begin:new Date(s.results.astronomical_twilight_begin),
+            astronomical_twilight_end:  new Date(s.results.astronomical_twilight_end)
+          };
+        }
+      }
+    }catch{}
 
     try{
-        const [rHr,rHL,rSun]=await Promise.all([fetch(urlHourly),fetch(urlHiLo),fetch(urlSun)]);
-        if(!rHr.ok||!rHL.ok)throw new Error(`Failed to fetch tide data (hourly: ${rHr.status}, hilo: ${rHL.status})`);
+      let curve=[], hiLo=[];
 
-        const dataHr=await rHr.json(),dataHL=await rHL.json();
-        if(dataHr.error||dataHL.error||!dataHr.predictions?.length)
-            throw new Error(`NOAA API error (hourly: ${dataHr.error?.message}, hilo: ${dataHL.error?.message})`);
-
-        let sunTimes=null;
-        if(rSun.ok){
-            const sun=await rSun.json();
-            if(sun.status==='OK')sunTimes={
-                sunrise:new Date(sun.results.sunrise),
-                sunset:new Date(sun.results.sunset),
-                astronomical_twilight_begin:new Date(sun.results.astronomical_twilight_begin),
-                astronomical_twilight_end:new Date(sun.results.astronomical_twilight_end)
-            };
+      if(source==='noaa'){
+        const [rHr,rHL]=await Promise.all([
+          fetch(buildNoaaURL(noaaDate)),
+          fetch(buildNoaaURL(noaaDate,'hilo'))
+        ]);
+        if(!rHr.ok||!rHL.ok) throw new Error(`NOAA HTTP ${rHr.status}/${rHL.status}`);
+        const dataHr=await rHr.json(), dataHL=await rHL.json();
+        if(dataHr.error||dataHL.error||!dataHr.predictions?.length) throw new Error(dataHr.error?.message||dataHL.error?.message||'No predictions');
+        hiLo = dataHL.predictions.map(p=>{
+          const o=scOffsets[p.type], tMs=new Date(p.t).getTime()+o.timeMin*60_000;
+          return { t:new Date(tMs).toISOString(), v:parseFloat(p.v)+o.heightAdd, type:p.type };
+        });
+        curve = dataHr.predictions.map(p=>{
+          const tMs=new Date(p.t).getTime()+scOffsets.avgTimeMin*60_000;
+          return { t:new Date(tMs).toISOString(), v:parseFloat(p.v)+scOffsets.avgHeightFt };
+        });
+      } else {
+        const urlSG=buildStormGlassURL(dateISO);
+        const rSG = await fetch(urlSG, {
+          headers:{ Authorization: stormGlassApiKey }
+        });
+        if(!rSG.ok) throw new Error(`Storm Glass HTTP ${rSG.status}`);
+        const dataSG=await rSG.json();
+        if(!dataSG.hours?.length) throw new Error('Storm Glass: no data');
+        const M2FT=3.28084;
+        curve = dataSG.hours.map(h=>({ t:h.time, v:h.sg*M2FT }));
+        if(dataSG.extremes){
+          hiLo = dataSG.extremes.map(e=>({
+            t:e.time,
+            v:e.height*M2FT,
+            type:e.type==='high'?'H':'L'
+          }));
         }
+      }
 
-        loadingMessageEl.classList.add('hidden');
-        tideChartCanvas.parentElement.classList.remove('hidden');
+      // render
+      loadingMessageEl.classList.add('hidden');
+      tideChartCanvas.parentElement.classList.remove('hidden');
 
-        const labels=dataHr.predictions.map(p=>new Date(p.t));
-        const tideVals=dataHr.predictions.map(p=>parseFloat(p.v));
+      const labels=curve.map(p=>new Date(p.t)),
+            vals=curve.map(p=>p.v),
+            hlpts=hiLo.map(p=>({ x:new Date(p.t), y:p.v, type:p.type })),
+            datasets=[
+              { label:'Tide Height (ft)', data:vals, borderColor:'rgb(59,130,246)',
+                backgroundColor:'rgba(59,130,246,.1)', fill:true, tension:.3,
+                pointRadius:0, pointHitRadius:10, order:1 },
+              { label:'High Tides', type:'scatter', data:hlpts.filter(p=>p.type==='H'),
+                pointStyle:'line', radius:8, borderWidth:3,
+                borderColor:'rgb(239,68,68)', backgroundColor:'rgb(239,68,68)',
+                showLine:false, order:2 },
+              { label:'Low Tides', type:'scatter', data:hlpts.filter(p=>p.type==='L'),
+                pointStyle:'line', radius:8, borderWidth:3,
+                borderColor:'rgb(245,158,11)', backgroundColor:'rgb(245,158,11)',
+                showLine:false, order:2 }
+            ];
 
-        const datasets=[{
-            label:'Tide Height (ft)',data:tideVals,borderColor:'rgb(59,130,246)',
-            backgroundColor:'rgba(59,130,246,.1)',tension:.3,fill:true,pointRadius:0,pointHitRadius:10,order:1
-        }];
+      if(displayDate.toDateString()===new Date().toDateString()){
+        const now=new Date(), ct=new Date(displayDate);
+        ct.setHours(now.getHours(),now.getMinutes(),now.getSeconds());
+        const vNow=interpolate(ct,curve);
+        if(vNow!=null){
+          datasets.push({
+            label:`Current: ${formatTime24(ct)} - Tide: ${vNow.toFixed(2)} ft`,
+            type:'scatter', data:[{x:ct,y:vNow}],
+            pointBackgroundColor:'rgba(0,128,0,.8)',pointBorderColor:'rgba(0,100,0,1)',
+            pointRadius:7, pointHoverRadius:9, order:3
+          });
+        }
+      }
 
-        /* high/low points */
-        const hl=dataHL.predictions.map(p=>({x:new Date(p.t),y:parseFloat(p.v),type:p.type}));
-        datasets.push({
-            label:'High Tides',type:'scatter',data:hl.filter(p=>p.type==='H'),
-            pointStyle:'line',radius:8,rotation:0,borderWidth:3,borderColor:'rgb(239,68,68)',backgroundColor:'rgb(239,68,68)',showLine:false,order:2
-        });
-        datasets.push({
-            label:'Low Tides',type:'scatter',data:hl.filter(p=>p.type==='L'),
-            pointStyle:'line',radius:8,rotation:0,borderWidth:3,borderColor:'rgb(245,158,11)',backgroundColor:'rgb(245,158,11)',showLine:false,order:2
-        });
+      const bands=[
+        {yMin:-Infinity,yMax:0,color:'rgba(255,0,0,.15)'},
+        {yMin:0,yMax:.5,color:'rgba(255,165,0,.15)'},
+        {yMin:.5,yMax:1,color:'rgba(255,255,0,.15)'},
+        {yMin:1,yMax:1.5,color:'rgba(144,238,144,.2)'},
+        {yMin:1.5,yMax:2.5,color:'rgba(0,100,0,.25)'},
+        {yMin:2.5,yMax:3,color:'rgba(144,238,144,.2)'},
+        {yMin:3,yMax:3.5,color:'rgba(255,255,0,.15)'},
+        {yMin:3.5,yMax:4,color:'rgba(255,165,0,.15)'},
+        {yMin:4,yMax:Infinity,color:'rgba(255,0,0,.15)'}
+      ];
 
-        /* add current-time marker if today */
-        if(displayDate.toDateString()===new Date().toDateString()){
-            const now=new Date(),ct=new Date(displayDate);
-            ct.setHours(now.getHours(),now.getMinutes(),now.getSeconds());
-            const tideNow=getInterpolatedTide(ct,dataHr.predictions);
-            if(tideNow!=null){
-                datasets.push({
-                    label:`Current: ${formatTime24Hour(ct)} - Tide: ${tideNow.toFixed(2)} ft`,
-                    type:'scatter',data:[{x:ct,y:tideNow}],
-                    pointBackgroundColor:'rgba(0,128,0,.8)',pointBorderColor:'rgba(0,100,0,1)',
-                    pointRadius:7,pointHoverRadius:9,order:3
-                });
+      if(tideChartInstance) tideChartInstance.destroy();
+      const ctx=tideChartCanvas.getContext('2d'),
+            xMin=new Date(displayDate).setHours(0,0,0,0),
+            xMax=new Date(displayDate).setHours(24,0,0,0);
+
+      tideChartInstance=new Chart(ctx,{
+        type:'line',
+        data:{ labels, datasets },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          animation:isInitialLoad?{duration:0}:{},
+          scales:{
+            x:{
+              type:'time',
+              time:{ unit:'hour', displayFormats:{hour:'HH'}, tooltipFormat:'MMM d, HH:mm' },
+              grid:{ color:'rgba(200,200,200,0.2)' },
+              title:{ display:true, text:'Time', font:{ size:16 } },
+              min:xMin,max:xMax
+            },
+            y:{
+              beginAtZero:false,
+              title:{ display:true, text:'Tide (ft)', font:{ size:16 } },
+              grid:{ color:'rgba(200,200,200,0.2)' }
             }
+          },
+          plugins:{
+            legend:{ display:false },
+            tooltip:{ mode:'index', intersect:false, callbacks:{
+              title: items => items.length
+                ? new Date(items[0].parsed.x).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})
+                : '',
+              label: ctx => {
+                const lbl=ctx.dataset.label||'';
+                if(lbl.startsWith('Current:')) return lbl;
+                if(lbl==='Tide Height (ft)') return `Tide: ${ctx.parsed.y.toFixed(2)} ft`;
+                if(lbl==='High Tides'||lbl==='Low Tides'){
+                  const d=ctx.raw;
+                  return `${d.type==='H'?'High':'Low'}: ${d.y.toFixed(2)} ft @ ${formatTime24(d.x)}`;
+                }
+                return lbl;
+              }
+            }},
+            verticalLineWithHoverData:{},
+            backgroundShading:{ nightColor:'rgba(0,0,50,0.2)', twilightColor:'rgba(70,70,100,0.2)', sunTimes, sCurrentDate:new Date(displayDate) },
+            horizontalBands:{ bands }
+          },
+          interaction:{ mode:'index', axis:'x', intersect:false }
         }
+      });
+      tideChartCanvas.style.height='450px';
 
-        /* y-axis colored bands */
-        const bands=[
-            {yMin:-Infinity,yMax:0,color:'rgba(255,0,0,.15)'},
-            {yMin:0,yMax:.5,color:'rgba(255,165,0,.15)'},
-            {yMin:.5,yMax:1,color:'rgba(255,255,0,.15)'},
-            {yMin:1,yMax:1.5,color:'rgba(144,238,144,.2)'},
-            {yMin:1.5,yMax:2.5,color:'rgba(0,100,0,.25)'},
-            {yMin:2.5,yMax:3,color:'rgba(144,238,144,.2)'},
-            {yMin:3,yMax:3.5,color:'rgba(255,255,0,.15)'},
-            {yMin:3.5,yMax:4,color:'rgba(255,165,0,.15)'},
-            {yMin:4,yMax:Infinity,color:'rgba(255,0,0,.15)'}
-        ];
-
-        if(tideChartInstance)tideChartInstance.destroy();
-        const ctx=tideChartCanvas.getContext('2d');
-
-        const xMin=new Date(displayDate).setHours(0,0,0,0);
-        const xMax=new Date(displayDate).setHours(24,0,0,0);
-
-        tideChartInstance=new Chart(ctx,{
-            type:'line',
-            data:{labels,datasets},
-            options:{
-                responsive:true,maintainAspectRatio:false,
-                animation:isInitialLoad?{duration:0}:{},
-                scales:{
-                    x:{type:'time',time:{unit:'hour',displayFormats:{hour:'HH'},tooltipFormat:'MMM d, HH:mm'},
-                       grid:{color:'rgba(200,200,200,.2)'},title:{display:true,text:'Time',font:{size:16}},
-                       min:xMin,max:xMax},
-                    y:{beginAtZero:false,title:{display:true,text:'Tide (ft)',font:{size:16}},
-                       grid:{color:'rgba(200,200,200,.2)'}}
-                },
-                plugins:{
-                    legend:{display:false},
-                    tooltip:{mode:'index',intersect:false,
-                        callbacks:{
-                            title:(items)=>items.length?new Date(items[0].parsed.x)
-                                .toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}):'',
-                            label:(ctx)=>{
-                                const lbl=ctx.dataset.label||'';
-                                if(lbl.startsWith('Current:'))return lbl;
-                                if(lbl==='Tide Height (ft)')return `Tide: ${ctx.parsed.y.toFixed(2)} ft`;
-                                if(lbl==='High Tides'||lbl==='Low Tides'){
-                                    const d=ctx.raw;return `${d.type==='H'?'High':'Low'} Tide: ${d.y.toFixed(2)} ft at ${formatTime24Hour(d.x)}`;
-                                }
-                                return lbl;
-                            }
-                        }},
-                    verticalLineWithHoverData:{lineColor:'rgba(150,0,0,.7)',lineWidth:1},
-                    backgroundShading:{nightColor:'rgba(0,0,50,.2)',twilightColor:'rgba(70,70,100,.2)',sunTimes,sCurrentDate:new Date(displayDate)},
-                    horizontalBands:{bands}
-                },
-                interaction:{mode:'index',axis:'x',intersect:false}
+      if(displayDate.toDateString()===new Date().toDateString()){
+        currentTimeInterval=setInterval(()=>{
+          const idx=tideChartInstance.data.datasets.findIndex(ds=>ds.label.startsWith('Current:'));
+          if(idx>-1){
+            const now=new Date(), ct=new Date(displayDate);
+            ct.setHours(now.getHours(),now.getMinutes(),now.getSeconds(),now.getMilliseconds());
+            const v=interpolate(ct,curve);
+            if(v!=null){
+              tideChartInstance.data.datasets[idx].data[0]={x:ct,y:v};
+              tideChartInstance.data.datasets[idx].label=`Current: ${formatTime24(ct)} - Tide: ${v.toFixed(2)} ft`;
+              tideChartInstance.update('none');
             }
-        });
-        tideChartCanvas.style.height='450px';
+          }
+        },60000);
+      }
 
-        /* periodic current-time refresh if today */
-        if(displayDate.toDateString()===new Date().toDateString()){
-            currentTimeIntervalId=setInterval(()=>updateCurrentTimePoint(tideChartInstance,dataHr.predictions,new Date(displayDate)),60000);
-        }
-        isInitialLoad=false;
-    }catch(err){console.error(err);isInitialLoad=false;displayError(err.message);}
-}
+      isInitialLoad=false;
+    }
+    catch(err){
+      console.error(err);
+      showError(err.message.includes('No predictions')?'No tide data available':err.message);
+    }
+  }
 
-/* ───────────  INITIALISE ─────────── */
-window.onload=()=>{updateDateDisplayAndDropdown();fetchAndRenderTides();};
-</script>
+  /* ───────────────────────── INIT ───────────────────────── */
+  function init(){
+    updateDateDisplayAndDropdown();
+    clampButtons();
+    document.querySelectorAll('input[name="dataSource"]').forEach(el=>{
+      el.addEventListener('change',fetchAndRenderTides);
+    });
+    fetchAndRenderTides();
+  }
+  window.onload=init;
+  </script>
 </body>
 </html>
