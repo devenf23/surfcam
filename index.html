@@ -322,6 +322,12 @@
       transition: background-color 0.2s;
       flex-shrink: 0;
     }
+    .play-pause-btn {
+      width: 36px;
+      padding: 6px 0;
+      text-align: center;
+      font-size: 16px;
+    }
     .control-bar button:hover { background-color: #666; }
     .progress-bar {
       position: relative;
@@ -973,6 +979,17 @@
     let sidebarDragStartState = null;
     let isSidebarDragging = false;
     let players = {}; // Store player instances { url: { container, video, hls, animationFrameId, overlays?, offscreenCanvas?, isBuffering?, ... } }
+    const SEEK_THROTTLE_MS = 250;          // unbuffered seek — conservative to avoid excess requests
+    const SEEK_THROTTLE_BUFFERED_MS = 50;  // buffered seek — fast, no network needed
+
+    function isTimeBuffered(video, t) {
+      try {
+        for (let i = 0; i < video.buffered.length; i++) {
+          if (t >= video.buffered.start(i) && t <= video.buffered.end(i)) return true;
+        }
+      } catch {}
+      return false;
+    }
 
     function updateStreamSidebar() {
       streamListContainer.innerHTML = "";
@@ -1280,7 +1297,8 @@
         const cbM = document.createElement("div");
         cbM.className = "control-bar";
         const ppM = document.createElement("button");
-        ppM.textContent = "Play";
+        ppM.className = "play-pause-btn";
+        ppM.textContent = "▶";
         ppM.setAttribute("aria-label","Play/Pause");
         cbM.appendChild(ppM);
         ctrM.appendChild(cbM);
@@ -1317,9 +1335,9 @@
         });
 
         // Update Play/Pause button text based on video state
-        video.addEventListener("play", () => ppM.textContent = "Pause");
-        video.addEventListener("pause", () => ppM.textContent = "Play");
-        video.addEventListener("ended", () => ppM.textContent = "Play");
+        video.addEventListener("play", () => ppM.textContent = "⏸");
+        video.addEventListener("pause", () => ppM.textContent = "▶");
+        video.addEventListener("ended", () => ppM.textContent = "▶");
 
         // Attempt to autoplay when ready
         video.addEventListener('canplay', () => {
@@ -1806,8 +1824,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           }
 
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
-          // Ignore clicks on overlay controls
-          if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar')) return;
+          // Ignore clicks on overlay controls or player controls
+          if (e.target.closest('.overlay-icon') || e.target.closest('.right-sidebar') || e.target.closest('.controls-container')) return;
           // Ignore clicks outside the container (covers canvas and black bars in FS)
           if (!container.contains(e.target)) return;
           // Ignore right-clicks or if currently dragging
@@ -1840,17 +1858,17 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
         // Play/Pause Button
         const playPauseBtn = document.createElement("button");
-        playPauseBtn.textContent = video.paused ? "Play" : "Pause";
+        playPauseBtn.className = "play-pause-btn";
+        playPauseBtn.textContent = video.paused ? "▶" : "⏸";
         playPauseBtn.setAttribute("aria-label","Play/Pause");
         playPauseBtn.addEventListener("click", e => {
-          e.stopPropagation(); // Prevent container click
+          e.stopPropagation();
           if (video.paused) video.play().catch(()=>{});
           else video.pause();
         });
-        // Update button text on video state change
-        video.addEventListener("play", () => playPauseBtn.textContent = "Pause");
-        video.addEventListener("pause", () => playPauseBtn.textContent = "Play");
-        video.addEventListener("ended", () => playPauseBtn.textContent = "Play");
+        video.addEventListener("play", () => playPauseBtn.textContent = "⏸");
+        video.addEventListener("pause", () => playPauseBtn.textContent = "▶");
+        video.addEventListener("ended", () => playPauseBtn.textContent = "▶");
         controlBar.appendChild(playPauseBtn);
 
         // Progress Bar
@@ -1867,14 +1885,16 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         progressBar.appendChild(thumb);
         controlBar.appendChild(progressBar);
 
+        // Progress Bar Seeking Logic — declared here so updateProgressBar can reference them
+        let isSeeking = false;
+        let pendingSeekTime = -1;
+        let lastThrottledSeek = 0;
+        let wasPlayingBeforeScrub = false;
+
         // Update progress bar display
         function updateProgressBar() {
-          // Check if stalled using the player object's flag
-           if (playerObject.isBuffering) {
-               // Don't update playhead if stalled
-               // Spinner visibility is handled by waiting/playing events
-               return;
-           }
+          if (isSeeking) return; // drag in progress — visual updated by seek()
+          if (playerObject.isBuffering) return;
 
           const d = video.duration;
           // Check if duration is valid number
@@ -1915,24 +1935,18 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         video.addEventListener("pause", updateProgressBar);
         updateProgressBar(); // Initial update
 
-        // Progress Bar Seeking Logic
-        let isSeeking = false;
         function seek(event) {
           const d = video.duration;
           if (!isNaN(d) && d > 0 && isFinite(d)) {
             const pr = progressBar.getBoundingClientRect();
-            let cX = event.clientX; // Mouse X
-            // Handle touch events if needed (though primarily desktop)
+            let cX = event.clientX;
             if (event.type.startsWith('touch')) {
               if (event.touches.length > 0) cX = event.touches[0].clientX;
               else if (event.changedTouches.length > 0) cX = event.changedTouches[0].clientX;
             }
-            const clickX = cX - pr.left; // X relative to progress bar
-            let sp = clickX / pr.width; // Seek percentage
-            sp = Math.max(0, Math.min(1, sp)); // Clamp between 0 and 1
-            const st = sp * d; // Seek time
+            const sp = Math.max(0, Math.min(1, (cX - pr.left) / pr.width));
+            const st = sp * d;
 
-            // Check if the target time is seekable (optional but good practice)
             let seekable = false;
             try {
               for (let i = 0; i < video.seekable.length; i++) {
@@ -1940,55 +1954,81 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
                   seekable = true; break;
                 }
               }
-            } catch { seekable = true; } // Assume seekable if error
+            } catch { seekable = true; }
 
             if (seekable) {
-              video.currentTime = st; // Set video time
-              updateProgressBar(); // Update display immediately
+              pendingSeekTime = st;
+              // Update visual immediately
+              const pp = Math.min(100, (st / d) * 100);
+              playedBar.style.width = `${pp}%`;
+              thumb.style.left = `${pp}%`;
+              // Throttled seek so canvas shows the frame at the scrub position;
+              // use a short interval when already buffered, longer when a fetch is needed
+              const now = performance.now();
+              const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
+              if (now - lastThrottledSeek >= throttle) {
+                lastThrottledSeek = now;
+                video.currentTime = st;
+              }
+            }
+          }
+        }
+        function applyPendingSeek() {
+          if (pendingSeekTime >= 0) {
+            video.currentTime = pendingSeekTime;
+            pendingSeekTime = -1;
+            if (wasPlayingBeforeScrub) {
+              video.addEventListener('seeked', () => video.play().catch(() => {}), { once: true });
+            } else {
+              video.pause();
             }
           }
         }
         // Mouse down on progress bar starts seeking
         progressBar.addEventListener("mousedown", e => {
-          if (e.button === 0) { // Left click only
+          if (e.button === 0) {
             isSeeking = true;
-            progressBar.classList.add('seeking'); // Add class for thumb style
-            document.body.style.userSelect = 'none'; // Prevent text selection during drag
+            wasPlayingBeforeScrub = !video.paused;
+            progressBar.classList.add('seeking');
+            document.body.style.userSelect = 'none';
             seek(e);
             progressBar.style.cursor = 'grabbing';
           }
         });
-        // Touch start (basic support)
+        // Touch start
         progressBar.addEventListener("touchstart", e => {
           isSeeking = true;
-           progressBar.classList.add('seeking');
-          document.body.style.webkitUserSelect = 'none'; // iOS selection prevent
+          wasPlayingBeforeScrub = !video.paused;
+          progressBar.classList.add('seeking');
+          document.body.style.webkitUserSelect = 'none';
           seek(e);
         }, { passive: true });
-        // Mouse move updates seek position if seeking
+        // Mouse move updates visual position only
         document.addEventListener("mousemove", e => { if (isSeeking) seek(e); });
-        // Touch move updates seek position
+        // Touch move updates visual position only
         document.addEventListener("touchmove", e => {
           if (isSeeking) {
-            e.preventDefault(); // Prevent scrolling page
+            e.preventDefault();
             seek(e);
           }
         }, { passive: false });
-        // Mouse up ends seeking
+        // Mouse up — apply the single deferred seek
         document.addEventListener("mouseup", e => {
           if (e.button === 0 && isSeeking) {
             isSeeking = false;
             progressBar.classList.remove('seeking');
             progressBar.style.cursor = 'pointer';
             document.body.style.userSelect = '';
+            applyPendingSeek();
           }
         });
-        // Touch end ends seeking
+        // Touch end — apply the single deferred seek
         document.addEventListener("touchend", e => {
           if (isSeeking) {
             isSeeking = false;
             progressBar.classList.remove('seeking');
             document.body.style.webkitUserSelect = '';
+            applyPendingSeek();
           }
         });
 
@@ -2102,12 +2142,13 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         if (Hls.isSupported() && !preferNativeHls) {
           // Use HLS.js
           hlsInstance = new Hls({
-            // Configuration options for stability
+            enableWorker: true,
             maxBufferLength: 30,
             maxMaxBufferLength: 60,
-            liveSyncDurationCount: 4,
-            liveMaxLatencyDurationCount: 10,
-            maxBufferHole: 0.8,
+            liveSyncDurationCount: 3,
+            liveMaxLatencyDurationCount: 999,
+            maxBufferHole: 0.5,
+            startFragPrefetch: true,
             fragLoadingTimeOut: 20000,
             manifestLoadingTimeOut: 20000,
             levelLoadingTimeOut: 20000,
@@ -2361,7 +2402,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       fsControlBar.className = "control-bar";
 
       const fsPlayPauseBtn = document.createElement("button");
-      fsPlayPauseBtn.textContent = video.paused ? "Play" : "Pause";
+      fsPlayPauseBtn.className = "play-pause-btn";
+      fsPlayPauseBtn.textContent = video.paused ? "▶" : "⏸";
       fsControlBar.appendChild(fsPlayPauseBtn);
 
       const fsProgressBar = document.createElement("div");
@@ -2392,9 +2434,9 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       // --- Add Event Listeners ---
 
-      // Update Play/Pause button text
+      // Update Play/Pause button symbol
       const updateFsPlayBtn = () => {
-        fsPlayPauseBtn.textContent = video.paused ? "Play" : "Pause";
+        fsPlayPauseBtn.textContent = video.paused ? "▶" : "⏸";
       };
       addListener(video, "play", updateFsPlayBtn);
       addListener(video, "pause", updateFsPlayBtn);
@@ -2432,50 +2474,74 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       updateFsProgressBar(); // Initial update
 
       // Progress Bar Seeking
+      let fsPendingSeekTime = -1;
+      let fsLastThrottledSeek = 0;
+      let fsWasPlayingBeforeScrub = false;
       const fsSeek = event => {
         const d = video.duration;
         if (!isNaN(d) && d > 0 && isFinite(d)) {
           const pr = fsProgressBar.getBoundingClientRect();
           let cX = event.clientX;
-          // Handle touch input
           if (event.type.startsWith('touch')) {
             if (event.touches.length > 0) cX = event.touches[0].clientX;
             else if (event.changedTouches.length > 0) cX = event.changedTouches[0].clientX;
           }
-          const clickX = cX - pr.left;
-          let sp = clickX / pr.width;
-          sp = Math.max(0, Math.min(1, sp));
+          const sp = Math.max(0, Math.min(1, (cX - pr.left) / pr.width));
           const st = sp * d;
           let seekable = false;
-          try { // Check seekable ranges
+          try {
             for (let i = 0; i < video.seekable.length; i++) {
               if (st >= video.seekable.start(i) && st <= video.seekable.end(i)) {
                 seekable = true; break;
               }
             }
-          } catch { seekable = true; } // Assume seekable if error
+          } catch { seekable = true; }
           if (seekable) {
-            video.currentTime = st;
-            updateFsProgressBar(); // Update display immediately
+            fsPendingSeekTime = st;
+            // Update visual immediately
+            const pp = Math.min(100, (st / d) * 100);
+            fsPlayedBar.style.width = `${pp}%`;
+            fsThumb.style.left = `${pp}%`;
+            // Throttled seek to show frame at scrub position;
+            // use a short interval when already buffered, longer when a fetch is needed
+            const now = performance.now();
+            const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
+            if (now - fsLastThrottledSeek >= throttle) {
+              fsLastThrottledSeek = now;
+              video.currentTime = st;
+            }
+          }
+        }
+      };
+      const applyFsPendingSeek = () => {
+        if (fsPendingSeekTime >= 0) {
+          video.currentTime = fsPendingSeekTime;
+          fsPendingSeekTime = -1;
+          if (fsWasPlayingBeforeScrub) {
+            video.addEventListener('seeked', () => video.play().catch(() => {}), { once: true });
+          } else {
+            video.pause();
           }
         }
       };
       addListener(fsProgressBar, "mousedown", e => {
         if (e.button === 0) {
           isFsSeeking = true;
+          fsWasPlayingBeforeScrub = !video.paused;
           fsSeek(e);
           fsProgressBar.style.cursor = 'grabbing';
         }
       });
       addListener(fsProgressBar, "touchstart", e => {
         isFsSeeking = true;
+        fsWasPlayingBeforeScrub = !video.paused;
         fsSeek(e);
       }, { passive: true });
       // Use window listeners for move/end to catch events outside the bar
       const handleFsMouseMove = e => { if (isFsSeeking) fsSeek(e); };
       const handleFsTouchMove = e => { if (isFsSeeking) { e.preventDefault(); fsSeek(e); } };
-      const handleFsMouseUp = e => { if (e.button === 0 && isFsSeeking) { isFsSeeking = false; fsProgressBar.style.cursor = 'pointer'; } };
-      const handleFsTouchEnd = () => { if (isFsSeeking) isFsSeeking = false; };
+      const handleFsMouseUp = e => { if (e.button === 0 && isFsSeeking) { isFsSeeking = false; fsProgressBar.style.cursor = 'pointer'; applyFsPendingSeek(); } };
+      const handleFsTouchEnd = () => { if (isFsSeeking) { isFsSeeking = false; applyFsPendingSeek(); } };
       addListener(window, "mousemove", handleFsMouseMove);
       addListener(window, "touchmove", handleFsTouchMove, { passive: false });
       addListener(window, "mouseup", handleFsMouseUp);
@@ -2535,6 +2601,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       let touchStartTime = null;    // Time for swipe detection
       let isSwipingY = false;       // Flag if vertical swipe detected
       let isGesturing = false;      // Flag if any touch interaction is active
+      let isPanning = false;        // Flag if single-finger pan is active
+      let panStartX = 0;            // Finger X at pan start
+      let panStartY = 0;            // Finger Y at pan start
+      let panStartTranslateX = 0;   // Translation X at pan start
+      let panStartTranslateY = 0;   // Translation Y at pan start
 
       const listeners = []; // Store listeners for cleanup
       function addListener(el, type, fn, opts) {
@@ -2577,13 +2648,24 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         isGesturing = true; // Mark gesture active
 
         if (e.touches.length === 1) {
-          // Prepare for potential swipe
-          touchStartY = e.touches[0].clientY;
-          touchStartTime = Date.now();
-          isSwipingY = false; // Reset swipe flag
+          if (currentScale > 1) {
+            // Zoomed in — single finger pans
+            isPanning = true;
+            panStartX = e.touches[0].clientX;
+            panStartY = e.touches[0].clientY;
+            panStartTranslateX = currentTranslateX;
+            panStartTranslateY = currentTranslateY;
+            video.style.transition = 'none';
+          } else {
+            // Not zoomed — prepare for swipe gesture
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+            isSwipingY = false;
+          }
         } else if (e.touches.length === 2) {
           // Start pinch-zoom/pan gesture
-          isSwipingY = false; // Cancel swipe detection
+          isPanning = false; // Cancel any single-finger pan
+          isSwipingY = false;
           touchStartY = null;
           const [t1, t2] = e.touches;
           initialDistance = getTouchDistance(t1, t2); // Store initial finger distance
@@ -2611,11 +2693,16 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const handleTouchMove = e => {
         if (!isGesturing || e.target.closest('.fullscreen-controls')) return;
 
-        if (e.touches.length === 1 && touchStartY !== null) {
-          // Check for vertical swipe gesture
+        if (e.touches.length === 1 && isPanning) {
+          // Single-finger pan (only when zoomed in)
+          e.preventDefault();
+          currentTranslateX = panStartTranslateX + (e.touches[0].clientX - panStartX);
+          currentTranslateY = panStartTranslateY + (e.touches[0].clientY - panStartY);
+          applyTransform();
+        } else if (e.touches.length === 1 && touchStartY !== null) {
+          // Check for vertical swipe gesture (only when at 1x zoom)
           const dy = e.touches[0].clientY - touchStartY;
           const dt = Date.now() - touchStartTime;
-          // Detect swipe after sufficient movement or time
           if (!isSwipingY && (Math.abs(dy) > 10 || dt > 100)) {
             isSwipingY = true;
           }
@@ -2643,27 +2730,32 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const handleTouchEnd = e => {
         if (!isGesturing) return;
 
+        // Single-finger pan ended
+        if (isPanning && e.touches.length === 0) {
+          isPanning = false;
+          gestureStartX = currentTranslateX;
+          gestureStartY = currentTranslateY;
+          applyTransform();
+        }
+
         // If less than 2 touches remain, pinch gesture ends
         if (e.touches.length < 2) {
           initialDistance = null;
           initialLocalMid = null;
-          gestureRect = null; // Clear stored rect
-          // Reset transform if zoomed out completely
+          gestureRect = null;
           if (currentScale <= 1) {
             currentScale = 1;
             currentTranslateX = 0;
             currentTranslateY = 0;
-            gestureStartX = 0; // Reset start translation as well
+            gestureStartX = 0;
             gestureStartY = 0;
-             // Optionally add transition back for smooth reset
             video.style.transition = 'transform 0.2s ease-out';
           } else {
-            // Store final translation as the new base for next gesture
             gestureStartX = currentTranslateX;
             gestureStartY = currentTranslateY;
-             video.style.transition = ''; // Remove transition if needed
+            video.style.transition = '';
           }
-          applyTransform(); // Apply final clamped transform
+          applyTransform();
         }
 
         // If last touch ended and a swipe was detected
@@ -2684,10 +2776,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
         // If last touch ended, reset gesture state
         if (e.touches.length === 0) {
+          isPanning = false;
           touchStartY = null;
           touchStartTime = null;
           isSwipingY = false;
-          isGesturing = false; // Mark gesture inactive
+          isGesturing = false;
         }
       };
 
