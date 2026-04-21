@@ -1291,16 +1291,88 @@
         // Video element itself
         container.appendChild(video);
 
-        // Simple controls (Play/Pause) below the video
+        // Simple controls (Play/Pause + scrub bar) below the video
         const ctrM = document.createElement("div");
         ctrM.className = "controls-container";
         const cbM = document.createElement("div");
         cbM.className = "control-bar";
+
         const ppM = document.createElement("button");
         ppM.className = "play-pause-btn";
         ppM.textContent = "▶";
         ppM.setAttribute("aria-label","Play/Pause");
         cbM.appendChild(ppM);
+
+        // Mobile scrub bar
+        const mPb = document.createElement("div");
+        mPb.className = "progress-bar";
+        const mBuf = document.createElement("div"); mBuf.className = "buffered";
+        const mPlayed = document.createElement("div"); mPlayed.className = "played";
+        const mThumb = document.createElement("div"); mThumb.className = "thumb";
+        mPb.appendChild(mBuf); mPb.appendChild(mPlayed); mPb.appendChild(mThumb);
+        cbM.appendChild(mPb);
+
+        let mIsSeeking = false, mPendingSeek = -1, mLastThrottle = 0, mWasPlaying = false;
+
+        function updateMPb() {
+          if (mIsSeeking) return;
+          const d = video.duration;
+          if (!isNaN(d) && d > 0 && isFinite(d)) {
+            const ct = video.currentTime;
+            let bEnd = 0;
+            try {
+              for (let i = 0; i < video.buffered.length; i++) {
+                if (video.buffered.start(i) <= ct && video.buffered.end(i) >= ct) { bEnd = video.buffered.end(i); break; }
+                bEnd = Math.max(bEnd, video.buffered.end(i));
+              }
+            } catch {}
+            mPlayed.style.width = `${Math.min(100, (ct / d) * 100)}%`;
+            mThumb.style.left   = `${Math.min(100, (ct / d) * 100)}%`;
+            mBuf.style.width    = `${Math.min(100, (bEnd / d) * 100)}%`;
+          } else {
+            mPlayed.style.width = mThumb.style.left = mBuf.style.width = '0%';
+          }
+        }
+        ["timeupdate","progress","loadedmetadata","durationchange","seeking","seeked","play","pause"].forEach(ev => video.addEventListener(ev, updateMPb));
+
+        function mSeek(clientX) {
+          const d = video.duration;
+          if (!isNaN(d) && d > 0 && isFinite(d)) {
+            const pr = mPb.getBoundingClientRect();
+            const st = Math.max(0, Math.min(1, (clientX - pr.left) / pr.width)) * d;
+            let seekable = false;
+            try { for (let i = 0; i < video.seekable.length; i++) { if (st >= video.seekable.start(i) && st <= video.seekable.end(i)) { seekable = true; break; } } } catch { seekable = true; }
+            if (seekable) {
+              mPendingSeek = st;
+              const pp = Math.min(100, (st / d) * 100);
+              mPlayed.style.width = `${pp}%`; mThumb.style.left = `${pp}%`;
+              const now = performance.now();
+              const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
+              if (now - mLastThrottle >= throttle) { mLastThrottle = now; video.currentTime = st; }
+            }
+          }
+        }
+
+        function applyMSeek() {
+          if (mPendingSeek >= 0) {
+            video.currentTime = mPendingSeek; mPendingSeek = -1;
+            if (mWasPlaying) video.addEventListener('seeked', () => video.play().catch(() => {}), { once: true });
+            else video.pause();
+          }
+        }
+
+        const onMMove = e => { if (!mIsSeeking) return; e.preventDefault(); const t = e.touches[0] || e.changedTouches[0]; if (t) mSeek(t.clientX); };
+        const onMEnd  = () => { if (!mIsSeeking) return; mIsSeeking = false; mPb.classList.remove('seeking'); window.removeEventListener('touchmove', onMMove); window.removeEventListener('touchend', onMEnd); applyMSeek(); };
+
+        mPb.addEventListener('touchstart', e => {
+          e.stopPropagation();
+          mIsSeeking = true; mWasPlaying = !video.paused;
+          mPb.classList.add('seeking');
+          const t = e.touches[0]; if (t) mSeek(t.clientX);
+          window.addEventListener('touchmove', onMMove, { passive: false });
+          window.addEventListener('touchend', onMEnd);
+        }, { passive: true });
+
         ctrM.appendChild(cbM);
         container.appendChild(ctrM);
 
