@@ -557,6 +557,14 @@
     html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .fs-btn-mobile {
       display: inline-block;
     }
+    /* Keep the visual track thin while the element itself is tall for touch */
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .control-bar .progress-bar .buffered,
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .control-bar .progress-bar .played {
+      top: 50%;
+      bottom: auto;
+      height: 6px;
+      transform: translateY(-50%);
+    }
 
     .video-title-row {
       display: flex;
@@ -1305,6 +1313,9 @@
         // Mobile scrub bar
         const mPb = document.createElement("div");
         mPb.className = "progress-bar";
+        // Prevent iOS from treating touches on the bar as scroll gestures
+        mPb.style.touchAction = 'none';
+        mPb.style.height = '28px'; // Larger touch target (visual stays thin via inner elements)
         const mBuf = document.createElement("div"); mBuf.className = "buffered";
         const mPlayed = document.createElement("div"); mPlayed.className = "played";
         const mThumb = document.createElement("div"); mThumb.className = "thumb";
@@ -1348,7 +1359,11 @@
             mPlayed.style.width = mThumb.style.left = mBuf.style.width = '0%';
           }
         }
-        ["timeupdate","progress","loadedmetadata","durationchange","seeking","seeked","play","pause"].forEach(ev => video.addEventListener(ev, updateMPb));
+        ["timeupdate","progress","loadedmetadata","durationchange","seeking","seeked","play","pause","canplay","playing","loadeddata"].forEach(ev => video.addEventListener(ev, updateMPb));
+        // Polling fallback: iOS native HLS can be slow to populate video.seekable.
+        // Poll every 500ms so the bar updates as soon as the range becomes available.
+        const mPbPollId = setInterval(updateMPb, 500);
+        video.addEventListener('emptied', () => clearInterval(mPbPollId), { once: true });
 
         function mSeek(clientX) {
           const range = mGetRange();
@@ -1814,7 +1829,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
         /* --- Desktop interactions: Pan/Zoom/Click (No changes needed here) --- */
         // ... (Pan/Zoom/Click handlers remain the same, ensuring clampPan(container, canvas) is called) ...
-        let startX, startY, isDragging = false;
+        let startX, startY, isDragging = false, panPixelRatio = 1;
         // Mousedown: Initiate drag panning (if space held or fullscreen)
         canvasWrapper.addEventListener("mousedown", e => {
           const isFs = document.fullscreenElement === container || document.webkitFullscreenElement === container;
@@ -1824,6 +1839,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             startY = e.clientY;
             isDragging = false; // Reset dragging flag
             container.style.cursor = 'grabbing'; // Indicate panning possible
+            // Ratio of canvas intrinsic pixels to displayed CSS pixels — needed so
+            // dragging 1 screen pixel moves the image exactly 1 screen pixel.
+            const displayW = canvas.getBoundingClientRect().width;
+            panPixelRatio = displayW > 0 ? canvas.width / displayW : 1;
             e.preventDefault(); // Prevent text selection, etc.
           }
         });
@@ -1840,9 +1859,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
               isDragging = true;
             }
             if (isDragging) {
-              // Update pan based on mouse movement and current zoom scale
-              container.panX += dx / container.zoomScale;
-              container.panY += dy / container.zoomScale;
+              // panPixelRatio converts CSS pixels → canvas pixels so the image
+              // tracks the cursor 1:1 regardless of how the canvas is scaled by CSS.
+              container.panX += dx * panPixelRatio / container.zoomScale;
+              container.panY += dy * panPixelRatio / container.zoomScale;
               // Pass canvas to clampPan
               clampPan(container, canvas);
               savePlayerSettings(url, { zoomScale: container.zoomScale, panX: container.panX, panY: container.panY });
@@ -2709,7 +2729,9 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         currentScale = Math.max(1, Math.min(currentScale, 5));
         // Get video dimensions, considering aspect ratio within bounds
         const rect = gestureRect || video.getBoundingClientRect(); // Use stored rect during gesture
-        const videoAspect = video.videoWidth / video.videoHeight;
+        const videoAspect = (video.videoWidth > 0 && video.videoHeight > 0)
+          ? video.videoWidth / video.videoHeight
+          : rect.width / rect.height; // fallback: assume video fills container
         const containerAspect = rect.width / rect.height;
         let visualW, visualH;
         if (containerAspect > videoAspect) { // Pillarboxed
