@@ -210,6 +210,12 @@
       height: 100%;
       display: block;
     }
+    /* Mobile HLS video — fill container width, preserve aspect ratio */
+    .player-container.mobile:not(.player-fullscreen-mobile):not(.mp4-player) .source-video {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
     /* Hide the actual <video> in desktop (non-mp4) players */
     .player-container.desktop:not(.mp4-player) .source-video {
       opacity: 0;
@@ -998,6 +1004,19 @@
       return false;
     }
 
+    // Returns {start, end} of the playable window, or null if not yet available.
+    // Falls back to video.seekable when duration is Infinity (native HLS on iOS Safari).
+    function getVideoRange(video) {
+      const d = video.duration;
+      if (isFinite(d) && d > 0) return { start: 0, end: d };
+      try {
+        if (video.seekable.length > 0) {
+          return { start: video.seekable.start(0), end: video.seekable.end(video.seekable.length - 1) };
+        }
+      } catch {}
+      return null;
+    }
+
     function updateStreamSidebar() {
       streamListContainer.innerHTML = "";
       const streams = getStreamList();
@@ -1324,22 +1343,9 @@
 
         let mIsSeeking = false, mPendingSeek = -1, mLastThrottle = 0, mWasPlaying = false;
 
-        // Returns {start, end} of the effective playback window.
-        // For live HLS on iOS, duration is Infinity — fall back to seekable range.
-        function mGetRange() {
-          const d = video.duration;
-          if (isFinite(d) && d > 0) return { start: 0, end: d };
-          try {
-            if (video.seekable.length > 0) {
-              return { start: video.seekable.start(0), end: video.seekable.end(video.seekable.length - 1) };
-            }
-          } catch {}
-          return null;
-        }
-
         function updateMPb() {
           if (mIsSeeking) return;
-          const range = mGetRange();
+          const range = getVideoRange(video);
           if (range && range.end > range.start) {
             const span = range.end - range.start;
             const ct = video.currentTime;
@@ -1366,7 +1372,7 @@
         video.addEventListener('emptied', () => clearInterval(mPbPollId), { once: true });
 
         function mSeek(clientX) {
-          const range = mGetRange();
+          const range = getVideoRange(video);
           if (range && range.end > range.start) {
             const span = range.end - range.start;
             const pr = mPb.getBoundingClientRect();
@@ -2550,35 +2556,38 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       addListener(video, "pause", updateFsPlayBtn);
       addListener(video, "ended", updateFsPlayBtn);
 
+      fsProgressBar.style.touchAction = 'none';
+
       // Update Progress Bar display
       const updateFsProgressBar = () => {
-        const d = video.duration;
-        if (!isNaN(d) && d > 0 && isFinite(d)) {
+        const range = getVideoRange(video);
+        if (range && range.end > range.start) {
+          const span = range.end - range.start;
           const ct = video.currentTime;
           const b = video.buffered;
-          let bEnd = 0;
+          let bEnd = range.start;
           try {
             for (let i = 0; i < b.length; i++) {
-              if (b.start(i) <= ct && b.end(i) >= ct) {
-                bEnd = b.end(i); break;
-              }
+              if (b.start(i) <= ct && b.end(i) >= ct) { bEnd = b.end(i); break; }
               bEnd = Math.max(bEnd, b.end(i));
             }
           } catch {}
-          const pp = (ct / d) * 100;
-          const bp = (bEnd / d) * 100;
-          fsPlayedBar.style.width = `${Math.min(100, pp)}%`;
-          fsThumb.style.left = `${Math.min(100, pp)}%`;
-          fsBufferedBar.style.width = `${Math.min(100, bp)}%`;
+          const pp = Math.min(100, ((ct - range.start) / span) * 100);
+          const bp = Math.min(100, ((bEnd - range.start) / span) * 100);
+          fsPlayedBar.style.width = `${pp}%`;
+          fsThumb.style.left = `${pp}%`;
+          fsBufferedBar.style.width = `${bp}%`;
         } else {
           fsPlayedBar.style.width = '0%';
           fsThumb.style.left = '0%';
           fsBufferedBar.style.width = '0%';
         }
       };
-      ["timeupdate", "progress", "loadedmetadata", "durationchange"].forEach(evt => {
+      ["timeupdate", "progress", "loadedmetadata", "durationchange", "canplay", "playing", "seeked"].forEach(evt => {
         addListener(video, evt, updateFsProgressBar);
       });
+      const fsPollId = setInterval(updateFsProgressBar, 500);
+      // Clean up polling when fullscreen exits (video emptied or cleanup called)
       updateFsProgressBar(); // Initial update
 
       // Progress Bar Seeking
@@ -2586,16 +2595,16 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       let fsLastThrottledSeek = 0;
       let fsWasPlayingBeforeScrub = false;
       const fsSeek = event => {
-        const d = video.duration;
-        if (!isNaN(d) && d > 0 && isFinite(d)) {
+        const range = getVideoRange(video);
+        if (range && range.end > range.start) {
+          const span = range.end - range.start;
           const pr = fsProgressBar.getBoundingClientRect();
           let cX = event.clientX;
           if (event.type.startsWith('touch')) {
             if (event.touches.length > 0) cX = event.touches[0].clientX;
             else if (event.changedTouches.length > 0) cX = event.changedTouches[0].clientX;
           }
-          const sp = Math.max(0, Math.min(1, (cX - pr.left) / pr.width));
-          const st = sp * d;
+          const st = range.start + Math.max(0, Math.min(1, (cX - pr.left) / pr.width)) * span;
           let seekable = false;
           try {
             for (let i = 0; i < video.seekable.length; i++) {
@@ -2606,12 +2615,9 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           } catch { seekable = true; }
           if (seekable) {
             fsPendingSeekTime = st;
-            // Update visual immediately
-            const pp = Math.min(100, (st / d) * 100);
+            const pp = Math.min(100, ((st - range.start) / span) * 100);
             fsPlayedBar.style.width = `${pp}%`;
             fsThumb.style.left = `${pp}%`;
-            // Throttled seek to show frame at scrub position;
-            // use a short interval when already buffered, longer when a fetch is needed
             const now = performance.now();
             const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
             if (now - fsLastThrottledSeek >= throttle) {
@@ -2680,6 +2686,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         });
         listeners = []; // Clear the array
         clearTimeout(controlsTimeout_fs); // Clear any pending hide timer
+        clearInterval(fsPollId);
       };
       fsControls.cleanupFsListeners = cleanup; // Attach cleanup to the element itself
 
