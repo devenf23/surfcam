@@ -1313,21 +1313,37 @@
 
         let mIsSeeking = false, mPendingSeek = -1, mLastThrottle = 0, mWasPlaying = false;
 
+        // Returns {start, end} of the effective playback window.
+        // For live HLS on iOS, duration is Infinity — fall back to seekable range.
+        function mGetRange() {
+          const d = video.duration;
+          if (isFinite(d) && d > 0) return { start: 0, end: d };
+          try {
+            if (video.seekable.length > 0) {
+              return { start: video.seekable.start(0), end: video.seekable.end(video.seekable.length - 1) };
+            }
+          } catch {}
+          return null;
+        }
+
         function updateMPb() {
           if (mIsSeeking) return;
-          const d = video.duration;
-          if (!isNaN(d) && d > 0 && isFinite(d)) {
+          const range = mGetRange();
+          if (range && range.end > range.start) {
+            const span = range.end - range.start;
             const ct = video.currentTime;
-            let bEnd = 0;
+            let bEnd = range.start;
             try {
               for (let i = 0; i < video.buffered.length; i++) {
                 if (video.buffered.start(i) <= ct && video.buffered.end(i) >= ct) { bEnd = video.buffered.end(i); break; }
                 bEnd = Math.max(bEnd, video.buffered.end(i));
               }
             } catch {}
-            mPlayed.style.width = `${Math.min(100, (ct / d) * 100)}%`;
-            mThumb.style.left   = `${Math.min(100, (ct / d) * 100)}%`;
-            mBuf.style.width    = `${Math.min(100, (bEnd / d) * 100)}%`;
+            const pp = Math.min(100, ((ct - range.start) / span) * 100);
+            const bp = Math.min(100, ((bEnd - range.start) / span) * 100);
+            mPlayed.style.width = `${pp}%`;
+            mThumb.style.left   = `${pp}%`;
+            mBuf.style.width    = `${bp}%`;
           } else {
             mPlayed.style.width = mThumb.style.left = mBuf.style.width = '0%';
           }
@@ -1335,15 +1351,16 @@
         ["timeupdate","progress","loadedmetadata","durationchange","seeking","seeked","play","pause"].forEach(ev => video.addEventListener(ev, updateMPb));
 
         function mSeek(clientX) {
-          const d = video.duration;
-          if (!isNaN(d) && d > 0 && isFinite(d)) {
+          const range = mGetRange();
+          if (range && range.end > range.start) {
+            const span = range.end - range.start;
             const pr = mPb.getBoundingClientRect();
-            const st = Math.max(0, Math.min(1, (clientX - pr.left) / pr.width)) * d;
+            const st = range.start + Math.max(0, Math.min(1, (clientX - pr.left) / pr.width)) * span;
             let seekable = false;
             try { for (let i = 0; i < video.seekable.length; i++) { if (st >= video.seekable.start(i) && st <= video.seekable.end(i)) { seekable = true; break; } } } catch { seekable = true; }
             if (seekable) {
               mPendingSeek = st;
-              const pp = Math.min(100, (st / d) * 100);
+              const pp = Math.min(100, ((st - range.start) / span) * 100);
               mPlayed.style.width = `${pp}%`; mThumb.style.left = `${pp}%`;
               const now = performance.now();
               const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
@@ -2702,9 +2719,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             visualW = rect.width;
             visualH = visualW / videoAspect;
         }
-        // Calculate max translation based on current scale and visual size
-        const maxX = (visualW * (currentScale - 1)) / 2;
-        const maxY = (visualH * (currentScale - 1)) / 2;
+        // Max pan = how far the zoomed content extends beyond the container edges.
+        // Using (visualDim * currentScale - containerDim) / 2 ensures the video
+        // edge never goes past the container boundary (no black gap visible).
+        const maxX = Math.max(0, (visualW * currentScale - rect.width) / 2);
+        const maxY = Math.max(0, (visualH * currentScale - rect.height) / 2);
         // Clamp translation
         currentTranslateX = Math.max(-maxX, Math.min(maxX, currentTranslateX));
         currentTranslateY = Math.max(-maxY, Math.min(maxY, currentTranslateY));
