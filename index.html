@@ -1402,13 +1402,14 @@
         const onMEnd  = () => { if (!mIsSeeking) return; mIsSeeking = false; mPb.classList.remove('seeking'); window.removeEventListener('touchmove', onMMove); window.removeEventListener('touchend', onMEnd); applyMSeek(); };
 
         mPb.addEventListener('touchstart', e => {
+          e.preventDefault(); // Must prevent default before browser commits to scroll
           e.stopPropagation();
           mIsSeeking = true; mWasPlaying = !video.paused;
           mPb.classList.add('seeking');
           const t = e.touches[0]; if (t) mSeek(t.clientX);
           window.addEventListener('touchmove', onMMove, { passive: false });
           window.addEventListener('touchend', onMEnd);
-        }, { passive: true });
+        }, { passive: false });
 
         ctrM.appendChild(cbM);
         container.appendChild(ctrM);
@@ -2647,10 +2648,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         }
       });
       addListener(fsProgressBar, "touchstart", e => {
+        e.preventDefault(); // Must prevent default before browser commits to scroll
         isFsSeeking = true;
         fsWasPlayingBeforeScrub = !video.paused;
         fsSeek(e);
-      }, { passive: true });
+      }, { passive: false });
       // Use window listeners for move/end to catch events outside the bar
       const handleFsMouseMove = e => { if (isFsSeeking) fsSeek(e); };
       const handleFsTouchMove = e => { if (isFsSeeking) { e.preventDefault(); fsSeek(e); } };
@@ -2734,29 +2736,27 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       function applyTransform() {
         // Clamp scale between 1x and 5x
         currentScale = Math.max(1, Math.min(currentScale, 5));
-        // Get video dimensions, considering aspect ratio within bounds
-        const rect = gestureRect || video.getBoundingClientRect(); // Use stored rect during gesture
+        // Use container bounds, NOT video.getBoundingClientRect().
+        // getBoundingClientRect() on a transformed element returns the visual (post-transform)
+        // box — at scale 2 that's 2× the actual container size, making maxX/maxY 2× too large
+        // and letting the video be dragged completely off screen.
+        const cRect = container.getBoundingClientRect();
         const videoAspect = (video.videoWidth > 0 && video.videoHeight > 0)
           ? video.videoWidth / video.videoHeight
-          : rect.width / rect.height; // fallback: assume video fills container
-        const containerAspect = rect.width / rect.height;
+          : cRect.width / cRect.height;
+        const containerAspect = cRect.width / cRect.height;
         let visualW, visualH;
         if (containerAspect > videoAspect) { // Pillarboxed
-            visualH = rect.height;
+            visualH = cRect.height;
             visualW = visualH * videoAspect;
         } else { // Letterboxed
-            visualW = rect.width;
+            visualW = cRect.width;
             visualH = visualW / videoAspect;
         }
-        // Max pan = how far the zoomed content extends beyond the container edges.
-        // Using (visualDim * currentScale - containerDim) / 2 ensures the video
-        // edge never goes past the container boundary (no black gap visible).
-        const maxX = Math.max(0, (visualW * currentScale - rect.width) / 2);
-        const maxY = Math.max(0, (visualH * currentScale - rect.height) / 2);
-        // Clamp translation
+        const maxX = Math.max(0, (visualW * currentScale - cRect.width) / 2);
+        const maxY = Math.max(0, (visualH * currentScale - cRect.height) / 2);
         currentTranslateX = Math.max(-maxX, Math.min(maxX, currentTranslateX));
         currentTranslateY = Math.max(-maxY, Math.min(maxY, currentTranslateY));
-        // Apply the transform via CSS
         video.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
       }
 
