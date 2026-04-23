@@ -2250,8 +2250,12 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       /* --- HLS.js Setup (Common for Mobile/Desktop HLS) --- */
       if (!isMp4) {
-        // Prefer native HLS on Safari/iOS if supported
-        const preferNativeHls = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        // On desktop Safari, prefer native HLS to avoid MSE quirks.
+        // On mobile, always try hls.js first: its custom loader routes every request
+        // (manifest + segments) through the proxy, and it reports a finite duration for
+        // DVR streams. Native HLS on iOS only proxies the manifest — segments are fetched
+        // directly and may fail — and reports Infinity duration, breaking the timeline.
+        const preferNativeHls = !IS_MOBILE && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const canPlayNativeHls = video.canPlayType("application/vnd.apple.mpegurl");
 
         if (Hls.isSupported() && !preferNativeHls) {
