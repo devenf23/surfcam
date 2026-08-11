@@ -345,6 +345,8 @@
       margin: 0 10px;
       cursor: pointer;
       min-width: 50px;
+      user-select: none;
+      -webkit-user-select: none;
     }
     .progress-bar .buffered, .progress-bar .played {
       position: absolute;
@@ -370,6 +372,9 @@
       opacity: 0; /* Hidden by default */
       transition: opacity 0.2s, transform 0.15s ease-out; /* Smooth transitions */
       pointer-events: none; /* Initially ignore pointer events */
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
     }
     /* Show slightly when hovering the bar */
     .progress-bar:hover .thumb {
@@ -689,6 +694,276 @@
     }
     .fullscreen-controls .progress-bar {
       display: flex !important;
+    }
+
+    /* ---------- FULLSCREEN TIDE CONTROL ---------- */
+    .tides-control {
+      position: relative;
+      display: none;
+      flex-shrink: 0;
+    }
+    .tides-control > button {
+      padding: 6px 10px;
+      cursor: pointer;
+      border: none;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: background-color .2s;
+      min-width: 58px;
+      background: #0d6b76;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .tides-control > button:hover,
+    .tides-control > button:focus-visible {
+      background: #138b99;
+      outline: 2px solid rgba(150, 240, 246, .8);
+      outline-offset: 2px;
+    }
+    .player-container:not(.mp4-player):fullscreen .tides-control,
+    .player-container:not(.mp4-player):-webkit-full-screen .tides-control,
+    .fullscreen-controls .tides-control {
+      display: inline-flex;
+    }
+    .player-container.mp4-player:fullscreen .mp4-tides-control,
+    .player-container.mp4-player:-webkit-full-screen .mp4-tides-control,
+    .player-container.mp4-player.player-fullscreen-mobile .mp4-tides-control {
+      position: absolute;
+      right: 20px;
+      bottom: 52px;
+      display: inline-flex;
+      z-index: 2200;
+    }
+    .tide-preview {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 10px);
+      width: 230px;
+      padding: 11px 13px;
+      box-sizing: border-box;
+      color: #eafcff;
+      background: rgba(7, 25, 31, .96);
+      border: 1px solid rgba(91, 211, 220, .45);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .42);
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, 5px);
+      transition: opacity .16s ease, transform .16s ease, visibility .16s;
+      pointer-events: none;
+      z-index: 2205;
+    }
+    .tides-control:hover .tide-preview,
+    .tides-control:focus-within .tide-preview {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+    }
+    .tide-preview-label {
+      color: #8bdde4;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .tide-preview-current {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: baseline;
+      gap: 10px;
+      margin: 4px 0 8px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .tide-preview-value { min-width: 0; }
+    .tide-preview-time {
+      color: #a9c9cc;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tide-preview-direction {
+      grid-column: 2;
+      color: #b8f2d0;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tide-preview-direction.dropping { color: #ffd19c; }
+    .tide-preview-next {
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,.13);
+      color: #c3d0d3;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .tide-preview-error { color: #ffb4a9; font-size: 12px; line-height: 1.35; }
+
+    .tide-panel {
+      position: absolute;
+      top: auto;
+      left: 50%;
+      width: min(900px, calc(100% - 32px));
+      bottom: 92px;
+      max-height: calc(100% - 112px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      box-sizing: border-box;
+      padding: 25px 24px 17px;
+      color: #eafcff;
+      background: linear-gradient(145deg, rgba(10, 32, 39, .985), rgba(7, 20, 28, .985));
+      border: 1px solid rgba(111, 221, 227, .42);
+      border-radius: 16px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .6);
+      transform: translateX(-50%);
+      z-index: 2200;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .tide-panel[hidden] { display: none; }
+    .tide-close {
+      position: absolute;
+      top: 9px;
+      right: 10px;
+      width: 30px;
+      height: 30px;
+      padding: 0 !important;
+      color: #d4f5f6 !important;
+      background: rgba(255,255,255,.09) !important;
+      border: 1px solid rgba(255,255,255,.15) !important;
+      border-radius: 50% !important;
+      font-size: 21px !important;
+      line-height: 27px;
+      cursor: pointer;
+    }
+    .tide-close:hover,
+    .tide-close:focus-visible { background: rgba(255,255,255,.2) !important; outline: 2px solid #73dce2; }
+    .tide-panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 25px 12px;
+    }
+    .tide-panel-kicker {
+      color: #74d9df;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .tide-panel-title {
+      margin: 3px 0 0;
+      color: #f1ffff;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+    .tide-panel-location {
+      padding-top: 5px;
+      color: #a9c2c6;
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .tide-panel-status {
+      min-height: 20px;
+      margin: 0 0 7px;
+      color: #b7d3d6;
+      font-size: 13px;
+      text-align: center;
+    }
+    .tide-graph-wrap {
+      position: relative;
+      width: 100%;
+      height: 350px;
+      overflow: hidden;
+      background: rgba(3, 13, 19, .55);
+      border: 1px solid rgba(119, 211, 218, .17);
+      border-radius: 11px;
+    }
+    .tide-graph {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .tide-grid-line { stroke: rgba(159, 217, 221, .16); stroke-width: 1; }
+    .tide-axis-line { stroke: rgba(191, 239, 241, .55); stroke-width: 1.2; }
+    .tide-axis-tick { stroke: rgba(191, 239, 241, .4); stroke-width: 1; }
+    .tide-axis-label { fill: #9cb9bd; font: 12px Arial, sans-serif; }
+    .tide-area { fill: url(#tideAreaGradient); }
+    .tide-line { fill: none; stroke: #5ed8df; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .tide-extreme-label { font: 700 12px Arial, sans-serif; }
+    .tide-current-line { stroke: #8cf0be; stroke-width: 1.2; stroke-dasharray: 4 4; opacity: .75; }
+    .tide-current-dot { fill: #8cf0be; stroke: #06352d; stroke-width: 3; }
+    .tide-current-label { font: 700 12px Arial, sans-serif; fill: #8cf0be; }
+    .tide-hover-line { stroke: #f5ffff; stroke-width: 1.5; stroke-dasharray: 5 4; pointer-events: none; }
+    .tide-hover-dot { fill: #f5ffff; stroke: #0c727d; stroke-width: 3; pointer-events: none; }
+    .tide-chart-tooltip {
+      position: absolute;
+      min-width: 104px;
+      padding: 6px 8px;
+      box-sizing: border-box;
+      color: #082126;
+      background: #d9fbfc;
+      border-radius: 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.32);
+      font-size: 11px;
+      line-height: 1.3;
+      pointer-events: none;
+      transform: translateY(-100%);
+      white-space: nowrap;
+      z-index: 2;
+    }
+    .tide-chart-tooltip[hidden] { display: none; }
+    .tide-extremes {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .tide-extreme {
+      padding: 9px 10px;
+      background: rgba(255,255,255,.055);
+      border-radius: 8px;
+      color: #b8cbce;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .tide-extreme strong { display: block; color: #f3ffff; font-size: 12px; }
+    .tide-extreme.high strong { color: #ff9e9e; }
+    .tide-extreme.low strong { color: #ffd08a; }
+    .tide-panel-foot {
+      margin-top: 11px;
+      color: #759397;
+      font-size: 10px;
+      text-align: right;
+    }
+    .player-container.tide-panel-open .controls-container {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+    .player-container:not(.mp4-player):fullscreen .controls-container:hover,
+    .player-container:not(.mp4-player):-webkit-full-screen .controls-container:hover {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+    @media (max-width: 640px) {
+      .tide-preview { width: 214px; }
+      .tide-panel {
+        width: calc(100% - 18px);
+        bottom: 96px;
+        max-height: calc(100% - 112px);
+        padding: 23px 10px 12px;
+        border-radius: 13px;
+      }
+      .tide-panel-header { margin: 0 27px 8px; }
+      .tide-panel-title { font-size: 18px; }
+      .tide-panel-location { font-size: 10px; }
+      .tide-graph-wrap { height: 245px; }
+      .tide-extremes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media all and (display-mode: standalone) {
@@ -1017,6 +1292,397 @@
       return null;
     }
 
+    /* --- Fullscreen tide display (uses the same NOAA source and offsets as tides.html) --- */
+    const FULLSCREEN_TIDE_STATION = '9413450';
+    const FULLSCREEN_TIDE_OFFSETS = {
+      H: { timeMin: -6, heightAdd: 0.97 },
+      L: { timeMin: -11, heightAdd: 0.99 },
+      avgTimeMin: -8.5,
+      avgHeightFt: 0.98
+    };
+    const fullscreenTideCache = new Map();
+
+    function getTideDateKey(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function buildFullscreenNoaaUrl(dateKey, interval = '') {
+      const intervalPart = interval ? `&interval=${interval}` : '';
+      return `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter` +
+        `?begin_date=${dateKey.replaceAll('-', '')}&end_date=${dateKey.replaceAll('-', '')}` +
+        `&station=${FULLSCREEN_TIDE_STATION}&product=predictions` +
+        `&datum=MLLW&units=english&time_zone=lst_ldt${intervalPart}` +
+        `&format=json&application=GeminiTideChart`;
+    }
+
+    async function loadFullscreenTides(date = new Date()) {
+      const dateKey = getTideDateKey(date);
+      if (fullscreenTideCache.has(dateKey)) return fullscreenTideCache.get(dateKey);
+
+      const request = Promise.all([
+        fetch(buildFullscreenNoaaUrl(dateKey)),
+        fetch(buildFullscreenNoaaUrl(dateKey, 'hilo'))
+      ]).then(async ([hourlyResponse, extremesResponse]) => {
+        if (!hourlyResponse.ok || !extremesResponse.ok) {
+          throw new Error('NOAA tide data is unavailable');
+        }
+        const hourly = await hourlyResponse.json();
+        const extremes = await extremesResponse.json();
+        if (hourly.error || extremes.error || !hourly.predictions?.length) {
+          throw new Error(hourly.error?.message || extremes.error?.message || 'No tide data available');
+        }
+
+        return {
+          dateKey,
+          curve: hourly.predictions.map(point => ({
+            t: new Date(new Date(point.t).getTime() + FULLSCREEN_TIDE_OFFSETS.avgTimeMin * 60000).toISOString(),
+            v: parseFloat(point.v) + FULLSCREEN_TIDE_OFFSETS.avgHeightFt
+          })),
+          extremes: (extremes.predictions || []).map(point => {
+            const offset = FULLSCREEN_TIDE_OFFSETS[point.type] || FULLSCREEN_TIDE_OFFSETS.H;
+            return {
+              t: new Date(new Date(point.t).getTime() + offset.timeMin * 60000).toISOString(),
+              v: parseFloat(point.v) + offset.heightAdd,
+              type: point.type === 'H' ? 'H' : 'L'
+            };
+          })
+        };
+      }).catch(error => {
+        fullscreenTideCache.delete(dateKey);
+        throw error;
+      });
+
+      fullscreenTideCache.set(dateKey, request);
+      return request;
+    }
+
+    function interpolateFullscreenTide(target, curve) {
+      if (!curve?.length) return null;
+      const targetMs = new Date(target).getTime();
+      let before = null;
+      let after = null;
+      for (const point of curve) {
+        const pointMs = new Date(point.t).getTime();
+        if (pointMs === targetMs) return point.v;
+        if (pointMs < targetMs) before = { t: pointMs, v: point.v };
+        if (pointMs > targetMs) { after = { t: pointMs, v: point.v }; break; }
+      }
+      if (before && after) {
+        return before.v + (after.v - before.v) * (targetMs - before.t) / (after.t - before.t);
+      }
+      return before?.v ?? after?.v ?? null;
+    }
+
+    function formatFullscreenTideTime(value) {
+      return new Date(value).toLocaleTimeString('en-US', {
+        hour: 'numeric', minute: '2-digit'
+      });
+    }
+
+    function getFullscreenTideSnapshot(data, now = new Date()) {
+      const current = getTideDateKey(now) === data.dateKey
+        ? now
+        : new Date(`${data.dateKey}T12:00:00`);
+      const value = interpolateFullscreenTide(current, data.curve);
+      const later = interpolateFullscreenTide(new Date(current.getTime() + 10 * 60000), data.curve);
+      const earlier = interpolateFullscreenTide(new Date(current.getTime() - 10 * 60000), data.curve);
+      const rising = value != null && later != null
+        ? later >= value
+        : value != null && earlier != null ? value >= earlier : true;
+      const currentMs = current.getTime();
+      const next = data.extremes
+        .filter(point => new Date(point.t).getTime() > currentMs)
+        .sort((a, b) => new Date(a.t) - new Date(b.t))[0] || null;
+      return { current, value, rising, next };
+    }
+
+    function renderTidePreview(preview, data, error = null) {
+      if (error) {
+        preview.innerHTML = '<div class="tide-preview-label">Tides</div><div class="tide-preview-error">Tide data could not be loaded right now.</div>';
+        return;
+      }
+      if (!data) {
+        preview.innerHTML = '<div class="tide-preview-label">Tides</div><div class="tide-preview-error">Loading tide data…</div>';
+        return;
+      }
+      const snapshot = getFullscreenTideSnapshot(data);
+      if (snapshot.value == null) {
+        preview.innerHTML = '<div class="tide-preview-label">Tides</div><div class="tide-preview-error">No current tide value available.</div>';
+        return;
+      }
+      const direction = snapshot.rising ? '↑ Rising' : '↓ Dropping';
+      const directionClass = snapshot.rising ? '' : ' dropping';
+      const nextText = snapshot.next
+        ? `Next ${snapshot.next.type === 'H' ? 'high' : 'low'} · ${formatFullscreenTideTime(snapshot.next.t)} · ${snapshot.next.v.toFixed(2)} ft`
+        : 'No later extreme in this forecast';
+      preview.innerHTML = `
+        <div class="tide-preview-label">Current tide</div>
+        <div class="tide-preview-current"><span class="tide-preview-value">${snapshot.value.toFixed(2)} ft</span><span class="tide-preview-time">${formatFullscreenTideTime(snapshot.current)}</span><span class="tide-preview-direction${directionClass}">${direction}</span></div>
+        <div class="tide-preview-next">${nextText}</div>`;
+    }
+
+    function createFullscreenTidePanel() {
+      const root = document.createElement('div');
+      root.className = 'tide-panel';
+      root.hidden = true;
+      root.setAttribute('role', 'dialog');
+      root.setAttribute('aria-label', 'Today’s tide chart');
+      root.innerHTML = `
+        <button class="tide-close" type="button" aria-label="Close tide chart">×</button>
+        <div class="tide-panel-header">
+          <div><div class="tide-panel-kicker">Tide forecast</div><h2 class="tide-panel-title"></h2></div>
+          <div class="tide-panel-location">Santa Cruz, CA<br>NOAA / Monterey + offsets</div>
+        </div>
+        <div class="tide-panel-status" aria-live="polite"></div>
+        <div class="tide-graph-wrap">
+          <svg class="tide-graph" viewBox="0 0 900 400" role="img" aria-label="Tide height by time"></svg>
+          <div class="tide-chart-tooltip" hidden></div>
+        </div>
+        <div class="tide-extremes"></div>
+        <div class="tide-panel-foot">Predictions are informational and not for navigation.</div>`;
+      return {
+        root,
+        close: root.querySelector('.tide-close'),
+        title: root.querySelector('.tide-panel-title'),
+        status: root.querySelector('.tide-panel-status'),
+        graphWrap: root.querySelector('.tide-graph-wrap'),
+        graph: root.querySelector('.tide-graph'),
+        tooltip: root.querySelector('.tide-chart-tooltip'),
+        extremes: root.querySelector('.tide-extremes')
+      };
+    }
+
+    function renderFullscreenTideGraph(panel, data) {
+      const VIEW_WIDTH = 900;
+      const VIEW_HEIGHT = 400;
+      const plot = { left: 62, right: 20, top: 24, bottom: 58 };
+      plot.width = VIEW_WIDTH - plot.left - plot.right;
+      plot.height = VIEW_HEIGHT - plot.top - plot.bottom;
+      const startMs = new Date(`${data.dateKey}T00:00:00`).getTime();
+      const endMs = startMs + 24 * 60 * 60 * 1000;
+      const curve = data.curve
+        .map(point => ({ ms: new Date(point.t).getTime(), v: point.v }))
+        .filter(point => point.ms >= startMs && point.ms <= endMs);
+      if (!curve.length) throw new Error('No tide curve available');
+
+      const values = curve.map(point => point.v).concat(data.extremes.map(point => point.v));
+      const minValue = Math.min(...values);
+      const maxValue = Math.max(...values);
+      const padding = Math.max(.18, (maxValue - minValue) * .14);
+      const yMin = minValue - padding;
+      const yMax = maxValue + padding;
+      const xFor = ms => plot.left + ((ms - startMs) / (endMs - startMs)) * plot.width;
+      const yFor = value => plot.top + (1 - (value - yMin) / (yMax - yMin)) * plot.height;
+      const axisLabel = value => `${value.toFixed(1)} ft`;
+      const timeLabel = hour => new Date(startMs + hour * 3600000).toLocaleTimeString('en-US', { hour: 'numeric' });
+
+      const yTicks = Array.from({ length: 5 }, (_, index) => yMin + (yMax - yMin) * index / 4);
+      const xTicks = Array.from({ length: 9 }, (_, index) => index * 3);
+      const grid = yTicks.map(value => {
+        const y = yFor(value).toFixed(2);
+        return `<line x1="${plot.left}" y1="${y}" x2="${VIEW_WIDTH - plot.right}" y2="${y}" class="tide-grid-line"/><text x="${plot.left - 9}" y="${Number(y) + 4}" class="tide-axis-label tide-y-label" text-anchor="end">${axisLabel(value)}</text>`;
+      }).join('');
+      const xAxis = xTicks.map(hour => {
+        const x = xFor(startMs + hour * 3600000).toFixed(2);
+        return `<line x1="${x}" y1="${plot.top + plot.height}" x2="${x}" y2="${plot.top + plot.height + 5}" class="tide-axis-tick"/><text x="${x}" y="${VIEW_HEIGHT - 25}" class="tide-axis-label" text-anchor="middle">${timeLabel(hour)}</text>`;
+      }).join('');
+      const curvePoints = curve.map(point => `${xFor(point.ms).toFixed(2)},${yFor(point.v).toFixed(2)}`).join(' L ');
+      const areaPath = `M ${xFor(curve[0].ms).toFixed(2)} ${plot.top + plot.height} L ${curvePoints} L ${xFor(curve[curve.length - 1].ms).toFixed(2)} ${plot.top + plot.height} Z`;
+      const linePath = `M ${curvePoints}`;
+      const extremeMarks = data.extremes.filter(point => {
+        const ms = new Date(point.t).getTime();
+        return ms >= startMs && ms <= endMs;
+      }).map(point => {
+        const x = xFor(new Date(point.t).getTime()).toFixed(2);
+        const y = yFor(point.v).toFixed(2);
+        const isHigh = point.type === 'H';
+        const color = isHigh ? '#ff8e8e' : '#ffd078';
+        const labelY = Math.max(plot.top + 12, Math.min(plot.top + plot.height - 7, Number(y) + (isHigh ? -14 : 20)));
+        return `<circle cx="${x}" cy="${y}" r="6" fill="${color}" stroke="#082126" stroke-width="2"/><text x="${x}" y="${labelY}" class="tide-extreme-label" fill="${color}" text-anchor="middle">${isHigh ? 'H' : 'L'} ${point.v.toFixed(2)}</text>`;
+      }).join('');
+      const snapshot = getFullscreenTideSnapshot(data);
+      const currentMs = snapshot.current.getTime();
+      let currentMark = '';
+      if (snapshot.value != null && currentMs >= startMs && currentMs <= endMs) {
+        const currentX = xFor(currentMs);
+        const currentY = yFor(snapshot.value);
+        const labelOnRight = currentX < VIEW_WIDTH - 155;
+        const labelX = labelOnRight ? currentX + 9 : currentX - 9;
+        const labelAnchor = labelOnRight ? 'start' : 'end';
+        const labelY = Math.max(plot.top + 14, currentY - 11);
+        currentMark = `<line x1="${currentX.toFixed(2)}" y1="${plot.top}" x2="${currentX.toFixed(2)}" y2="${plot.top + plot.height}" class="tide-current-line"/><circle cx="${currentX.toFixed(2)}" cy="${currentY.toFixed(2)}" r="6" class="tide-current-dot"/><text x="${labelX.toFixed(2)}" y="${labelY.toFixed(2)}" class="tide-current-label" text-anchor="${labelAnchor}">Now ${snapshot.value.toFixed(2)} ft</text>`;
+      }
+
+      panel.graph.innerHTML = `
+        <defs><linearGradient id="tideAreaGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#43cbd3" stop-opacity=".35"/><stop offset="1" stop-color="#43cbd3" stop-opacity=".03"/></linearGradient></defs>
+        <rect x="0" y="0" width="900" height="400" fill="transparent"/>
+        <g>${grid}${xAxis}</g>
+        <line x1="${plot.left}" y1="${plot.top}" x2="${plot.left}" y2="${plot.top + plot.height}" class="tide-axis-line"/>
+        <line x1="${plot.left}" y1="${plot.top + plot.height}" x2="${VIEW_WIDTH - plot.right}" y2="${plot.top + plot.height}" class="tide-axis-line"/>
+        <path d="${areaPath}" class="tide-area"/>
+        <path d="${linePath}" class="tide-line"/>
+        <g>${extremeMarks}</g>
+        <g>${currentMark}</g>
+        <line class="tide-hover-line" x1="0" y1="${plot.top}" x2="0" y2="${plot.top + plot.height}" visibility="hidden"/>
+        <circle class="tide-hover-dot" cx="0" cy="0" r="6" visibility="hidden"/>`;
+
+      const hoverLine = panel.graph.querySelector('.tide-hover-line');
+      const hoverDot = panel.graph.querySelector('.tide-hover-dot');
+      const updateHover = clientX => {
+        const rect = panel.graph.getBoundingClientRect();
+        if (!rect.width) return;
+        // The SVG preserves its viewBox aspect ratio, which can leave side
+        // gutters on wide screens. Account for those gutters before mapping
+        // the pointer into chart coordinates.
+        const scale = Math.min(rect.width / VIEW_WIDTH, rect.height / VIEW_HEIGHT);
+        const renderedWidth = VIEW_WIDTH * scale;
+        const renderedHeight = VIEW_HEIGHT * scale;
+        const svgOffsetX = (rect.width - renderedWidth) / 2;
+        const svgOffsetY = (rect.height - renderedHeight) / 2;
+        const leftPx = rect.left + svgOffsetX + plot.left * scale;
+        const rightPx = rect.left + svgOffsetX + (plot.left + plot.width) * scale;
+        const cursorPx = Math.max(leftPx, Math.min(rightPx, clientX));
+        const ratio = (cursorPx - leftPx) / (rightPx - leftPx);
+        const ms = startMs + ratio * (endMs - startMs);
+        const value = interpolateFullscreenTide(new Date(ms), data.curve);
+        if (value == null) return;
+        const x = plot.left + ratio * plot.width;
+        const y = yFor(value);
+        hoverLine.setAttribute('x1', x.toFixed(2));
+        hoverLine.setAttribute('x2', x.toFixed(2));
+        hoverLine.setAttribute('visibility', 'visible');
+        hoverDot.setAttribute('cx', x.toFixed(2));
+        hoverDot.setAttribute('cy', y.toFixed(2));
+        hoverDot.setAttribute('visibility', 'visible');
+        panel.tooltip.innerHTML = `<strong>${formatFullscreenTideTime(ms)}</strong><br>${value.toFixed(2)} ft`;
+        const wrapRect = panel.graphWrap.getBoundingClientRect();
+        let tooltipLeft = cursorPx - wrapRect.left + 11;
+        if (tooltipLeft + panel.tooltip.offsetWidth > wrapRect.width - 5) tooltipLeft -= panel.tooltip.offsetWidth + 22;
+        panel.tooltip.style.left = `${Math.max(5, tooltipLeft)}px`;
+        panel.tooltip.style.top = `${Math.max(33, rect.top - wrapRect.top + svgOffsetY + y * scale - 9)}px`;
+        panel.tooltip.hidden = false;
+      };
+      panel.graph.onpointermove = event => updateHover(event.clientX);
+      panel.graph.onpointerleave = () => {
+        hoverLine.setAttribute('visibility', 'hidden');
+        hoverDot.setAttribute('visibility', 'hidden');
+        panel.tooltip.hidden = true;
+      };
+    }
+
+    function renderFullscreenTidePanel(panel, data) {
+      panel.title.textContent = new Date(`${data.dateKey}T12:00:00`).toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric'
+      });
+      const snapshot = getFullscreenTideSnapshot(data);
+      panel.status.textContent = snapshot.value == null
+        ? 'Current tide value unavailable'
+        : `${snapshot.rising ? '↑ Rising' : '↓ Dropping'} now · ${snapshot.value.toFixed(2)} ft`;
+      panel.extremes.innerHTML = data.extremes.slice(0, 4).map(point => `
+        <div class="tide-extreme ${point.type === 'H' ? 'high' : 'low'}">
+          <strong>${point.type === 'H' ? 'High tide' : 'Low tide'}</strong>
+          ${formatFullscreenTideTime(point.t)} · ${point.v.toFixed(2)} ft
+        </div>`).join('');
+      renderFullscreenTideGraph(panel, data);
+    }
+
+    function attachTideControl(container, button, options = {}) {
+      const wrapper = button.parentElement;
+      const preview = document.createElement('div');
+      preview.className = 'tide-preview';
+      preview.setAttribute('aria-live', 'polite');
+      renderTidePreview(preview);
+      wrapper.appendChild(preview);
+
+      const panel = createFullscreenTidePanel();
+      container.appendChild(panel.root);
+      let dataPromise = null;
+      let tideData = null;
+      let refreshId = null;
+      let disposed = false;
+
+      const updateCurrent = () => {
+        if (!tideData || disposed) return;
+        renderTidePreview(preview, tideData);
+        const snapshot = getFullscreenTideSnapshot(tideData);
+        if (!panel.root.hidden && snapshot.value != null) {
+          panel.status.textContent = `${snapshot.rising ? '↑ Rising' : '↓ Dropping'} now · ${snapshot.value.toFixed(2)} ft`;
+        }
+      };
+      const load = () => {
+        if (dataPromise) return dataPromise;
+        renderTidePreview(preview);
+        dataPromise = loadFullscreenTides().then(data => {
+          if (disposed) return data;
+          tideData = data;
+          renderTidePreview(preview, data);
+          if (!panel.root.hidden) renderFullscreenTidePanel(panel, data);
+          refreshId = setInterval(updateCurrent, 60000);
+          return data;
+        }).catch(error => {
+          if (!disposed) renderTidePreview(preview, null, error);
+          throw error;
+        });
+        return dataPromise;
+      };
+      const closePanel = () => {
+        panel.root.hidden = true;
+        panel.root.setAttribute('aria-hidden', 'true');
+        container.classList.remove('tide-panel-open');
+      };
+      const openPanel = event => {
+        event?.stopPropagation();
+        panel.root.hidden = false;
+        panel.root.removeAttribute('aria-hidden');
+        container.classList.add('tide-panel-open');
+        if (options.onOpen) options.onOpen();
+        if (tideData) renderFullscreenTidePanel(panel, tideData);
+        else {
+          panel.title.textContent = 'Today’s tides';
+          panel.status.textContent = 'Loading tide data…';
+          panel.extremes.innerHTML = '';
+        }
+        load().catch(() => {
+          if (!disposed) panel.status.textContent = 'Tide data could not be loaded right now.';
+        });
+      };
+      const preload = () => { load().catch(() => {}); };
+      const handleClose = event => {
+        event.stopPropagation();
+        closePanel();
+      };
+      const handleFullscreenChange = () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !container.classList.contains('player-fullscreen-mobile')) {
+          closePanel();
+        }
+      };
+      const cleanup = () => {
+        disposed = true;
+        clearInterval(refreshId);
+        button.removeEventListener('mouseenter', preload);
+        button.removeEventListener('focus', preload);
+        button.removeEventListener('click', openPanel);
+        panel.close.removeEventListener('click', handleClose);
+        panel.root.removeEventListener('click', stopPanelClick);
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        panel.root.remove();
+        preview.remove();
+      };
+      const stopPanelClick = event => event.stopPropagation();
+      button.addEventListener('mouseenter', preload);
+      button.addEventListener('focus', preload);
+      button.addEventListener('click', openPanel);
+      panel.close.addEventListener('click', handleClose);
+      panel.root.addEventListener('click', stopPanelClick);
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+      return cleanup;
+    }
+
     function updateStreamSidebar() {
       streamListContainer.innerHTML = "";
       const streams = getStreamList();
@@ -1135,6 +1801,10 @@
               window.removeEventListener("resize", existing.resizeHandler); // Also remove window resize listener
               existing.resizeHandler = null; // Clear reference
           }
+          if (existing.tidesCleanup) {
+            existing.tidesCleanup();
+            existing.tidesCleanup = null;
+          }
           if (existing.hls) existing.hls.destroy();
           existing.video.pause();
           existing.video.removeAttribute('src');
@@ -1234,6 +1904,7 @@
           offscreenCanvas: null, // Will hold the offscreen canvas for masking
           offscreenCtx: null,    // Context for the offscreen canvas
           isBuffering: false,    // Flag for buffering state
+          stallPause: false,     // True when we paused the video ourselves due to a network stall
           canvas: null,          // Reference to the main canvas
           resizeHandler: null    // Reference to the resize handler function
       };
@@ -1255,12 +1926,25 @@
         const tb = document.createElement("div");
         tb.className = "title-bar";
         tb.textContent = title;
-        ctr.appendChild(tb);
-        container.appendChild(ctr);
+         ctr.appendChild(tb);
+         container.appendChild(ctr);
 
-        // Basic error handling
+         // Native MP4 controls cannot be extended, so place the tide control
+         // alongside them while this player is fullscreen.
+         const mp4TidesControl = document.createElement('div');
+         mp4TidesControl.className = 'tides-control mp4-tides-control';
+         const mp4TidesBtn = document.createElement('button');
+         mp4TidesBtn.type = 'button';
+         mp4TidesBtn.textContent = 'Tides';
+         mp4TidesBtn.setAttribute('aria-label', 'Open tide forecast');
+         mp4TidesControl.appendChild(mp4TidesBtn);
+         container.appendChild(mp4TidesControl);
+         playerObject.tidesCleanup = attachTideControl(container, mp4TidesBtn);
+
+         // Basic error handling
         video.addEventListener('error', e => {
           console.error(`Error loading MP4: ${url}`, video.error);
+          video.pause();
           tb.textContent = `Error: ${video.error?.message || 'Could not load video'}`;
           tb.style.color = 'red';
         });
@@ -1456,6 +2140,53 @@
           }
         }, { once: true }); // Only run once
 
+        // --- Mobile stall-pause: freeze the playhead when the video can't keep up ---
+        // Same logic as the desktop spinner: explicit pause on 'waiting' so currentTime
+        // stops advancing, and auto-resume once the buffer refills.
+        let mStallInProgress = false;
+        let mStallPause = false;
+        video.addEventListener('waiting', () => {
+          if (!video.paused) {
+            mStallPause = true;
+            mStallInProgress = true;
+            video.pause();
+            mStallInProgress = false;
+          }
+        });
+        video.addEventListener('canplay', () => {
+          // Route through playerObject.hideSpinner so the buffer-ahead check applies.
+          if (mStallPause && playerObject.hideSpinner) playerObject.hideSpinner();
+        });
+        video.addEventListener('pause', () => {
+          if (!mStallInProgress) mStallPause = false; // User pause — don't auto-resume.
+        });
+        // Expose via playerObject so the shared HLS error handler can trigger stall/resume.
+        playerObject.showSpinner = () => {
+          if (!video.paused) {
+            mStallPause = true;
+            mStallInProgress = true;
+            video.pause();
+            mStallInProgress = false;
+          }
+        };
+        playerObject.hideSpinner = () => {
+          if (!mStallPause) return;
+          // Only resume once there's enough buffered content ahead (same logic as desktop).
+          let bufferAhead = 0;
+          try {
+            const ct = video.currentTime;
+            for (let i = 0; i < video.buffered.length; i++) {
+              if (video.buffered.start(i) <= ct + 0.5 && video.buffered.end(i) > ct) {
+                bufferAhead = video.buffered.end(i) - ct;
+                break;
+              }
+            }
+          } catch {}
+          if (bufferAhead < 5) return;
+          mStallPause = false;
+          video.play().catch(()=>{});
+        };
+
       } else {
         // --- Desktop HLS Player Setup (Canvas Rendering) ---
         const canvasWrapper = document.createElement("div");
@@ -1628,23 +2359,64 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         const offscreenCtx = playerObject.offscreenCtx; // Context for offscreen canvas
 
         // --- Buffering Listeners ---
+        // Synchronous guard: true only during our own video.pause() call so the
+        // 'pause' event handler can tell the difference from a user-initiated pause.
+        let stallInProgress = false;
+
         const showSpinner = () => {
-            playerObject.isBuffering = true; // Set buffering flag
+            playerObject.isBuffering = true;
             spinner.classList.add('visible');
-            // Force a progress bar update check when buffering starts
+            // Explicitly pause so currentTime freezes — prevents the playhead from
+            // drifting into unbuffered territory while the video is visually frozen.
+            if (!video.paused) {
+                playerObject.stallPause = true;
+                stallInProgress = true;
+                video.pause();
+                stallInProgress = false;
+            }
             updateProgressBar();
         };
         const hideSpinner = () => {
-            playerObject.isBuffering = false; // Clear buffering flag
+            // If we stall-paused, only resume once there's enough buffered content ahead.
+            // Without this check, canplay/FRAG_BUFFERED fire with only a fragment or two,
+            // the video plays briefly, fires waiting again, and the playhead creeps forward.
+            if (playerObject.stallPause) {
+                let bufferAhead = 0;
+                try {
+                    const ct = video.currentTime;
+                    for (let i = 0; i < video.buffered.length; i++) {
+                        if (video.buffered.start(i) <= ct + 0.5 && video.buffered.end(i) > ct) {
+                            bufferAhead = video.buffered.end(i) - ct;
+                            break;
+                        }
+                    }
+                } catch {}
+                if (bufferAhead < 5) return; // Not enough yet — stay paused, wait for more fragments.
+            }
+            playerObject.isBuffering = false;
             spinner.classList.remove('visible');
-             // Force a progress bar update check when buffering ends
+            if (playerObject.stallPause) {
+                playerObject.stallPause = false;
+                video.play().catch(()=>{});
+            }
             updateProgressBar();
         };
         video.addEventListener('waiting', showSpinner);
         video.addEventListener('playing', hideSpinner);
-        // Also hide spinner if video can play initially or recovers
         video.addEventListener('canplay', hideSpinner);
-        video.addEventListener('pause', hideSpinner); // Hide spinner on manual pause too
+        video.addEventListener('pause', () => {
+            if (stallInProgress) return; // Our own pause — leave spinner and stallPause intact.
+            // User-initiated pause: don't auto-resume when data loads.
+            playerObject.stallPause = false;
+            if (playerObject.isBuffering) {
+                playerObject.isBuffering = false;
+                spinner.classList.remove('visible');
+                updateProgressBar();
+            }
+        });
+        // Expose via playerObject so the shared HLS error handler can trigger stall/resume.
+        playerObject.showSpinner = showSpinner;
+        playerObject.hideSpinner = hideSpinner;
 
 
         // --- Canvas Rendering Loop (No changes needed in this function itself based on latest issues) ---
@@ -1995,6 +2767,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         playedBar.className = "played";
         const thumb = document.createElement("div");
         thumb.className = "thumb";
+        thumb.draggable = false;
         progressBar.appendChild(bufferedBar);
         progressBar.appendChild(playedBar);
         progressBar.appendChild(thumb);
@@ -2099,9 +2872,18 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             }
           }
         }
+        function finishSeek() {
+          if (!isSeeking) return;
+          isSeeking = false;
+          progressBar.classList.remove('seeking');
+          progressBar.style.cursor = 'pointer';
+          document.body.style.userSelect = '';
+          applyPendingSeek();
+        }
         // Mouse down on progress bar starts seeking
         progressBar.addEventListener("mousedown", e => {
           if (e.button === 0) {
+            e.preventDefault();
             isSeeking = true;
             wasPlayingBeforeScrub = !video.paused;
             progressBar.classList.add('seeking');
@@ -2119,7 +2901,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           seek(e);
         }, { passive: true });
         // Mouse move updates visual position only
-        document.addEventListener("mousemove", e => { if (isSeeking) seek(e); });
+        document.addEventListener("mousemove", e => {
+          if (!isSeeking) return;
+          if (!(e.buttons & 1)) { finishSeek(); return; }
+          seek(e);
+        });
         // Touch move updates visual position only
         document.addEventListener("touchmove", e => {
           if (isSeeking) {
@@ -2129,14 +2915,9 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         }, { passive: false });
         // Mouse up — apply the single deferred seek
         document.addEventListener("mouseup", e => {
-          if (e.button === 0 && isSeeking) {
-            isSeeking = false;
-            progressBar.classList.remove('seeking');
-            progressBar.style.cursor = 'pointer';
-            document.body.style.userSelect = '';
-            applyPendingSeek();
-          }
+          if (e.button === 0) finishSeek();
         });
+        window.addEventListener("blur", finishSeek);
         // Touch end — apply the single deferred seek
         document.addEventListener("touchend", e => {
           if (isSeeking) {
@@ -2160,6 +2941,16 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           }
         });
         controlBar.appendChild(fsBtnDesktop);
+
+        // Tide forecast is available from the fullscreen timeline controls.
+        const tidesControl = document.createElement('div');
+        tidesControl.className = 'tides-control';
+        const tidesBtn = document.createElement('button');
+        tidesBtn.type = 'button';
+        tidesBtn.textContent = 'Tides';
+        tidesBtn.setAttribute('aria-label', 'Open tide forecast');
+        tidesControl.appendChild(tidesBtn);
+        controlBar.appendChild(tidesControl);
 
         // Update fullscreen button icon based on state
         function updateFsBtn() {
@@ -2243,6 +3034,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         document.addEventListener("fullscreenchange", setInitialControlsVisibility);
         document.addEventListener("webkitfullscreenchange", setInitialControlsVisibility);
 
+        playerObject.tidesCleanup = attachTideControl(container, tidesBtn, { onOpen: showControlsTemporarily });
+
         // Add resize listener for canvas adjustments
         window.addEventListener("resize", playerObject.resizeHandler); // Handle window resize too
 
@@ -2297,7 +3090,12 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
             if (video.autoplay || !video.paused) {
-                video.play().catch(()=>{});
+                video.play().catch(() => {
+                    // Autoplay blocked — retry once data is ready.
+                    video.addEventListener('canplay', () => {
+                        if (video.paused) video.play().catch(()=>{});
+                    }, { once: true });
+                });
             }
           });
 
@@ -2306,14 +3104,26 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             console.error(`HLS Error: Type=${data.type}, Details=${data.details}`, data);
 
             if (data.fatal) {
+              // Pause the playhead so the timeline only reflects actually loaded video.
+              // We'll resume via canplay once HLS recovers.
+              const wasPlaying = !video.paused;
+              video.pause();
               switch(data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
                   console.log("Network error, retrying load...");
-                  setTimeout(() => { if (hlsInstance) hlsInstance.startLoad(); }, 2000);
+                  setTimeout(() => {
+                    if (hlsInstance) {
+                      hlsInstance.startLoad();
+                      if (wasPlaying) video.addEventListener('canplay', () => video.play().catch(()=>{}), { once: true });
+                    }
+                  }, 2000);
                   break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
                   console.log("Fatal media error, attempting recovery...");
-                  if (hlsInstance) hlsInstance.recoverMediaError();
+                  if (hlsInstance) {
+                    hlsInstance.recoverMediaError();
+                    if (wasPlaying) video.addEventListener('canplay', () => video.play().catch(()=>{}), { once: true });
+                  }
                   break;
                 default:
                   console.log("Unrecoverable HLS error, destroying instance.");
@@ -2327,26 +3137,40 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
               switch (data.details) {
                 case Hls.ErrorDetails.BUFFER_STALLED_ERROR:
+                  console.warn('Buffer stalled — freezing playhead until data loads.');
+                  // Delegate to the stall-pause mechanism; don't nudge currentTime forward.
+                  if (playerObject.showSpinner) playerObject.showSpinner();
+                  break;
                 case Hls.ErrorDetails.BUFFER_SEEK_OVER_HOLE:
-                  console.warn(`Non-fatal media error (${data.details}), attempting recovery.`);
+                  console.warn('Buffer seek-over-hole — nudging past gap.');
                   if (hlsInstance) {
                     hlsInstance.recoverMediaError();
-                    // Attempt to nudge playback after a short delay if still paused
                     const wasPaused = video.paused;
                     setTimeout(() => {
-                      if (video.currentTime === data.buffer || (wasPaused && video.paused)) { // Check if still stuck
-                        console.log("Nudging video playback after stall/hole recovery.");
-                        video.currentTime += 0.1; // Small seek forward
-                        if(wasPaused) video.play().catch(()=>{}); // Try to play if it was paused by the stall
+                      if (video.currentTime === data.buffer || (wasPaused && video.paused)) {
+                        video.currentTime += 0.1;
+                        if (wasPaused) video.play().catch(()=>{});
                       }
-                    }, 500); // Wait 500ms
+                    }, 500);
                   }
                   break;
                 case Hls.ErrorDetails.BUFFER_FULL_ERROR:
                   console.log("Buffer full, HLS.js should handle this.");
                   break;
               }
+            } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !data.fatal) {
+              // Non-fatal network errors (e.g. fragment load timeout) mean content isn't
+              // arriving. Proactively pause so the playhead stops advancing before the
+              // buffer fully drains. Resume fires via FRAG_BUFFERED once a fragment lands.
+              if (!video.paused && playerObject.showSpinner) playerObject.showSpinner();
             }
+          });
+
+          // When HLS.js appends a new fragment, try to resume if we stall-paused.
+          // Called unconditionally — each hideSpinner impl checks its own stall flag
+          // (stallPause for desktop, mStallPause for mobile).
+          hlsInstance.on(Hls.Events.FRAG_BUFFERED, () => {
+            if (playerObject.hideSpinner) playerObject.hideSpinner();
           });
 
         } else if (canPlayNativeHls) {
@@ -2361,6 +3185,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           // Add basic error listener for native playback
           video.addEventListener('error', e => {
              console.error(`Native HLS Error for ${url}:`, video.error);
+             // Pause the playhead so the timeline only reflects actually loaded video.
+             const wasPlaying = !video.paused;
+             video.pause();
+             if (wasPlaying) video.addEventListener('canplay', () => video.play().catch(()=>{}), { once: true });
              // Optionally display error in UI
              const tb = container.querySelector('.title-bar, .video-title-row span');
              if(tb) {
@@ -2445,6 +3273,9 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       // Run cleanup for controls/gestures
       if (pseudoFsCleanup) { pseudoFsCleanup(); pseudoFsCleanup = null; }
+      const tidePanel = container.querySelector('.tide-panel');
+      if (tidePanel) tidePanel.hidden = true;
+      container.classList.remove('tide-panel-open');
 
       // Remove fullscreen classes
       htmlEl.classList.remove("pseudo-fullscreen-mobile", "non-safari");
@@ -2479,6 +3310,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       let controlsTimeout_fs;
       let isFsSeeking = false;
       let listeners = []; // Store added listeners for cleanup
+      let tidesCleanup = null;
 
       // Helper to add listeners and track them
       function addListener(el, type, fn, opts) {
@@ -2533,10 +3365,20 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       fsPlayedBar.className = "played";
       const fsThumb = document.createElement("div");
       fsThumb.className = "thumb";
+      fsThumb.draggable = false;
       fsProgressBar.appendChild(fsBufferedBar);
       fsProgressBar.appendChild(fsPlayedBar);
       fsProgressBar.appendChild(fsThumb);
       fsControlBar.appendChild(fsProgressBar);
+
+      const fsTidesControl = document.createElement('div');
+      fsTidesControl.className = 'tides-control';
+      const fsTidesBtn = document.createElement('button');
+      fsTidesBtn.type = 'button';
+      fsTidesBtn.textContent = 'Tides';
+      fsTidesBtn.setAttribute('aria-label', 'Open tide forecast');
+      fsTidesControl.appendChild(fsTidesBtn);
+      fsControlBar.appendChild(fsTidesControl);
 
       const fsExitBtn = document.createElement("button");
       fsExitBtn.innerHTML = "&#x2921;"; // Exit fullscreen symbol
@@ -2550,6 +3392,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       fsControls.appendChild(fsTitleBar);
 
       container.appendChild(fsControls);
+      tidesCleanup = attachTideControl(container, fsTidesBtn, { onOpen: showFsControls });
 
       // --- Add Event Listeners ---
 
@@ -2643,8 +3486,15 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           }
         }
       };
+      const finishFsSeek = () => {
+        if (!isFsSeeking) return;
+        isFsSeeking = false;
+        fsProgressBar.style.cursor = 'pointer';
+        applyFsPendingSeek();
+      };
       addListener(fsProgressBar, "mousedown", e => {
         if (e.button === 0) {
+          e.preventDefault();
           isFsSeeking = true;
           fsWasPlayingBeforeScrub = !video.paused;
           fsSeek(e);
@@ -2658,14 +3508,20 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         fsSeek(e);
       }, { passive: false });
       // Use window listeners for move/end to catch events outside the bar
-      const handleFsMouseMove = e => { if (isFsSeeking) fsSeek(e); };
+      const handleFsMouseMove = e => {
+        if (!isFsSeeking) return;
+        if (!(e.buttons & 1)) { finishFsSeek(); return; }
+        fsSeek(e);
+      };
       const handleFsTouchMove = e => { if (isFsSeeking) { e.preventDefault(); fsSeek(e); } };
-      const handleFsMouseUp = e => { if (e.button === 0 && isFsSeeking) { isFsSeeking = false; fsProgressBar.style.cursor = 'pointer'; applyFsPendingSeek(); } };
-      const handleFsTouchEnd = () => { if (isFsSeeking) { isFsSeeking = false; applyFsPendingSeek(); } };
+      const handleFsMouseUp = e => { if (e.button === 0) finishFsSeek(); };
+      const handleFsTouchEnd = () => finishFsSeek();
+      const handleFsBlur = () => finishFsSeek();
       addListener(window, "mousemove", handleFsMouseMove);
       addListener(window, "touchmove", handleFsTouchMove, { passive: false });
       addListener(window, "mouseup", handleFsMouseUp);
       addListener(window, "touchend", handleFsTouchEnd);
+      addListener(window, "blur", handleFsBlur);
 
       // Button Actions
       addListener(fsPlayPauseBtn, "click", e => {
@@ -2691,6 +3547,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           el.removeEventListener(type, fn, opts);
         });
         listeners = []; // Clear the array
+        if (tidesCleanup) {
+          tidesCleanup();
+          tidesCleanup = null;
+        }
         clearTimeout(controlsTimeout_fs); // Clear any pending hide timer
         clearInterval(fsPollId);
       };
