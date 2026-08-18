@@ -3276,7 +3276,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       const prepReinsert = { curParent, curNext, nextParent, nextNext };
       const inX = direction > 0 ? '-100%' : '100%'; // Side the incoming video starts on
-      const prepVideo = v => {
+      // Give BOTH videos the exact fullscreen sizing. Without it the current
+      // video drops back to its intrinsic (native) resolution once it leaves the
+      // .player-fullscreen-mobile container during the drag, blowing up its size.
+      const prepVideo = (v, xOffset) => {
         v.style.position = 'absolute';
         v.style.top = '0';
         v.style.left = '0';
@@ -3286,19 +3289,39 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         v.style.margin = '0';
         v.style.transformOrigin = 'center center';
         v.style.transition = 'none';
-        v.style.transform = `translateX(${inX})`;
+        v.style.transform = `translateX(${xOffset})`;
         v.controls = false; // Keep native MP4 controls out of the drag
         overlay.appendChild(v);
       };
-      prepVideo(nextVid); // Incoming starts off-screen in the swipe direction
-      curVid.style.transition = 'none';
-      curVid.style.transform = 'translateX(0)';
-      curVid.controls = false;
-      overlay.appendChild(curVid);
+      prepVideo(nextVid, inX); // Incoming starts off-screen in the swipe direction
+      prepVideo(curVid, 0);    // Current stays in place, same fullscreen size
+
+      // Don't reveal a neighbor that has no decoded frame yet — it would slide
+      // in as a black box. Hold it invisible and fade it in once it gets data.
+      let revealNext = null;
+      if (nextVid.readyState < 2) {
+        nextVid.style.transition = 'opacity 150ms ease';
+        nextVid.style.opacity = '0';
+        let revealed = false;
+        const check = () => {
+          if (revealed) return;
+          revealed = true;
+          nextVid.style.transition = 'opacity 150ms ease';
+          nextVid.style.opacity = '1';
+        };
+        nextVid.addEventListener('loadeddata', check);
+        nextVid.addEventListener('playing', check);
+        revealNext = () => {
+          nextVid.removeEventListener('loadeddata', check);
+          nextVid.removeEventListener('playing', check);
+          nextVid.style.removeProperty('transition');
+          nextVid.style.removeProperty('opacity');
+        };
+      }
 
       // Re-insert a video back into its original container, preserving order.
       const replaceVid = (v, parent, next) => {
-        const styles = ['position','top','left','width','height','objectFit','margin','transformOrigin','transition','transform','inset'];
+        const styles = ['position','top','left','width','height','objectFit','margin','transformOrigin','transition','transform','inset','opacity'];
         styles.forEach(s => v.style.removeProperty(s));
         if (next && next.parentNode === parent) parent.insertBefore(v, next);
         else parent.appendChild(v);
@@ -3319,7 +3342,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       // Force reflow so the initial off-screen position is committed.
       void overlay.offsetWidth;
 
-      return { current, curVid, nextVid, prepReinsert, overlay, curTitle, nextTitle, target, direction, inX, replaceVid };
+      return { current, curVid, nextVid, prepReinsert, overlay, curTitle, nextTitle, target, direction, inX, replaceVid, revealNext };
     }
 
     function updateSwipeDrag(drag, dx) {
@@ -3333,7 +3356,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
     }
 
     function endSwipeDrag(drag, dx) {
-      const { current, curVid, nextVid, prepReinsert, overlay, curTitle, nextTitle, target, direction, inX, replaceVid } = drag;
+      const { current, curVid, nextVid, prepReinsert, overlay, curTitle, nextTitle, target, direction, inX, replaceVid, revealNext } = drag;
 
       // Commit only when the finger ends up far enough out in the drag's locked direction.
       const commit = Math.abs(dx) > 50 && dx * direction > 0;
@@ -3361,6 +3384,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       setTimeout(() => {
         replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext);
         replaceVid(nextVid, prepReinsert.nextParent, prepReinsert.nextNext);
+        if (revealNext) revealNext();
 
         if (commit) {
           exitPseudoFullscreen(current, curVid);
