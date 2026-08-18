@@ -3218,7 +3218,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
     function navigatePseudoFullscreenVideo(direction) {
       const current = document.querySelector('.player-fullscreen-mobile');
-      if (!current) return;
+      if (!current || current._swipeTransition) return;
 
       const enabledUrls = getStreamList().filter(stream => stream.enabled).map(stream => stream.url);
       const currentIndex = enabledUrls.indexOf(current.dataset.url);
@@ -3228,8 +3228,75 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const target = players[enabledUrls[nextIndex]];
       if (!target || target.container === current) return;
 
-      exitPseudoFullscreen(current, players[current.dataset.url]?.video);
-      enterPseudoFullscreen(target.container, target.video);
+      const currentPlayer = players[current.dataset.url];
+      if (!currentPlayer) return;
+
+      current._swipeTransition = true;
+      const curVid = currentPlayer.video;
+      const nextVid = target.video;
+
+      // Snapshot original DOM locations so we can put the videos back afterwards.
+      const curParent = curVid.parentNode;
+      const curNext = curVid.nextSibling;
+      const nextParent = nextVid.parentNode;
+      const nextNext = nextVid.nextSibling;
+
+      // Play the incoming stream during the transition so it has frames to show.
+      if (nextVid.paused) nextVid.play().catch(()=>{});
+
+      // Fixed overlay that covers the screen during the swipe animation.
+      const overlay = document.createElement('div');
+      overlay.id = 'fsSwipeOverlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:3000;background:#000;overflow:hidden;pointer-events:auto;';
+      document.body.appendChild(overlay);
+
+      const prepReinsert = { curParent, curNext, nextParent, nextNext };
+      const prepVideo = v => {
+        v.style.position = 'absolute';
+        v.style.top = '0';
+        v.style.left = '0';
+        v.style.width = '100%';
+        v.style.height = '100%';
+        v.style.objectFit = 'contain';
+        v.style.margin = '0';
+        v.style.transformOrigin = 'center center';
+        v.style.transition = 'none';
+        v.style.transform = direction > 0 ? 'translateX(100%)' : 'translateX(-100%)';
+        v.controls = false; // Keep native MP4 controls out of the animation
+        overlay.appendChild(v);
+      };
+      prepVideo(nextVid); // Incoming starts off-screen in the swipe direction
+      curVid.style.transition = 'none';
+      curVid.style.transform = 'translateX(0)';
+      curVid.controls = false;
+      overlay.appendChild(curVid);
+
+      // Re-insert a video back into its original container, preserving order.
+      const replaceVid = (v, parent, next) => {
+        const styles = ['position','top','left','width','height','objectFit','margin','transformOrigin','transition','transform','inset'];
+        styles.forEach(s => v.style.removeProperty(s));
+        if (next && next.parentNode === parent) parent.insertBefore(v, next);
+        else parent.appendChild(v);
+      };
+
+      // Force reflow so the initial off-screen position is committed.
+      void overlay.offsetWidth;
+
+      // Quick slide: current exits in the swipe direction, incoming takes the frame.
+      const dur = '180ms';
+      curVid.style.transition = `transform ${dur} ease-out`;
+      nextVid.style.transition = `transform ${dur} ease-out`;
+      curVid.style.transform = direction > 0 ? 'translateX(-100%)' : 'translateX(100%)';
+      nextVid.style.transform = 'translateX(0)';
+
+      setTimeout(() => {
+        replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext);
+        replaceVid(nextVid, prepReinsert.nextParent, prepReinsert.nextNext);
+        overlay.remove();
+        exitPseudoFullscreen(current, curVid);
+        enterPseudoFullscreen(target.container, nextVid);
+        current._swipeTransition = false;
+      }, 190);
     }
 
     function enterPseudoFullscreen(container, video) {
@@ -3924,6 +3991,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
         let sidebarTouchStartX = null;
         let sidebarTouchStartY = null;
+        let sidebarGestureBlocked = false;
+        let mainGestureBlocked = false;
         const swipeThreshold = 50;
         const openMobileSidebar = () => {
           sidebar.classList.remove("hidden");
@@ -3934,28 +4003,30 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           sidebarToggle.style.display = "block";
         };
 
-        // A right swipe on the open sidebar closes it.
+        // A left swipe on the open sidebar closes it.
         sidebar.addEventListener("touchstart", e => {
           const touch = e.changedTouches[0];
           sidebarTouchStartX = touch.clientX;
           sidebarTouchStartY = touch.clientY;
+          sidebarGestureBlocked = e.target.closest('button, input, a') !== null;
         }, { passive: true });
         sidebar.addEventListener("touchend", e => {
           if (sidebarTouchStartX === null) return;
           const touch = e.changedTouches[0];
           const deltaX = touch.clientX - sidebarTouchStartX;
           const deltaY = touch.clientY - sidebarTouchStartY;
-          if (deltaX > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+          if (!sidebarGestureBlocked && deltaX < -swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY)) {
             closeMobileSidebar();
           }
           sidebarTouchStartX = null;
           sidebarTouchStartY = null;
+          sidebarGestureBlocked = false;
         });
 
         // Toggle button opens sidebar
         sidebarToggle.addEventListener("click", openMobileSidebar);
 
-        // In the default view, a left swipe opens and a right swipe closes.
+        // In the default view, a right swipe opens and a left swipe closes.
         let mainTouchStartX = null;
         let mainTouchStartY = null;
         mainContent.addEventListener("touchstart", e => {
@@ -3963,21 +4034,23 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           const touch = e.changedTouches[0];
           mainTouchStartX = touch.clientX;
           mainTouchStartY = touch.clientY;
+          mainGestureBlocked = e.target.closest('button, input, a, .progress-bar, .controls-container') !== null;
         }, { passive: true }); // Passive listener for performance
         mainContent.addEventListener("touchend", e => {
           if (mainTouchStartX === null || document.querySelector('.player-fullscreen-mobile') || urlModal.style.display === "block") return;
           const touch = e.changedTouches[0];
           const deltaX = touch.clientX - mainTouchStartX;
           const deltaY = touch.clientY - mainTouchStartY;
-          if (Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY)) {
-            if (deltaX < 0 && sidebar.classList.contains("hidden")) openMobileSidebar();
-            else if (deltaX > 0 && !sidebar.classList.contains("hidden")) closeMobileSidebar();
+          if (!mainGestureBlocked && Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (deltaX > 0 && sidebar.classList.contains("hidden")) openMobileSidebar();
+            else if (deltaX < 0 && !sidebar.classList.contains("hidden")) closeMobileSidebar();
           } else if (!sidebar.classList.contains("hidden") &&
                      !e.target.closest('button, input, a, .player-container')) {
             closeMobileSidebar();
           }
           mainTouchStartX = null;
           mainTouchStartY = null;
+          mainGestureBlocked = false;
         }, { passive: true });
       }
     }
