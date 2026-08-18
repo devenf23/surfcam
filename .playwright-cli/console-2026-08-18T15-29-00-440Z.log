@@ -1,0 +1,17 @@
+[     192ms] [LOG] Safari Mobile detected: Added PWA meta tags. @ http://localhost:8090/index.html:1085
+[     863ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8090/favicon.ico:0
+[     877ms] [LOG] Safari Mobile detected: Added PWA meta tags. @ http://localhost:8090/index.html:1085
+[    1688ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://surfcam-alpha.vercel.app/api/proxy?url=https%3A%2F%2Fexample.com%2Fwc-cam2%2Fplaylist.m3u8:0
+[    1695ms] [ERROR] HLS Error: Type=networkError, Details=manifestLoadError {type: networkError, details: manifestLoadError, fatal: true, url: https://surfcam-alpha.vercel.app/api/proxy?url=https%3A%2F%2Fexample.com%2Fwc-cam2%2Fplaylist.m3u8, loader: loader} @ http://localhost:8090/index.html:3103
+[    1695ms] [LOG] Network error, retrying load... @ http://localhost:8090/index.html:3112
+[    1695ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://surfcam-alpha.vercel.app/api/proxy?url=https%3A%2F%2Fexample.com%2Fwc-cam1%2Fplaylist.m3u8:0
+[    1696ms] [ERROR] HLS Error: Type=networkError, Details=manifestLoadError {type: networkError, details: manifestLoadError, fatal: true, url: https://surfcam-alpha.vercel.app/api/proxy?url=https%3A%2F%2Fexample.com%2Fwc-cam1%2Fplaylist.m3u8, loader: loader} @ http://localhost:8090/index.html:3103
+[    1696ms] [LOG] Network error, retrying load... @ http://localhost:8090/index.html:3112
+[   22333ms] [LOG] Safari Mobile detected: Added PWA meta tags. @ http://localhost:8090/index.html:1085
+[   22358ms] [LOG] Safari Mobile detected: Added PWA meta tags. @ http://localhost:8090/index.html:1085
+[   22527ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://surfcam-alpha.vercel.app/api/proxy?url=https%3A%2F%2Fexample.com%2Fwc-cam1%2Fplaylist.m3u8:0
+[   22527ms] [ERROR] HLS Error: Type=networkError, Details=manifestLoadError {type: networkError, details: manifestLoadError, fatal: true, url: https://surfcam-alpha.vercel.app/api/proxy?url=https%3A%2F%2Fexample.com%2Fwc-cam1%2Fplaylist.m3u8, loader: loader} @ http://localhost:8090/index.html:3103
+[   22528ms] [LOG] Network error, retrying load... @ http://localhost:8090/index.html:3112
+[   22547ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://surfcam-alpha.vercel.app/api/proxy?url=https%3A%2F%2Fexample.com%2Fwc-cam2%2Fplaylist.m3u8:0
+[   22548ms] [ERROR] HLS Error: Type=networkError, Details=manifestLoadError {type: networkError, details: manifestLoadError, fatal: true, url: https://surfcam-alpha.vercel.app/api/proxy?url=https%3A%2F%2Fexample.com%2Fwc-cam2%2Fplaylist.m3u8, loader: loader} @ http://localhost:8090/index.html:3103
+[   22548ms] [LOG] Network error, retrying load... @ http://localhost:8090/index.html:3112
