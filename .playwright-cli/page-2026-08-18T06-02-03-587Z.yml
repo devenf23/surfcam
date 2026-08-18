@@ -1,0 +1,6 @@
+- generic [ref=e3]:
+  - button "Add URLs" [ref=e4] [cursor=pointer]
+  - generic [ref=e5]:
+    - button "Show All" [ref=e6] [cursor=pointer]
+    - button "Hide All" [ref=e7] [cursor=pointer]
+  - paragraph [ref=e9]: No streams added. Click 'Add URLs'.
