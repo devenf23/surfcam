@@ -669,6 +669,27 @@
     .player-container.player-fullscreen-mobile .fullscreen-controls {
       display: block !important;
     }
+    /* Title box that slides with its video during a fullscreen swipe drag */
+    #fsSwipeOverlay .fs-swipe-title {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      padding: 8px 16px;
+      font-size: 15px;
+      line-height: 1.3;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+      max-width: 85%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      z-index: 1;
+      pointer-events: none;
+      will-change: transform, opacity;
+    }
 
     .fullscreen-controls {
       display: none;
@@ -3216,20 +3237,23 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
     /* --- Mobile Pseudo-Fullscreen Logic --- */
     let pseudoFsCleanup = null; // Store cleanup function for current fullscreen instance
 
-    function navigatePseudoFullscreenVideo(direction) {
+    // A horizontal drag on the fullscreen video is finger-following: the current
+    // video tracks the finger while the next stream peeks in from the side. On
+    // release the gesture either commits (swap streams) or cancels (bounce back).
+    function startSwipeDrag(direction) {
       const current = document.querySelector('.player-fullscreen-mobile');
-      if (!current || current._swipeTransition) return;
+      if (!current || current._swipeTransition) return null;
 
       const enabledUrls = getStreamList().filter(stream => stream.enabled).map(stream => stream.url);
       const currentIndex = enabledUrls.indexOf(current.dataset.url);
-      if (enabledUrls.length < 2 || currentIndex === -1) return;
+      if (enabledUrls.length < 2 || currentIndex === -1) return null;
 
       const nextIndex = (currentIndex + direction + enabledUrls.length) % enabledUrls.length;
       const target = players[enabledUrls[nextIndex]];
-      if (!target || target.container === current) return;
+      if (!target || target.container === current) return null;
 
       const currentPlayer = players[current.dataset.url];
-      if (!currentPlayer) return;
+      if (!currentPlayer) return null;
 
       current._swipeTransition = true;
       const curVid = currentPlayer.video;
@@ -3241,16 +3265,17 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const nextParent = nextVid.parentNode;
       const nextNext = nextVid.nextSibling;
 
-      // Play the incoming stream during the transition so it has frames to show.
+      // Play the incoming stream so it has frames to show while peeking in.
       if (nextVid.paused) nextVid.play().catch(()=>{});
 
-      // Fixed overlay that covers the screen during the swipe animation.
+      // Fixed overlay that covers the screen during the drag.
       const overlay = document.createElement('div');
       overlay.id = 'fsSwipeOverlay';
-      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:3000;background:#000;overflow:hidden;pointer-events:auto;';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:3000;background:#000;overflow:hidden;pointer-events:auto;will-change:background;transition:background 0.3s ease;';
       document.body.appendChild(overlay);
 
       const prepReinsert = { curParent, curNext, nextParent, nextNext };
+      const inX = direction > 0 ? '-100%' : '100%'; // Side the incoming video starts on
       const prepVideo = v => {
         v.style.position = 'absolute';
         v.style.top = '0';
@@ -3261,8 +3286,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         v.style.margin = '0';
         v.style.transformOrigin = 'center center';
         v.style.transition = 'none';
-        v.style.transform = direction > 0 ? 'translateX(100%)' : 'translateX(-100%)';
-        v.controls = false; // Keep native MP4 controls out of the animation
+        v.style.transform = `translateX(${inX})`;
+        v.controls = false; // Keep native MP4 controls out of the drag
         overlay.appendChild(v);
       };
       prepVideo(nextVid); // Incoming starts off-screen in the swipe direction
@@ -3279,24 +3304,78 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         else parent.appendChild(v);
       };
 
+      // Title boxes, each centered on its own video and sliding with it.
+      const makeTitle = text => {
+        const box = document.createElement('div');
+        box.className = 'fs-swipe-title';
+        box.style.transform = 'translateX(-50%)';
+        box.textContent = text;
+        overlay.appendChild(box);
+        return box;
+      };
+      const curTitle = makeTitle(extractTitle(current.dataset.url));
+      const nextTitle = makeTitle(extractTitle(target.container.dataset.url));
+
       // Force reflow so the initial off-screen position is committed.
       void overlay.offsetWidth;
 
-      // Quick slide: current exits in the swipe direction, incoming takes the frame.
-      const dur = '180ms';
-      curVid.style.transition = `transform ${dur} ease-out`;
-      nextVid.style.transition = `transform ${dur} ease-out`;
-      curVid.style.transform = direction > 0 ? 'translateX(-100%)' : 'translateX(100%)';
-      nextVid.style.transform = 'translateX(0)';
+      return { current, curVid, nextVid, prepReinsert, overlay, curTitle, nextTitle, target, direction, inX, replaceVid };
+    }
+
+    function updateSwipeDrag(drag, dx) {
+      const d = drag.direction;
+      const curX = `translateX(${dx}px)`;
+      const nextX = `translateX(calc(${d > 0 ? '-100%' : '100%'} + ${dx}px))`;
+      drag.curVid.style.transform = curX;
+      drag.nextVid.style.transform = nextX;
+      drag.curTitle.style.transform = `translateX(${dx}px) translateX(-50%)`;
+      drag.nextTitle.style.transform = `${nextX} translateX(-50%)`;
+    }
+
+    function endSwipeDrag(drag, dx) {
+      const { current, curVid, nextVid, prepReinsert, overlay, curTitle, nextTitle, target, direction, inX, replaceVid } = drag;
+
+      // Commit only when the finger ends up far enough out in the drag's locked direction.
+      const commit = Math.abs(dx) > 50 && dx * direction > 0;
+      const outX = direction > 0 ? '100%' : '-100%';
+      const ease = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+      const dur = '200ms';
+
+      curVid.style.transition = `transform ${dur} ${ease}`;
+      nextVid.style.transition = `transform ${dur} ${ease}`;
+      curTitle.style.transition = `transform ${dur} ${ease}, opacity 0.25s ease`;
+      nextTitle.style.transition = `transform ${dur} ${ease}, opacity 0.25s ease`;
+
+      if (commit) {
+        curVid.style.transform = `translateX(${outX})`;
+        nextVid.style.transform = 'translateX(0)';
+        curTitle.style.transform = `translateX(${outX}) translateX(-50%)`;
+        nextTitle.style.transform = 'translateX(-50%)';
+      } else {
+        curVid.style.transform = 'translateX(0)';
+        nextVid.style.transform = `translateX(${inX})`;
+        curTitle.style.transform = 'translateX(-50%)';
+        nextTitle.style.transform = `translateX(${inX}) translateX(-50%)`;
+      }
 
       setTimeout(() => {
         replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext);
         replaceVid(nextVid, prepReinsert.nextParent, prepReinsert.nextNext);
-        overlay.remove();
-        exitPseudoFullscreen(current, curVid);
-        enterPseudoFullscreen(target.container, nextVid);
+
+        if (commit) {
+          exitPseudoFullscreen(current, curVid);
+          enterPseudoFullscreen(target.container, nextVid);
+        }
+
         current._swipeTransition = false;
-      }, 190);
+
+        // Videos are back in place — fade the overlay (and title boxes) away.
+        overlay.style.pointerEvents = 'none';
+        overlay.style.background = 'transparent';
+        curTitle.style.opacity = '0';
+        nextTitle.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 320);
+      }, 230);
     }
 
     function enterPseudoFullscreen(container, video) {
@@ -3673,6 +3752,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       let panStartY = 0;            // Finger Y at pan start
       let panStartTranslateX = 0;   // Translation X at pan start
       let panStartTranslateY = 0;   // Translation Y at pan start
+      let swipeDrag = null;         // Active finger-follow stream-swap drag
 
       const listeners = []; // Store listeners for cleanup
       function addListener(el, type, fn, opts) {
@@ -3714,6 +3794,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const handleTouchStart = e => {
         // Ignore touches starting on controls
         if (e.target.closest('.fullscreen-controls')) return;
+        // Only handle gestures on the fullscreen player (or the body-level swipe overlay).
+        if (!e.target.closest('.player-fullscreen-mobile, #fsSwipeOverlay')) return;
         isGesturing = true; // Mark gesture active
 
         if (e.touches.length === 1) {
@@ -3731,9 +3813,15 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             touchStartY = e.touches[0].clientY;
             touchStartTime = Date.now();
             isSwipingY = false;
+            swipeDrag = null;
           }
         } else if (e.touches.length === 2) {
           // Start pinch-zoom/pan gesture
+          // Cancel any in-progress stream-swap drag before the pinch takes over.
+          if (swipeDrag) {
+            endSwipeDrag(swipeDrag, 0);
+            swipeDrag = null;
+          }
           isPanning = false; // Cancel any single-finger pan
           isSwipingY = false;
            touchStartX = null;
@@ -3775,10 +3863,20 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           const dx = e.touches[0].clientX - touchStartX;
           const dy = e.touches[0].clientY - touchStartY;
           const dt = Date.now() - touchStartTime;
-          if (!isSwipingY && (Math.abs(dy) > 10 || dt > 100)) {
+          if (!isSwipingY && (Math.abs(dy) > 10 || dt > 100) && Math.abs(dy) > Math.abs(dx)) {
             isSwipingY = true;
           }
-          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) e.preventDefault();
+          // Finger-follow drag: once horizontal movement dominates, snap the
+          // videos to the finger and keep them tracking until release.
+          if (!swipeDrag && Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy)) {
+            swipeDrag = startSwipeDrag(dx > 0 ? 1 : -1);
+          }
+          if (swipeDrag) {
+            e.preventDefault();
+            updateSwipeDrag(swipeDrag, dx);
+          } else if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+            e.preventDefault();
+          }
         } else if (e.touches.length === 2 && initialDistance !== null) {
           // Handle pinch-zoom/pan
           e.preventDefault(); // Prevent page scroll/zoom during gesture
@@ -3831,14 +3929,15 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           applyTransform();
         }
 
-        // Horizontal swipes switch streams; vertical swipes control fullscreen UI.
+        // Horizontal finger-follow drags switch streams; vertical swipes control fullscreen UI.
         if (e.touches.length === 0 && touchStartX !== null && touchStartY !== null) {
           const touch = e.changedTouches[0];
-          const dx = touch.clientX - touchStartX;
-          const dy = touch.clientY - touchStartY;
+          const dx = touch ? touch.clientX - touchStartX : 0;
+          const dy = touch ? touch.clientY - touchStartY : 0;
           const dt = Date.now() - touchStartTime;
-          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && dt < 500) {
-            navigatePseudoFullscreenVideo(dx < 0 ? 1 : -1);
+          if (swipeDrag) {
+            endSwipeDrag(swipeDrag, dx);
+            swipeDrag = null;
           } else if (isSwipingY && Math.abs(dy) > 50 && dt < 500) {
             const open = container.classList.contains('controls-open');
             if (dy < 0) { // Swipe up -> Show controls
@@ -3858,14 +3957,16 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           touchStartTime = null;
           isSwipingY = false;
           isGesturing = false;
+          swipeDrag = null;
         }
       };
 
-      // Add listeners to the container
-      addListener(container, 'touchstart', handleTouchStart, { passive: false }); // Need active for preventDefault
-      addListener(container, 'touchmove', handleTouchMove, { passive: false }); // Need active for preventDefault
-      addListener(container, 'touchend', handleTouchEnd);
-      addListener(container, 'touchcancel', handleTouchEnd); // Handle cancellation
+      // Listen on the document so gestures keep working while a swipe drag
+      // reparents the video into the body-level overlay mid-touch.
+      addListener(document, 'touchstart', handleTouchStart, { passive: false }); // Need active for preventDefault
+      addListener(document, 'touchmove', handleTouchMove, { passive: false }); // Need active for preventDefault
+      addListener(document, 'touchend', handleTouchEnd);
+      addListener(document, 'touchcancel', handleTouchEnd); // Handle cancellation
 
       // Apply initial transform state (in case loaded with zoom/pan)
       applyTransform();
