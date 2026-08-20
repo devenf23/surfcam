@@ -3382,36 +3382,185 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       }
 
       setTimeout(() => {
-        replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext);
-        replaceVid(nextVid, prepReinsert.nextParent, prepReinsert.nextNext);
-        if (revealNext) revealNext();
-
         if (commit) {
-          exitPseudoFullscreen(current, curVid);
-          enterPseudoFullscreen(target.container, nextVid);
+          // Keep the outgoing video in the overlay while the incoming video
+          // is staged in its real container. Moving the outgoing element back
+          // first can blank its compositor layer for a frame too.
+          replaceVid(nextVid, prepReinsert.nextParent, prepReinsert.nextNext);
+          if (revealNext) revealNext();
+
+          // Do not tear down the old fullscreen player and immediately rebuild
+          // the new one. Mobile video elements are composited independently and
+          // that reparent/class toggle can expose the black fullscreen backdrop
+          // for a frame, even when the incoming video is already playing.
+          curTitle.style.opacity = '0';
+          nextTitle.style.opacity = '0';
+          handoffPseudoFullscreen(
+            current,
+            curVid,
+            target.container,
+            nextVid,
+            overlay,
+            () => replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext)
+          )
+            .catch(error => {
+              console.warn('Fullscreen video handoff failed:', error);
+              // Keep the app usable if a browser rejects the frame wait.
+              if (target.container.classList.contains('player-fullscreen-mobile')) {
+                cleanupPseudoFullscreenInstance(target.container, nextVid);
+              }
+              exitPseudoFullscreen(current, curVid);
+              target.container.style.removeProperty('z-index');
+              enterPseudoFullscreen(target.container, nextVid);
+              replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext);
+              current._swipeTransition = false;
+              target.container._swipeTransition = false;
+              overlay.remove();
+            });
+        } else {
+          replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext);
+          replaceVid(nextVid, prepReinsert.nextParent, prepReinsert.nextNext);
+          if (revealNext) revealNext();
+          current._swipeTransition = false;
+          overlay.style.pointerEvents = 'none';
+          overlay.style.background = 'transparent';
+          curTitle.style.opacity = '0';
+          nextTitle.style.opacity = '0';
+          setTimeout(() => overlay.remove(), 320);
         }
-
-        current._swipeTransition = false;
-
-        // Videos are back in place — fade the overlay (and title boxes) away.
-        overlay.style.pointerEvents = 'none';
-        overlay.style.background = 'transparent';
-        curTitle.style.opacity = '0';
-        nextTitle.style.opacity = '0';
-        setTimeout(() => overlay.remove(), 320);
       }, 230);
     }
 
-    function enterPseudoFullscreen(container, video) {
-      // Prevent entering if already in fullscreen
-      if (document.querySelector('.player-fullscreen-mobile')) return;
+    // Wait until the incoming element has presented a frame. A decoded video
+    // can still be visually blank for one compositor pass after it is moved
+    // between containers, especially on iOS. requestVideoFrameCallback is the
+    // most precise signal; the double-rAF fallback covers browsers without it.
+    function waitForVideoFrame(video, timeoutMs = 1000) {
+      return new Promise(resolve => {
+        let settled = false;
+        let frameRequested = false;
+        let timeoutId = null;
+        const events = ['loadeddata', 'canplay', 'playing'];
 
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          if (timeoutId) clearTimeout(timeoutId);
+          events.forEach(event => video.removeEventListener(event, requestFrame));
+          resolve();
+        };
+        const requestFrame = () => {
+          if (settled || frameRequested) return;
+          frameRequested = true;
+          if (typeof video.requestVideoFrameCallback === 'function') {
+            video.requestVideoFrameCallback(() => finish());
+          } else {
+            requestAnimationFrame(() => requestAnimationFrame(finish));
+          }
+        };
+
+        events.forEach(event => video.addEventListener(event, requestFrame));
+        if (video.readyState >= 2) requestFrame();
+        timeoutId = setTimeout(finish, timeoutMs);
+      });
+    }
+
+    function nextAnimationFrame() {
+      return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    }
+
+    // Switch fullscreen players while the old player remains visible beneath
+    // the incoming one. This keeps a real video frame on screen throughout the
+    // DOM/class handoff instead of revealing the black page background.
+    async function handoffPseudoFullscreen(current, currentVideo, target, targetVideo, overlay, reinsertCurrent) {
       const htmlEl = document.documentElement;
+
+      // Clean up the old player's controls and gesture listeners, but leave its
+      // fullscreen class in place while its video remains in the overlay as a
+      // visible fallback and the target prepares underneath it.
+      cleanupPseudoFullscreenInstance(current, currentVideo, { keepFullscreenClass: true });
+
+      // Keep the overlay opaque and on top until the target has presented a
+      // frame and the outgoing video has been moved out of the overlay.
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.pointerEvents = 'none';
+      overlay.style.zIndex = '3000';
+
+      // Put the target below the still-visible current player while its video
+      // gets a compositor frame. The temporary z-index is important when the
+      // target appears earlier than the current player in the DOM.
+      const originalTargetZIndex = target.style.getPropertyValue('z-index');
+      const originalTargetZPriority = target.style.getPropertyPriority('z-index');
+      target.style.setProperty('z-index', '1999', 'important');
+      activatePseudoFullscreen(target, targetVideo);
+      target._swipeTransition = true;
+
+      if (targetVideo.paused) targetVideo.play().catch(() => {});
+      await waitForVideoFrame(targetVideo);
+
+      // Raise the target only after it has a frame, then give the browser one
+      // paint before removing the old fullscreen container.
+      target.style.setProperty('z-index', '2001', 'important');
+      await nextAnimationFrame();
+      await nextAnimationFrame();
+
+      // The overlay still covers this move, so any compositor blanking on the
+      // outgoing element cannot reach the user.
+      reinsertCurrent();
+      current.classList.remove('player-fullscreen-mobile', 'controls-open', 'tide-panel-open');
+      if (!current.classList.contains('mp4-player')) {
+        currentVideo.style.transform = 'scale(1) translate(0px, 0px)';
+        currentVideo.style.transformOrigin = 'center center';
+      }
+      current._swipeTransition = false;
+      target._swipeTransition = false;
+
+      // The document is intentionally kept in pseudo-fullscreen mode for the
+      // target; only the old container was removed from that mode.
+      if (!htmlEl.classList.contains('pseudo-fullscreen-mobile')) {
+        htmlEl.classList.add('pseudo-fullscreen-mobile');
+        if (!IS_SAFARI_MOBILE) htmlEl.classList.add('non-safari');
+      }
+
+      // Reveal the already-presenting target for at least one paint before
+      // removing the overlay and restoring its normal stacking order.
+      overlay.style.background = 'transparent';
+      overlay.style.zIndex = '1998';
+      await nextAnimationFrame();
+      if (originalTargetZIndex) {
+        target.style.setProperty('z-index', originalTargetZIndex, originalTargetZPriority);
+      } else {
+        target.style.removeProperty('z-index');
+      }
+      overlay.remove();
+    }
+
+    function cleanupPseudoFullscreenInstance(container, video, { keepFullscreenClass = false } = {}) {
+      // Run cleanup for controls/gestures belonging to this fullscreen player.
+      if (pseudoFsCleanup) { pseudoFsCleanup(); pseudoFsCleanup = null; }
+      const tidePanel = container.querySelector('.tide-panel');
+      if (tidePanel) tidePanel.hidden = true;
+      container.classList.remove('tide-panel-open', 'controls-open');
+
+      if (!keepFullscreenClass) {
+        container.classList.remove('player-fullscreen-mobile');
+      }
+
+      if (container.classList.contains('mp4-player')) {
+        video.controls = true;
+      } else {
+        video.style.transform = 'scale(1) translate(0px, 0px)';
+        video.style.transformOrigin = 'center center';
+      }
+
+      const fsControls = container.querySelector('.fullscreen-controls');
+      if (fsControls) fsControls.remove();
+    }
+
+    function activatePseudoFullscreen(container, video) {
       const isMp4 = container.classList.contains('mp4-player');
 
-      // Add classes to lock body scroll and style fullscreen
-      htmlEl.classList.add("pseudo-fullscreen-mobile");
-      if (!IS_SAFARI_MOBILE) htmlEl.classList.add("non-safari"); // Specific style tweaks if needed
       container.classList.add("player-fullscreen-mobile");
 
       // Attempt to play video when entering fullscreen
@@ -3453,34 +3602,27 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       if (!IS_SAFARI_MOBILE) hideBrowserUI();
     }
 
+    function enterPseudoFullscreen(container, video) {
+      // Prevent entering if already in fullscreen
+      if (document.querySelector('.player-fullscreen-mobile')) return;
+
+      const htmlEl = document.documentElement;
+
+      // Add classes to lock body scroll and style fullscreen
+      htmlEl.classList.add("pseudo-fullscreen-mobile");
+      if (!IS_SAFARI_MOBILE) htmlEl.classList.add("non-safari"); // Specific style tweaks if needed
+      activatePseudoFullscreen(container, video);
+    }
+
     function exitPseudoFullscreen(container, video) {
       if (!container || !container.classList.contains('player-fullscreen-mobile')) return;
 
       const htmlEl = document.documentElement;
-      const isMp4 = container.classList.contains('mp4-player');
 
-      // Run cleanup for controls/gestures
-      if (pseudoFsCleanup) { pseudoFsCleanup(); pseudoFsCleanup = null; }
-      const tidePanel = container.querySelector('.tide-panel');
-      if (tidePanel) tidePanel.hidden = true;
-      container.classList.remove('tide-panel-open');
+      cleanupPseudoFullscreenInstance(container, video);
 
       // Remove fullscreen classes
       htmlEl.classList.remove("pseudo-fullscreen-mobile", "non-safari");
-      container.classList.remove("player-fullscreen-mobile", "controls-open");
-
-      if (!isMp4) {
-        // Reset HLS video transform and origin
-        video.style.transform = 'scale(1) translate(0px, 0px)';
-        video.style.transformOrigin = 'center center';
-      } else {
-        // Ensure MP4 controls are still enabled (might be turned off by browser)
-        video.controls = true;
-      }
-
-      // Remove custom fullscreen controls if they exist
-      const fsControls = container.querySelector('.fullscreen-controls');
-      if (fsControls) fsControls.remove();
 
       // Reset body/html styles potentially modified for fullscreen
       document.body.style.height = '';
