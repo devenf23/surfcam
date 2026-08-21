@@ -56,13 +56,23 @@ async function resolvePublicAddress(url) {
   return publicRecords[0];
 }
 
-function createPinnedAgent(url, record) {
-  const Agent = url.protocol === "https:" ? https.Agent : http.Agent;
-  return new Agent({
-    lookup(_hostname, _options, callback) {
+function createPinnedLookup(record) {
+  return (_hostname, options, callback) => {
+    if (typeof options === "function") {
+      callback = options;
+      options = {};
+    }
+    if (options?.all) {
+      callback(null, [{ address: record.address, family: record.family }]);
+    } else {
       callback(null, record.address, record.family);
     }
-  });
+  };
+}
+
+function createPinnedAgent(url, record) {
+  const Agent = url.protocol === "https:" ? https.Agent : http.Agent;
+  return new Agent({ lookup: createPinnedLookup(record) });
 }
 
 async function fetchWithValidatedRedirects(initialUrl, options) {
@@ -127,12 +137,18 @@ module.exports = async (req, res) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), HEADER_TIMEOUT_MS);
   const abortOnDisconnect = () => controller.abort();
+  const abortOnResponseClose = () => {
+    if (!res.writableEnded) controller.abort();
+  };
   const cleanupRequest = () => {
     req.removeListener?.("aborted", abortOnDisconnect);
-    req.removeListener?.("close", abortOnDisconnect);
+    res.removeListener?.("close", abortOnResponseClose);
   };
   req.once?.("aborted", abortOnDisconnect);
-  req.once?.("close", abortOnDisconnect);
+  // IncomingMessage's `close` event also fires after a normally completed
+  // request in current Node versions. The response closing before it ends is
+  // the reliable signal that the downstream client disconnected.
+  res.once?.("close", abortOnResponseClose);
   let streaming = false;
 
   try {
@@ -188,4 +204,4 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports._test = { isPublicAddress, parseTarget, rewriteManifest };
+module.exports._test = { createPinnedLookup, isPublicAddress, parseTarget, rewriteManifest };

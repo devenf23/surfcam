@@ -27,6 +27,26 @@ test("proxy rewrites playlist lines and quoted URI attributes", () => {
   assert.match(result, /https:\/\/cdn\.example\.com\/path\/segment-001\.ts/);
 });
 
+test("proxy pinned DNS lookup supports single and all-address callback shapes", async () => {
+  const lookup = proxy.createPinnedLookup({ address: "203.0.113.10", family: 4 });
+
+  const single = await new Promise((resolve, reject) => {
+    lookup("cdn.example.com", {}, (error, address, family) => {
+      if (error) reject(error);
+      else resolve({ address, family });
+    });
+  });
+  assert.deepEqual(single, { address: "203.0.113.10", family: 4 });
+
+  const all = await new Promise((resolve, reject) => {
+    lookup("cdn.example.com", { all: true }, (error, records) => {
+      if (error) reject(error);
+      else resolve(records);
+    });
+  });
+  assert.deepEqual(all, [{ address: "203.0.113.10", family: 4 }]);
+});
+
 test("Storm Glass date validation matches the tide UI range", () => {
   assert.equal(stormglass.parseDate("2026-08-21").toISOString(), "2026-08-21T00:00:00.000Z");
   assert.equal(stormglass.parseDate("2026-02-30"), null);

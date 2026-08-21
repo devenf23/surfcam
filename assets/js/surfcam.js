@@ -150,6 +150,175 @@
       return null;
     }
 
+    const BUFFER_RESUME_SECONDS = 1.5;
+
+    function getBufferedPlaybackInfo(video) {
+      const currentTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      let currentRangeEnd = currentTime;
+      let latestEnd = currentTime;
+      try {
+        for (let i = 0; i < video.buffered.length; i++) {
+          const start = video.buffered.start(i);
+          const end = video.buffered.end(i);
+          latestEnd = Math.max(latestEnd, end);
+          // A small tolerance handles adjacent HLS fragments whose timestamps do
+          // not join perfectly even though the browser can play through the gap.
+          if (start <= currentTime + 0.25 && end > currentTime) {
+            currentRangeEnd = Math.max(currentRangeEnd, end);
+          }
+        }
+      } catch {}
+      return {
+        ahead: Math.max(0, currentRangeEnd - currentTime),
+        latestEnd
+      };
+    }
+
+    function createBufferingIndicator() {
+      const indicator = document.createElement('div');
+      indicator.className = 'buffering-indicator';
+      indicator.hidden = true;
+      indicator.setAttribute('role', 'status');
+      indicator.setAttribute('aria-live', 'polite');
+      indicator.innerHTML = `
+        <span class="buffering-spinner" aria-hidden="true"></span>
+        <span class="buffering-label">Loading video…</span>`;
+      return indicator;
+    }
+
+    function setupStreamBuffering(player) {
+      const { video, container, bufferingIndicator } = player;
+      if (!bufferingIndicator) return;
+
+      let internalPauseEvents = 0;
+      let baselineBufferedEnd = 0;
+      let waitForNewContent = false;
+      let resumeAttemptInFlight = false;
+
+      const notifyStateChange = () => {
+        container.dispatchEvent(new CustomEvent('bufferingchange', {
+          detail: { buffering: player.isBuffering, wantsToPlay: player.wantsToPlay }
+        }));
+      };
+
+      const setIndicatorVisible = visible => {
+        bufferingIndicator.hidden = !visible;
+        bufferingIndicator.classList.toggle('visible', visible);
+        container.classList.toggle('is-buffering', visible);
+        if (visible) container.setAttribute('aria-busy', 'true');
+        else container.removeAttribute('aria-busy');
+      };
+
+      const clearBuffering = () => {
+        if (!player.isBuffering && bufferingIndicator.hidden) return;
+        player.isBuffering = false;
+        player.stallPause = false;
+        waitForNewContent = false;
+        resumeAttemptInFlight = false;
+        setIndicatorVisible(false);
+        if (player.updateTimeline) player.updateTimeline();
+        notifyStateChange();
+      };
+
+      const beginBuffering = ({ requireNewContent = false } = {}) => {
+        // A paused player has no playback intent to preserve. Network activity
+        // can continue in the background without presenting it as a playback stall.
+        if (!player.wantsToPlay && video.paused) return;
+
+        const info = getBufferedPlaybackInfo(video);
+        if (!player.isBuffering) baselineBufferedEnd = info.latestEnd;
+        waitForNewContent = waitForNewContent || requireNewContent;
+        player.isBuffering = true;
+        player.stallPause = player.wantsToPlay;
+        resumeAttemptInFlight = false;
+        setIndicatorVisible(true);
+
+        // pause() changes video.paused immediately but queues the pause event.
+        // Count that event instead of using a synchronous boolean guard, or the
+        // queued event is mistaken for a user pause and automatic recovery is lost.
+        if (!video.paused) {
+          internalPauseEvents += 1;
+          video.pause();
+        }
+        notifyStateChange();
+      };
+
+      const hasRecovered = () => {
+        const info = getBufferedPlaybackInfo(video);
+        if (waitForNewContent && info.latestEnd <= baselineBufferedEnd + 0.05) return false;
+        if (info.ahead >= BUFFER_RESUME_SECONDS) return true;
+        return info.ahead > 0.25 && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA;
+      };
+
+      const tryResume = () => {
+        if (!player.isBuffering || resumeAttemptInFlight) return;
+        if (!player.wantsToPlay) {
+          clearBuffering();
+          return;
+        }
+        if (!hasRecovered()) return;
+
+        resumeAttemptInFlight = true;
+        video.play().catch(() => {
+          // A later progress/canplay event or the recovery poll will retry.
+          resumeAttemptInFlight = false;
+        });
+      };
+
+      const cancelAutoResume = () => {
+        player.wantsToPlay = false;
+        clearBuffering();
+      };
+
+      player.showSpinner = beginBuffering;
+      player.hideSpinner = tryResume;
+      player.cancelBufferingResume = cancelAutoResume;
+      player.requestPlay = ({ allowWhileBuffering = false } = {}) => {
+        player.wantsToPlay = true;
+        if (player.isBuffering && !allowWhileBuffering) tryResume();
+        else video.play().catch(() => {});
+        notifyStateChange();
+      };
+      player.togglePlayback = () => {
+        if (player.isBuffering) {
+          if (player.wantsToPlay) cancelAutoResume();
+          else player.requestPlay();
+        } else if (video.paused) {
+          player.requestPlay();
+        } else {
+          video.pause();
+        }
+      };
+
+      player.addListener(video, 'loadstart', () => {
+        if (player.wantsToPlay) beginBuffering();
+      });
+      player.addListener(video, 'waiting', () => beginBuffering());
+      player.addListener(video, 'stalled', () => beginBuffering({ requireNewContent: true }));
+      player.addListener(video, 'pause', () => {
+        if (internalPauseEvents > 0) {
+          internalPauseEvents -= 1;
+          return;
+        }
+        player.wantsToPlay = false;
+        if (player.isBuffering) clearBuffering();
+        else notifyStateChange();
+      });
+      player.addListener(video, 'play', () => {
+        player.wantsToPlay = true;
+        notifyStateChange();
+      });
+      player.addListener(video, 'playing', clearBuffering);
+      player.addListener(video, 'ended', () => {
+        player.wantsToPlay = false;
+        clearBuffering();
+      });
+      ['progress', 'loadeddata', 'canplay', 'durationchange'].forEach(eventName => {
+        player.addListener(video, eventName, tryResume);
+      });
+      player.trackInterval(tryResume, 500);
+    }
+
     /* --- Fullscreen tide display (uses the same NOAA source and offsets as tides.html) --- */
     const FULLSCREEN_TIDE_STATION = '9413450';
     const FULLSCREEN_TIDE_OFFSETS = {
@@ -782,6 +951,9 @@
           offscreenCtx: null,    // Context for the offscreen canvas
           isBuffering: false,    // Flag for buffering state
           stallPause: false,     // True when we paused the video ourselves due to a network stall
+          wantsToPlay: video.autoplay,
+          bufferingIndicator: null,
+          updateTimeline: null,
           canvas: null,          // Reference to the main canvas
           resizeHandler: null,   // Reference to the resize handler function
           swipeLoaderCleanup: null,
@@ -921,6 +1093,9 @@
 
         // Video element itself
         container.appendChild(video);
+        const mobileBufferingIndicator = createBufferingIndicator();
+        container.appendChild(mobileBufferingIndicator);
+        playerObject.bufferingIndicator = mobileBufferingIndicator;
 
         // Simple controls (Play/Pause + scrub bar) below the video
         const ctrM = document.createElement("div");
@@ -949,7 +1124,7 @@
         let mIsSeeking = false, mPendingSeek = -1, mLastThrottle = 0, mWasPlaying = false;
 
         function updateMPb() {
-          if (mIsSeeking) return;
+          if (mIsSeeking || playerObject.isBuffering) return;
           const range = getVideoRange(video);
           if (range && range.end > range.start) {
             const span = range.end - range.start;
@@ -970,6 +1145,7 @@
             mPlayed.style.width = mThumb.style.left = mBuf.style.width = '0%';
           }
         }
+        playerObject.updateTimeline = updateMPb;
         ["timeupdate","progress","loadedmetadata","durationchange","seeking","seeked","play","pause","canplay","playing","loadeddata"].forEach(ev => video.addEventListener(ev, updateMPb));
         // Polling fallback: iOS native HLS can be slow to populate video.seekable.
         // Poll every 500ms so the bar updates as soon as the range becomes available.
@@ -1030,8 +1206,7 @@
             enterPseudoFullscreen(container, video);
             lastTap = 0;
           } else { // Single tap
-            if (video.paused) video.play().catch(()=>{});
-            else video.pause();
+            playerObject.togglePlayback();
             lastTap = now;
           }
         });
@@ -1039,8 +1214,7 @@
         // Play/Pause button action
         ppM.addEventListener("click", e => {
           e.stopPropagation(); // Prevent container click handler
-          if (video.paused) video.play().catch(()=>{});
-          else video.pause();
+          playerObject.togglePlayback();
         });
 
         // Fullscreen button action
@@ -1050,63 +1224,13 @@
         });
 
         // Update Play/Pause button text based on video state
-        video.addEventListener("play", () => ppM.textContent = "⏸");
-        video.addEventListener("pause", () => ppM.textContent = "▶");
+        const updateMobilePlayButton = () => {
+          ppM.textContent = (!video.paused || (playerObject.isBuffering && playerObject.wantsToPlay)) ? "⏸" : "▶";
+        };
+        video.addEventListener("play", updateMobilePlayButton);
+        video.addEventListener("pause", updateMobilePlayButton);
         video.addEventListener("ended", () => ppM.textContent = "▶");
-
-        // Attempt to autoplay when ready
-        video.addEventListener('canplay', () => {
-          if (video.paused) { // Only play if currently paused
-             video.play().catch(e => console.log(`Autoplay failed for ${url}:`, e));
-          }
-        }, { once: true }); // Only run once
-
-        // --- Mobile stall-pause: freeze the playhead when the video can't keep up ---
-        // Same logic as the desktop spinner: explicit pause on 'waiting' so currentTime
-        // stops advancing, and auto-resume once the buffer refills.
-        let mStallInProgress = false;
-        let mStallPause = false;
-        video.addEventListener('waiting', () => {
-          if (!video.paused) {
-            mStallPause = true;
-            mStallInProgress = true;
-            video.pause();
-            mStallInProgress = false;
-          }
-        });
-        video.addEventListener('canplay', () => {
-          // Route through playerObject.hideSpinner so the buffer-ahead check applies.
-          if (mStallPause && playerObject.hideSpinner) playerObject.hideSpinner();
-        });
-        video.addEventListener('pause', () => {
-          if (!mStallInProgress) mStallPause = false; // User pause — don't auto-resume.
-        });
-        // Expose via playerObject so the shared HLS error handler can trigger stall/resume.
-        playerObject.showSpinner = () => {
-          if (!video.paused) {
-            mStallPause = true;
-            mStallInProgress = true;
-            video.pause();
-            mStallInProgress = false;
-          }
-        };
-        playerObject.hideSpinner = () => {
-          if (!mStallPause) return;
-          // Only resume once there's enough buffered content ahead (same logic as desktop).
-          let bufferAhead = 0;
-          try {
-            const ct = video.currentTime;
-            for (let i = 0; i < video.buffered.length; i++) {
-              if (video.buffered.start(i) <= ct + 0.5 && video.buffered.end(i) > ct) {
-                bufferAhead = video.buffered.end(i) - ct;
-                break;
-              }
-            }
-          } catch {}
-          if (bufferAhead < 5) return;
-          mStallPause = false;
-          video.play().catch(()=>{});
-        };
+        container.addEventListener('bufferingchange', updateMobilePlayButton);
 
       } else {
         // --- Desktop HLS Player Setup (Canvas Rendering) ---
@@ -1121,21 +1245,15 @@
         canvasWrapper.appendChild(canvas);
         playerObject.canvas = canvas; // Store canvas reference
 
-        // Add Buffering Spinner Element
-        const spinner = document.createElement('div');
-        spinner.className = 'buffering-spinner';
-        canvasWrapper.appendChild(spinner); // Add spinner inside the wrapper
+        const desktopBufferingIndicator = createBufferingIndicator();
+        canvasWrapper.appendChild(desktopBufferingIndicator);
+        playerObject.bufferingIndicator = desktopBufferingIndicator;
 
         // Create offscreen canvas for masking operations
         playerObject.offscreenCanvas = document.createElement('canvas');
         playerObject.offscreenCanvas.width = canvas.width;
         playerObject.offscreenCanvas.height = canvas.height;
         playerObject.offscreenCtx = playerObject.offscreenCanvas.getContext('2d');
-
-        // Add buffering state and previous time tracker
-        playerObject.isBuffering = false;
-        playerObject.previousTime = 0;
-
 
         const controlsContainer = document.createElement("div");
         controlsContainer.className = "controls-container";
@@ -1279,67 +1397,6 @@
 
 const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         const offscreenCtx = playerObject.offscreenCtx; // Context for offscreen canvas
-
-        // --- Buffering Listeners ---
-        // Synchronous guard: true only during our own video.pause() call so the
-        // 'pause' event handler can tell the difference from a user-initiated pause.
-        let stallInProgress = false;
-
-        const showSpinner = () => {
-            playerObject.isBuffering = true;
-            spinner.classList.add('visible');
-            // Explicitly pause so currentTime freezes — prevents the playhead from
-            // drifting into unbuffered territory while the video is visually frozen.
-            if (!video.paused) {
-                playerObject.stallPause = true;
-                stallInProgress = true;
-                video.pause();
-                stallInProgress = false;
-            }
-            updateProgressBar();
-        };
-        const hideSpinner = () => {
-            // If we stall-paused, only resume once there's enough buffered content ahead.
-            // Without this check, canplay/FRAG_BUFFERED fire with only a fragment or two,
-            // the video plays briefly, fires waiting again, and the playhead creeps forward.
-            if (playerObject.stallPause) {
-                let bufferAhead = 0;
-                try {
-                    const ct = video.currentTime;
-                    for (let i = 0; i < video.buffered.length; i++) {
-                        if (video.buffered.start(i) <= ct + 0.5 && video.buffered.end(i) > ct) {
-                            bufferAhead = video.buffered.end(i) - ct;
-                            break;
-                        }
-                    }
-                } catch {}
-                if (bufferAhead < 5) return; // Not enough yet — stay paused, wait for more fragments.
-            }
-            playerObject.isBuffering = false;
-            spinner.classList.remove('visible');
-            if (playerObject.stallPause) {
-                playerObject.stallPause = false;
-                video.play().catch(()=>{});
-            }
-            updateProgressBar();
-        };
-        video.addEventListener('waiting', showSpinner);
-        video.addEventListener('playing', hideSpinner);
-        video.addEventListener('canplay', hideSpinner);
-        video.addEventListener('pause', () => {
-            if (stallInProgress) return; // Our own pause — leave spinner and stallPause intact.
-            // User-initiated pause: don't auto-resume when data loads.
-            playerObject.stallPause = false;
-            if (playerObject.isBuffering) {
-                playerObject.isBuffering = false;
-                spinner.classList.remove('visible');
-                updateProgressBar();
-            }
-        });
-        // Expose via playerObject so the shared HLS error handler can trigger stall/resume.
-        playerObject.showSpinner = showSpinner;
-        playerObject.hideSpinner = hideSpinner;
-
 
         function scheduleCanvasFrame() {
           if (!container.isConnected || playerObject.disposed || video.paused) {
@@ -1675,8 +1732,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           } else { // Potential single-click
             clickTimeout = setTimeout(() => {
               // Toggle play/pause if click was within container
-               if (video.paused) video.play().catch(()=>{});
-               else video.pause();
+               playerObject.togglePlayback();
             }, 300); // Wait for potential double-click
           }
           lastClickTime = now; // Record click time
@@ -1697,12 +1753,15 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         playPauseBtn.setAttribute("aria-label","Play/Pause");
         playPauseBtn.addEventListener("click", e => {
           e.stopPropagation();
-          if (video.paused) video.play().catch(()=>{});
-          else video.pause();
+          playerObject.togglePlayback();
         });
-        video.addEventListener("play", () => playPauseBtn.textContent = "⏸");
-        video.addEventListener("pause", () => playPauseBtn.textContent = "▶");
+        const updateDesktopPlayButton = () => {
+          playPauseBtn.textContent = (!video.paused || (playerObject.isBuffering && playerObject.wantsToPlay)) ? "⏸" : "▶";
+        };
+        video.addEventListener("play", updateDesktopPlayButton);
+        video.addEventListener("pause", updateDesktopPlayButton);
         video.addEventListener("ended", () => playPauseBtn.textContent = "▶");
+        container.addEventListener('bufferingchange', updateDesktopPlayButton);
         controlBar.appendChild(playPauseBtn);
 
         // Progress Bar
@@ -1761,6 +1820,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             bufferedBar.style.width = '0%';
           }
         }
+        playerObject.updateTimeline = updateProgressBar;
         // Update on relevant video events
         ["timeupdate", "progress", "loadedmetadata", "durationchange", "seeking", "seeked"].forEach(evt => {
           video.addEventListener(evt, updateProgressBar);
@@ -1991,6 +2051,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       /* --- HLS.js Setup (Common for Mobile/Desktop HLS) --- */
       if (!isMp4) {
+        setupStreamBuffering(playerObject);
         // On desktop Safari, prefer native HLS to avoid MSE quirks.
         // On mobile, always try hls.js first: its custom loader routes every request
         // (manifest + segments) through the proxy, and it reports a finite duration for
@@ -2037,13 +2098,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           hlsInstance.attachMedia(video);
 
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-            if (video.autoplay || !video.paused) {
-                video.play().catch(() => {
-                    // Autoplay blocked — retry once data is ready.
-                    video.addEventListener('canplay', () => {
-                        if (video.paused) video.play().catch(()=>{});
-                    }, { once: true });
-                });
+            // The first play attempt lets HLS establish its DVR start position.
+            // Subsequent stall recovery still waits for buffered media.
+            if (playerObject.wantsToPlay) {
+              playerObject.requestPlay({ allowWhileBuffering: true });
             }
           });
 
@@ -2052,17 +2110,18 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             console.error(`HLS Error: Type=${data.type}, Details=${data.details}`, data);
 
             if (data.fatal) {
-              // Pause the playhead so the timeline only reflects actually loaded video.
-              // We'll resume via canplay once HLS recovers.
-              const wasPlaying = !video.paused;
-              video.pause();
+              const shouldResume = playerObject.wantsToPlay || !video.paused;
+              const needsNetworkProgress = data.type === Hls.ErrorTypes.NETWORK_ERROR;
+              if (shouldResume) {
+                playerObject.showSpinner({ requireNewContent: needsNetworkProgress });
+              }
+              else video.pause();
               switch(data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
                   console.log("Network error, retrying load...");
                   playerObject.trackTimeout(() => {
                     if (hlsInstance) {
                       hlsInstance.startLoad();
-                      if (wasPlaying) video.addEventListener('canplay', () => video.play().catch(()=>{}), { once: true });
                     }
                   }, 2000);
                   break;
@@ -2070,7 +2129,6 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
                   console.log("Fatal media error, attempting recovery...");
                   if (hlsInstance) {
                     hlsInstance.recoverMediaError();
-                    if (wasPlaying) video.addEventListener('canplay', () => video.play().catch(()=>{}), { once: true });
                   }
                   break;
                 default:
@@ -2094,11 +2152,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
                   console.warn('Buffer seek-over-hole — nudging past gap.');
                   if (hlsInstance) {
                     hlsInstance.recoverMediaError();
-                    const wasPaused = video.paused;
+                    const shouldResume = playerObject.wantsToPlay;
                     playerObject.trackTimeout(() => {
-                      if (video.currentTime === data.buffer || (wasPaused && video.paused)) {
+                      if (video.currentTime === data.buffer || (shouldResume && video.paused)) {
                         video.currentTime += 0.1;
-                        if (wasPaused) video.play().catch(()=>{});
+                        if (shouldResume) playerObject.requestPlay();
                       }
                     }, 500);
                   }
@@ -2111,13 +2169,13 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
               // Non-fatal network errors (e.g. fragment load timeout) mean content isn't
               // arriving. Proactively pause so the playhead stops advancing before the
               // buffer fully drains. Resume fires via FRAG_BUFFERED once a fragment lands.
-              if (!video.paused && playerObject.showSpinner) playerObject.showSpinner();
+              if (playerObject.wantsToPlay && playerObject.showSpinner) {
+                playerObject.showSpinner({ requireNewContent: true });
+              }
             }
           });
 
-          // When HLS.js appends a new fragment, try to resume if we stall-paused.
-          // Called unconditionally — each hideSpinner impl checks its own stall flag
-          // (stallPause for desktop, mStallPause for mobile).
+          // A newly appended fragment may satisfy the recovery threshold.
           hlsInstance.on(Hls.Events.FRAG_BUFFERED, () => {
             if (playerObject.hideSpinner) playerObject.hideSpinner();
           });
@@ -2129,16 +2187,18 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           video.src = IS_MOBILE ? PROXY_PREFIX + encodeURIComponent(url) : url;
           // Native HLS often requires explicit play action
           if (video.autoplay) {
-             video.play().catch(()=>{});
+             playerObject.requestPlay({ allowWhileBuffering: true });
           }
           // Add basic error listener for native playback
           video.addEventListener('error', e => {
              console.error(`Native HLS Error for ${url}:`, video.error);
              if (playerObject.swipeLoadError) playerObject.swipeLoadError();
              // Pause the playhead so the timeline only reflects actually loaded video.
-             const wasPlaying = !video.paused;
-             video.pause();
-             if (wasPlaying) video.addEventListener('canplay', () => video.play().catch(()=>{}), { once: true });
+             if (playerObject.wantsToPlay || !video.paused) {
+               playerObject.showSpinner({ requireNewContent: true });
+             } else {
+               video.pause();
+             }
              // Optionally display error in UI
              const tb = container.querySelector('.title-bar, .video-title-row span');
              if(tb) {
@@ -2370,7 +2430,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       // autoplay-enabled; audio-capable MP4 players are intentionally not
       // started just to prepare a swipe destination.
       if ((video.muted || video.autoplay) && video.paused) {
-        video.play().catch(() => {});
+        if (player.requestPlay) player.requestPlay();
+        else video.play().catch(() => {});
       }
     }
 
@@ -2491,7 +2552,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       // HLS players are already configured for muted autoplay. Do not start an
       // unmuted MP4 solely for the preview, since that can create audio overlap.
       if ((targetVideo.muted || targetVideo.autoplay) && targetVideo.paused) {
-        targetVideo.play().catch(() => {});
+        if (drag.targetPlayer.requestPlay) drag.targetPlayer.requestPlay();
+        else targetVideo.play().catch(() => {});
       }
     }
 
@@ -2724,7 +2786,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       container.classList.add("player-fullscreen-mobile");
 
       // Attempt to play video when entering fullscreen
-      if (video.paused) video.play().catch(()=>{});
+      const player = players[container.dataset.url];
+      if (video.paused) {
+        if (!isMp4 && player?.requestPlay) player.requestPlay();
+        else video.play().catch(()=>{});
+      }
 
       let controlsCleanup = null;
       let gestureCleanup = null;
@@ -2892,16 +2958,20 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       // Update Play/Pause button symbol
       const updateFsPlayBtn = () => {
-        fsPlayPauseBtn.textContent = video.paused ? "▶" : "⏸";
+        const player = players[container.dataset.url];
+        const intendedToPlay = player?.isBuffering && player.wantsToPlay;
+        fsPlayPauseBtn.textContent = (!video.paused || intendedToPlay) ? "⏸" : "▶";
       };
       addListener(video, "play", updateFsPlayBtn);
       addListener(video, "pause", updateFsPlayBtn);
       addListener(video, "ended", updateFsPlayBtn);
+      addListener(container, "bufferingchange", updateFsPlayBtn);
 
       fsProgressBar.style.touchAction = 'none';
 
       // Update Progress Bar display
       const updateFsProgressBar = () => {
+        if (players[container.dataset.url]?.isBuffering) return;
         const range = getVideoRange(video);
         if (range && range.end > range.start) {
           const span = range.end - range.start;
@@ -3020,7 +3090,9 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       // Button Actions
       addListener(fsPlayPauseBtn, "click", e => {
         e.stopPropagation();
-        if (video.paused) video.play().catch(()=>{});
+        const player = players[container.dataset.url];
+        if (player?.togglePlayback) player.togglePlayback();
+        else if (video.paused) video.play().catch(()=>{});
         else video.pause();
       });
       addListener(fsExitBtn, "click", e => {

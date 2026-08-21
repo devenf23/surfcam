@@ -223,26 +223,45 @@
       -webkit-user-select: none;
     }
 
-    /* Buffering Spinner */
-    .buffering-spinner {
+    /* Stream buffering state */
+    .buffering-indicator {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 50px;
-      height: 50px;
-      border: 5px solid rgba(255, 255, 255, 0.3);
+      inset: 0;
+      z-index: 2050;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #fff;
+      background: radial-gradient(circle, rgba(0, 0, 0, .38), rgba(0, 0, 0, .08) 45%, transparent 72%);
+      pointer-events: none;
+    }
+    .buffering-indicator[hidden] {
+      display: none;
+    }
+    .buffering-spinner {
+      width: 42px;
+      height: 42px;
+      box-sizing: border-box;
+      border: 4px solid rgba(255, 255, 255, 0.3);
       border-radius: 50%;
       border-top-color: #fff;
-      animation: spin 1s ease-in-out infinite;
-      transform: translate(-50%, -50%);
-      z-index: 15; /* Above canvas, below sidebar */
-      display: none; /* Hidden by default */
+      animation: spin .8s linear infinite;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .55));
     }
-    .buffering-spinner.visible {
-      display: block;
+    .buffering-label {
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(0, 0, 0, .62);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .01em;
+      text-shadow: 0 1px 2px #000;
     }
     @keyframes spin {
-      to { transform: translate(-50%, -50%) rotate(360deg); }
+      to { transform: rotate(360deg); }
     }
 
 
