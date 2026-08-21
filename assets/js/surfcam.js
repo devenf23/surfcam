@@ -989,6 +989,8 @@
           updateTimeline: null,
           canvas: null,          // Reference to the main canvas
           resizeHandler: null,   // Reference to the resize handler function
+          fullscreenPreload: null,
+          fullscreenPriorityActive: false,
           swipeLoaderCleanup: null,
           swipeLoadError: null,
           swipeTitleCleanup: null,
@@ -2255,6 +2257,46 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
     /* --- Mobile Pseudo-Fullscreen Logic --- */
     let pseudoFsCleanup = null; // Store cleanup function for current fullscreen instance
+    let fullscreenPriorityPlayer = null;
+
+    function prioritizeFullscreenPlayer(player) {
+      if (!IS_MOBILE || !player || player.disposed) return;
+
+      const video = player.video;
+      fullscreenPriorityPlayer = player;
+      if (player.fullscreenPreload === null) {
+        player.fullscreenPreload = video.preload || '';
+      }
+      player.fullscreenPriorityActive = true;
+      video.preload = 'auto';
+
+      // Promote only the visible fullscreen stream. Background players remain
+      // alive, including the adjacent streams prepared for swipe transitions.
+      if (player.hls && typeof player.hls.startLoad === 'function') {
+        try { player.hls.startLoad(); } catch {}
+      }
+
+      // Native HLS and MP4 rely on the media element's preload policy.
+      if (!player.hls && video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        try { video.load(); } catch {}
+      }
+
+      if (video.paused) {
+        if (player.requestPlay) player.requestPlay({ allowWhileBuffering: true });
+        else video.play().catch(() => {});
+      }
+    }
+
+    function clearFullscreenPlayerPriority(player) {
+      if (!player || fullscreenPriorityPlayer !== player) return;
+
+      if (player.fullscreenPreload !== null) {
+        player.video.preload = player.fullscreenPreload;
+      }
+      player.fullscreenPreload = null;
+      player.fullscreenPriorityActive = false;
+      fullscreenPriorityPlayer = null;
+    }
 
     function nextAnimationFrame() {
       return new Promise(resolve => requestAnimationFrame(() => resolve()));
@@ -2789,6 +2831,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
     function cleanupPseudoFullscreenInstance(container, video, { keepFullscreenClass = false } = {}) {
       // Run cleanup for controls/gestures belonging to this fullscreen player.
       if (pseudoFsCleanup) { pseudoFsCleanup(); pseudoFsCleanup = null; }
+      clearFullscreenPlayerPriority(players[container.dataset.url]);
       const tidePanel = container.querySelector('.tide-panel');
       if (tidePanel) tidePanel.hidden = true;
       container.classList.remove('tide-panel-open', 'controls-open');
@@ -2821,11 +2864,13 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
     function activatePseudoFullscreen(container, video) {
       const isMp4 = container.classList.contains('mp4-player');
+      const player = players[container.dataset.url];
 
       container.classList.add("player-fullscreen-mobile");
 
+      prioritizeFullscreenPlayer(player);
+
       // Attempt to play video when entering fullscreen
-      const player = players[container.dataset.url];
       if (video.paused) {
         if (!isMp4 && player?.requestPlay) player.requestPlay();
         else video.play().catch(()=>{});
