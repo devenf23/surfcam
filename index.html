@@ -1900,6 +1900,12 @@
             existing.swipeLoaderCleanup();
             existing.swipeLoaderCleanup = null;
           }
+          if (existing.swipeWarmCleanup) {
+            existing.swipeWarmCleanup();
+            existing.swipeWarmCleanup = null;
+          }
+          existing.swipeWarmReady = false;
+          existing.swipeWarmError = false;
           if (existing.hls) existing.hls.destroy();
           existing.video.pause();
           existing.video.removeAttribute('src');
@@ -1917,6 +1923,9 @@
           existing.container.remove();
           delete players[url];
         }
+      }
+      if (fullscreenSwipeWarm) {
+        updateFullscreenSwipeWarm(fullscreenSwipeWarm.activeUrl);
       }
       reorderPlayers();
       updateStreamSidebar(); // Update sidebar to reflect checkbox state
@@ -2003,7 +2012,10 @@
           canvas: null,          // Reference to the main canvas
           resizeHandler: null,   // Reference to the resize handler function
           swipeLoaderCleanup: null,
-          swipeLoadError: null
+          swipeLoadError: null,
+          swipeWarmCleanup: null,
+          swipeWarmReady: false,
+          swipeWarmError: false
       };
 
 
@@ -3342,10 +3354,91 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       return title;
     }
 
+    function isSwipeVideoRenderable(video) {
+      return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        video.videoWidth > 0 && video.videoHeight > 0;
+    }
+
+    // A decoded frame is a stronger signal than readyState alone. The latter
+    // can be populated before the compositor has presented anything, which is
+    // exactly when a fullscreen swipe can expose a black destination frame.
+    function watchSwipeVideoFrame(player, { onReady, onError } = {}) {
+      const video = player.video;
+      const eventNames = ['loadeddata', 'canplay', 'playing', 'seeked'];
+      let disposed = false;
+      let resolved = false;
+      let frameRequestId = null;
+      let rafId = null;
+
+      function clearFrameWatch() {
+        if (frameRequestId !== null && typeof video.cancelVideoFrameCallback === 'function') {
+          try { video.cancelVideoFrameCallback(frameRequestId); } catch {}
+        }
+        frameRequestId = null;
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        rafId = null;
+        eventNames.forEach(event => video.removeEventListener(event, checkFrame));
+        video.removeEventListener('error', handleError);
+      }
+
+      function finishReady() {
+        if (disposed || resolved) return;
+        resolved = true;
+        clearFrameWatch();
+        if (onReady) onReady();
+      }
+
+      function fallbackFrameCheck() {
+        if (disposed || resolved || !isSwipeVideoRenderable(video) || rafId !== null) return;
+        let frames = 0;
+        const tick = () => {
+          if (disposed || resolved) return;
+          if (++frames >= 2) finishReady();
+          else rafId = requestAnimationFrame(tick);
+        };
+        rafId = requestAnimationFrame(tick);
+      }
+
+      function handleError() {
+        if (disposed || resolved) return;
+        if (onError) onError();
+      }
+
+      function checkFrame() {
+        if (disposed || resolved) return;
+        if (video.error) {
+          handleError();
+          return;
+        }
+        if (!isSwipeVideoRenderable(video)) return;
+
+        fallbackFrameCheck();
+        if (typeof video.requestVideoFrameCallback === 'function' && frameRequestId === null) {
+          try {
+            frameRequestId = video.requestVideoFrameCallback(() => {
+              frameRequestId = null;
+              finishReady();
+            });
+          } catch {
+            frameRequestId = null;
+          }
+        }
+      }
+
+      eventNames.forEach(event => video.addEventListener(event, checkFrame));
+      video.addEventListener('error', handleError);
+      checkFrame();
+
+      return () => {
+        if (disposed) return;
+        disposed = true;
+        clearFrameWatch();
+      };
+    }
+
     function createSwipeLoader(player) {
       if (player.swipeLoaderCleanup) player.swipeLoaderCleanup();
 
-      const video = player.video;
       const loader = document.createElement('div');
       loader.className = 'fs-swipe-loader';
       loader.setAttribute('role', 'status');
@@ -3362,30 +3455,13 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const spinner = loader.querySelector('.fs-swipe-loader-spinner');
       let disposed = false;
       let resolved = false;
-      let frameRequestId = null;
-      let rafId = null;
       let fadeTimer = null;
-      const eventNames = ['loadeddata', 'canplay', 'playing', 'seeked'];
-
-      const isRenderable = () => {
-        return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-          video.videoWidth > 0 && video.videoHeight > 0;
-      };
-
-      const clearFrameWatch = () => {
-        if (frameRequestId !== null && typeof video.cancelVideoFrameCallback === 'function') {
-          try { video.cancelVideoFrameCallback(frameRequestId); } catch {}
-        }
-        frameRequestId = null;
-        if (rafId !== null) cancelAnimationFrame(rafId);
-        rafId = null;
-        eventNames.forEach(event => video.removeEventListener(event, checkFrame));
-      };
+      let frameCleanup = null;
 
       const removeLoader = () => {
         if (disposed) return;
         disposed = true;
-        clearFrameWatch();
+        if (frameCleanup) frameCleanup();
         if (fadeTimer) clearTimeout(fadeTimer);
         if (player.swipeLoadError === showError) player.swipeLoadError = null;
         if (player.swipeLoaderCleanup === cleanup) player.swipeLoaderCleanup = null;
@@ -3400,32 +3476,6 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         fadeTimer = setTimeout(removeLoader, 180);
       };
 
-      const fallbackFrameCheck = () => {
-        if (disposed || resolved || !isRenderable()) return;
-        let frames = 0;
-        const tick = () => {
-          if (disposed || resolved) return;
-          if (++frames >= 2) finishReady();
-          else rafId = requestAnimationFrame(tick);
-        };
-        rafId = requestAnimationFrame(tick);
-      };
-
-      const checkFrame = () => {
-        if (disposed || resolved || !isRenderable()) return;
-        fallbackFrameCheck();
-        if (typeof video.requestVideoFrameCallback === 'function' && frameRequestId === null) {
-          try {
-            frameRequestId = video.requestVideoFrameCallback(() => {
-              frameRequestId = null;
-              finishReady();
-            });
-          } catch {
-            frameRequestId = null;
-          }
-        }
-      };
-
       const showError = () => {
         if (disposed || resolved) return;
         loader.classList.remove('fade-out');
@@ -3436,17 +3486,101 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       const cleanup = () => {
         if (disposed) return;
-        clearFrameWatch();
         removeLoader();
       };
 
       player.swipeLoadError = showError;
       player.swipeLoaderCleanup = cleanup;
-      eventNames.forEach(event => video.addEventListener(event, checkFrame));
-      if (video.error) showError();
-      else checkFrame();
+      frameCleanup = watchSwipeVideoFrame(player, {
+        onReady: finishReady,
+        onError: showError
+      });
 
       return { loader, cleanup, showError };
+    }
+
+    let fullscreenSwipeWarm = null;
+
+    function getAdjacentSwipePlayers(activeUrl) {
+      const enabledUrls = getStreamList()
+        .filter(stream => stream.enabled)
+        .map(stream => stream.url);
+      const currentIndex = enabledUrls.indexOf(activeUrl);
+      if (enabledUrls.length < 2 || currentIndex === -1) return [];
+
+      const indexes = new Set([
+        (currentIndex - 1 + enabledUrls.length) % enabledUrls.length,
+        (currentIndex + 1) % enabledUrls.length
+      ]);
+      return Array.from(indexes)
+        .map(index => players[enabledUrls[index]])
+        .filter(Boolean);
+    }
+
+    function ensureSwipePlayerPlaying(player) {
+      const video = player.video;
+
+      // HLS.js can stop loading after a stall or visibility change. Restart
+      // its loader while the player is part of the warm neighbor set.
+      if (player.hls && typeof player.hls.startLoad === 'function') {
+        try { player.hls.startLoad(); } catch {}
+      }
+
+      // Keep the app's existing autoplay policy. HLS players are muted and
+      // autoplay-enabled; audio-capable MP4 players are intentionally not
+      // started just to prepare a swipe destination.
+      if ((video.muted || video.autoplay) && video.paused) {
+        video.play().catch(() => {});
+      }
+    }
+
+    function warmSwipePlayer(player) {
+      if (!player || player.swipeWarmCleanup) return;
+
+      player.swipeWarmReady = false;
+      player.swipeWarmError = false;
+      player.swipeWarmCleanup = watchSwipeVideoFrame(player, {
+        onReady: () => {
+          player.swipeWarmReady = true;
+          player.swipeWarmError = false;
+        },
+        onError: () => {
+          player.swipeWarmError = true;
+        }
+      });
+      ensureSwipePlayerPlaying(player);
+    }
+
+    function updateFullscreenSwipeWarm(activeUrl) {
+      if (!activeUrl) return;
+      const desired = new Set(getAdjacentSwipePlayers(activeUrl));
+
+      if (!fullscreenSwipeWarm) {
+        fullscreenSwipeWarm = { activeUrl, players: new Set() };
+      }
+      fullscreenSwipeWarm.activeUrl = activeUrl;
+
+      for (const player of fullscreenSwipeWarm.players) {
+        if (desired.has(player)) continue;
+        if (player.swipeWarmCleanup) player.swipeWarmCleanup();
+        player.swipeWarmCleanup = null;
+        player.swipeWarmReady = false;
+        player.swipeWarmError = false;
+      }
+
+      desired.forEach(warmSwipePlayer);
+      fullscreenSwipeWarm.players = desired;
+    }
+
+    function clearFullscreenSwipeWarm() {
+      if (!fullscreenSwipeWarm) return;
+      for (const player of fullscreenSwipeWarm.players) {
+        if (player.swipeWarmCleanup) player.swipeWarmCleanup();
+        player.swipeWarmCleanup = null;
+        player.swipeWarmReady = false;
+        player.swipeWarmError = false;
+      }
+      fullscreenSwipeWarm = null;
     }
 
     function updateSwipePosition(drag, rawDx) {
@@ -3473,7 +3607,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         targetVideo.controls = false;
       }
 
-      drag.loaderState = createSwipeLoader(drag.targetPlayer);
+      const targetIsWarm = drag.targetPlayer.swipeWarmReady && !drag.targetPlayer.swipeWarmError;
+      drag.loaderState = targetIsWarm ? null : createSwipeLoader(drag.targetPlayer);
       updateSwipePosition(drag, 0);
 
       // HLS players are already configured for muted autoplay. Do not start an
@@ -3495,6 +3630,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const targetPlayer = players[enabledUrls[nextIndex]];
       const currentPlayer = players[current.dataset.url];
       if (!targetPlayer || !currentPlayer || targetPlayer.container === current) return null;
+
+      // The warm coordinator normally starts on fullscreen entry. Refresh it
+      // here as well so a newly enabled/reordered neighbor is prepared before
+      // the first finger-follow update.
+      updateFullscreenSwipeWarm(current.dataset.url);
 
       const overlay = document.createElement('div');
       overlay.id = 'fsSwipeOverlay';
@@ -3578,6 +3718,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       target.classList.add('player-fullscreen-mobile');
       target.style.setProperty('z-index', '2002', 'important');
       activatePseudoFullscreen(target, targetVideo);
+      updateFullscreenSwipeWarm(target.dataset.url);
 
       nextAnimationFrame().then(() => {
         if (drag.phase === 'done') return;
@@ -3741,6 +3882,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       htmlEl.classList.add("pseudo-fullscreen-mobile");
       if (!IS_SAFARI_MOBILE) htmlEl.classList.add("non-safari"); // Specific style tweaks if needed
       activatePseudoFullscreen(container, video);
+      updateFullscreenSwipeWarm(container.dataset.url);
     }
 
     function exitPseudoFullscreen(container, video) {
@@ -3751,6 +3893,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const htmlEl = document.documentElement;
 
       cleanupPseudoFullscreenInstance(container, video);
+      clearFullscreenSwipeWarm();
 
       // Remove fullscreen classes
       htmlEl.classList.remove("pseudo-fullscreen-mobile", "non-safari");
@@ -4050,6 +4193,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       let panStartTranslateX = 0;   // Translation X at pan start
       let panStartTranslateY = 0;   // Translation Y at pan start
       let swipeDrag = null;         // Active finger-follow stream-swap drag
+      let pointerSwipe = null;      // Mouse-pointer fallback for desktop testing
+      let suppressPointerClick = false;
 
       const listeners = []; // Store listeners for cleanup
       function addListener(el, type, fn, opts) {
@@ -4258,6 +4403,64 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         }
       };
 
+      // Device emulation in a desktop browser can expose a mouse pointer even
+      // though the page is running with a mobile user agent. Keep this path
+      // separate from touch events so real pinch/zoom gestures are unchanged.
+      const handlePointerDown = e => {
+        if (e.pointerType !== 'mouse' || e.button !== 0) return;
+        if (e.target.closest('.fullscreen-controls')) return;
+        if (!e.target.closest('.player-fullscreen-mobile, .player-swipe-mobile, #fsSwipeOverlay')) return;
+        e.preventDefault();
+        pointerSwipe = {
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          startTime: Date.now(),
+          drag: null,
+          moved: false
+        };
+        try { e.target.setPointerCapture(e.pointerId); } catch {}
+      };
+
+      const handlePointerMove = e => {
+        if (!pointerSwipe || e.pointerType !== 'mouse' || e.pointerId !== pointerSwipe.pointerId) return;
+        if (!(e.buttons & 1)) {
+          handlePointerUp(e);
+          return;
+        }
+
+        const dx = e.clientX - pointerSwipe.startX;
+        const dy = e.clientY - pointerSwipe.startY;
+        if (!pointerSwipe.drag && Math.abs(dx) > SWIPE_START_PX && Math.abs(dx) > Math.abs(dy)) {
+          pointerSwipe.drag = startSwipeDrag(dx > 0 ? 1 : -1);
+          pointerSwipe.moved = !!pointerSwipe.drag;
+        }
+        if (pointerSwipe.drag) {
+          e.preventDefault();
+          updateSwipeDrag(pointerSwipe.drag, dx);
+        }
+      };
+
+      const handlePointerUp = e => {
+        if (!pointerSwipe || e.pointerType !== 'mouse' || e.pointerId !== pointerSwipe.pointerId) return;
+        const state = pointerSwipe;
+        pointerSwipe = null;
+        const dx = e.clientX - state.startX;
+        if (state.drag) {
+          e.preventDefault();
+          endSwipeDrag(state.drag, dx);
+          suppressPointerClick = true;
+        }
+        try { e.target.releasePointerCapture(e.pointerId); } catch {}
+      };
+
+      const handlePointerClick = e => {
+        if (!suppressPointerClick) return;
+        suppressPointerClick = false;
+        e.preventDefault();
+        e.stopPropagation();
+      };
+
       const handleResize = () => {
         if (activeFullscreenSwipe && activeFullscreenSwipe.current === container) {
           cancelActiveFullscreenSwipe(true);
@@ -4275,6 +4478,11 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         swipeDrag = null;
         handleTouchEnd(e);
       }); // Handle cancellation
+      addListener(document, 'pointerdown', handlePointerDown, { passive: false });
+      addListener(document, 'pointermove', handlePointerMove, { passive: false });
+      addListener(document, 'pointerup', handlePointerUp, { passive: false });
+      addListener(document, 'pointercancel', handlePointerUp, { passive: false });
+      addListener(document, 'click', handlePointerClick, true);
       addListener(window, 'resize', handleResize);
 
       // Apply initial transform state (in case loaded with zoom/pan)
