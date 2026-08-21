@@ -211,7 +211,7 @@
       display: block;
     }
     /* Mobile HLS video — fill container width, preserve aspect ratio */
-    .player-container.mobile:not(.player-fullscreen-mobile):not(.mp4-player) .source-video {
+    .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile):not(.mp4-player) .source-video {
       display: block;
       width: 100%;
       height: auto;
@@ -545,32 +545,32 @@
     }
 
     /* ------ MOBILE NON-FULLSCREEN PLAYER ------ */
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .canvas-wrapper,
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .display-canvas {
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .canvas-wrapper,
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .display-canvas {
       display: none !important;
     }
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .controls-container {
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .controls-container {
       display: block !important;
       position: relative;
       background: #222;
       border-radius: 0 0 12px 12px;
       padding: 0;
     }
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .reset-btn,
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .disable-btn {
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .reset-btn,
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .disable-btn {
       display: none !important;
     }
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .control-bar {
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .control-bar {
       justify-content: space-between;
       padding: 8px 12px;
       background: none;
     }
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .fs-btn-mobile {
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .fs-btn-mobile {
       display: inline-block;
     }
     /* Keep the visual track thin while the element itself is tall for touch */
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .control-bar .progress-bar .buffered,
-    html.mobile .player-container.mobile:not(.player-fullscreen-mobile) .control-bar .progress-bar .played {
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .control-bar .progress-bar .buffered,
+    html.mobile .player-container.mobile:not(.player-fullscreen-mobile):not(.player-swipe-mobile) .control-bar .progress-bar .played {
       top: 50%;
       bottom: auto;
       height: 6px;
@@ -635,23 +635,32 @@
       display: block !important;
     }
 
-    .player-container.player-fullscreen-mobile {
+    .player-container.player-fullscreen-mobile,
+    .player-container.player-swipe-mobile {
       position: fixed !important;
       top: 0; left: 0;
       width: 100vw !important;
       height: 100vh !important;
+      height: 100dvh !important;
       max-width: none !important;
       margin: 0 !important;
       border-radius: 0 !important;
       background-color: #000 !important;
       z-index: 2000 !important;
       overflow: hidden;
+      transform: translate3d(var(--fs-swipe-x, 0px), 0, 0);
+      transform-origin: center center;
+      will-change: transform;
+      contain: paint;
     }
-    .player-container.player-fullscreen-mobile .source-video {
+    .player-container.player-fullscreen-mobile .source-video,
+    .player-container.player-swipe-mobile .source-video {
       position: absolute;
       top: 0; left: 0;
       width: 100%;
       height: 100%;
+      min-height: 0;
+      aspect-ratio: auto;
       object-fit: contain;
       border-radius: 0;
       transform-origin: center center;
@@ -659,17 +668,78 @@
       cursor: grab;
       will-change: transform;
     }
-    .player-container.player-fullscreen-mobile .source-video:active {
+    .player-container.player-fullscreen-mobile .source-video:active,
+    .player-container.player-swipe-mobile .source-video:active {
       cursor: grabbing;
     }
     .player-container.player-fullscreen-mobile .video-title-row,
-    .player-container.player-fullscreen-mobile .controls-container:not(.fullscreen-controls) {
+    .player-container.player-fullscreen-mobile .controls-container:not(.fullscreen-controls),
+    .player-container.player-swipe-mobile .video-title-row,
+    .player-container.player-swipe-mobile .controls-container,
+    .player-container.player-swipe-mobile .tides-control {
       display: none !important;
     }
     .player-container.player-fullscreen-mobile .fullscreen-controls {
       display: block !important;
     }
+    .player-container.player-swipe-mobile .fullscreen-controls {
+      display: none !important;
+    }
+    .player-container.player-swipe-mobile.mp4-player .source-video {
+      min-height: 0;
+      aspect-ratio: auto;
+    }
+    .fs-swipe-loader {
+      position: absolute;
+      inset: 0;
+      z-index: 2050;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      box-sizing: border-box;
+      color: #fff;
+      text-align: center;
+      background: rgba(0, 0, 0, .94);
+      opacity: 1;
+      transition: opacity 150ms ease;
+      pointer-events: none;
+    }
+    .fs-swipe-loader[hidden] {
+      display: none;
+    }
+    .fs-swipe-loader.fade-out {
+      opacity: 0;
+    }
+    .fs-swipe-loader-content {
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      max-width: 80%;
+    }
+    .fs-swipe-loader-spinner {
+      width: 42px;
+      height: 42px;
+      border: 4px solid rgba(255, 255, 255, .28);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: fs-swipe-spin .8s linear infinite;
+    }
+    .fs-swipe-loader-message {
+      font-size: 14px;
+      line-height: 1.35;
+      text-shadow: 0 1px 4px #000;
+    }
+    @keyframes fs-swipe-spin {
+      to { transform: rotate(360deg); }
+    }
     /* Title box that slides with its video during a fullscreen swipe drag */
+    #fsSwipeOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      overflow: hidden;
+      pointer-events: none;
+    }
     #fsSwipeOverlay .fs-swipe-title {
       position: absolute;
       top: 16px;
@@ -1826,6 +1896,10 @@
             existing.tidesCleanup();
             existing.tidesCleanup = null;
           }
+          if (existing.swipeLoaderCleanup) {
+            existing.swipeLoaderCleanup();
+            existing.swipeLoaderCleanup = null;
+          }
           if (existing.hls) existing.hls.destroy();
           existing.video.pause();
           existing.video.removeAttribute('src');
@@ -1927,7 +2001,9 @@
           isBuffering: false,    // Flag for buffering state
           stallPause: false,     // True when we paused the video ourselves due to a network stall
           canvas: null,          // Reference to the main canvas
-          resizeHandler: null    // Reference to the resize handler function
+          resizeHandler: null,   // Reference to the resize handler function
+          swipeLoaderCleanup: null,
+          swipeLoadError: null
       };
 
 
@@ -1968,6 +2044,7 @@
           video.pause();
           tb.textContent = `Error: ${video.error?.message || 'Could not load video'}`;
           tb.style.color = 'red';
+          if (playerObject.swipeLoadError) playerObject.swipeLoadError();
         });
 
         // Fullscreen handling (different for mobile/desktop)
@@ -3148,6 +3225,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
                   break;
                 default:
                   console.log("Unrecoverable HLS error, destroying instance.");
+                  if (playerObject.swipeLoadError) playerObject.swipeLoadError();
                   if (hlsInstance) {
                       hlsInstance.destroy();
                       hlsInstance = null;
@@ -3206,6 +3284,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           // Add basic error listener for native playback
           video.addEventListener('error', e => {
              console.error(`Native HLS Error for ${url}:`, video.error);
+             if (playerObject.swipeLoadError) playerObject.swipeLoadError();
              // Pause the playhead so the timeline only reflects actually loaded video.
              const wasPlaying = !video.paused;
              video.pause();
@@ -3237,303 +3316,347 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
     /* --- Mobile Pseudo-Fullscreen Logic --- */
     let pseudoFsCleanup = null; // Store cleanup function for current fullscreen instance
 
-    // A horizontal drag on the fullscreen video is finger-following: the current
-    // video tracks the finger while the next stream peeks in from the side. On
-    // release the gesture either commits (swap streams) or cancels (bounce back).
+    function nextAnimationFrame() {
+      return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    }
+
+    /* --- Compositor-safe mobile swipe deck ---
+       These implementations never move a video element between parents. */
+    let activeFullscreenSwipe = null;
+    const SWIPE_START_PX = 20;
+    const SWIPE_COMMIT_PX = 50;
+    const SWIPE_SETTLE_MS = 200;
+    const SWIPE_SETTLE_FALLBACK_MS = 350;
+
+    function clampSwipeOffset(direction, dx, width) {
+      if (direction > 0) return Math.max(0, Math.min(width, dx));
+      return Math.min(0, Math.max(-width, dx));
+    }
+
+    function makeSwipeTitle(overlay, text) {
+      const title = document.createElement('div');
+      title.className = 'fs-swipe-title';
+      title.textContent = text;
+      title.style.transform = 'translate3d(0, 0, 0) translateX(-50%)';
+      overlay.appendChild(title);
+      return title;
+    }
+
+    function createSwipeLoader(player) {
+      if (player.swipeLoaderCleanup) player.swipeLoaderCleanup();
+
+      const video = player.video;
+      const loader = document.createElement('div');
+      loader.className = 'fs-swipe-loader';
+      loader.setAttribute('role', 'status');
+      loader.setAttribute('aria-live', 'polite');
+      loader.setAttribute('aria-busy', 'true');
+      loader.innerHTML = `
+        <div class="fs-swipe-loader-content">
+          <div class="fs-swipe-loader-spinner" aria-hidden="true"></div>
+          <div class="fs-swipe-loader-message">Loading ${extractTitle(player.container.dataset.url)}…</div>
+        </div>`;
+      player.container.appendChild(loader);
+
+      const message = loader.querySelector('.fs-swipe-loader-message');
+      const spinner = loader.querySelector('.fs-swipe-loader-spinner');
+      let disposed = false;
+      let resolved = false;
+      let frameRequestId = null;
+      let rafId = null;
+      let fadeTimer = null;
+      const eventNames = ['loadeddata', 'canplay', 'playing', 'seeked'];
+
+      const isRenderable = () => {
+        return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+          video.videoWidth > 0 && video.videoHeight > 0;
+      };
+
+      const clearFrameWatch = () => {
+        if (frameRequestId !== null && typeof video.cancelVideoFrameCallback === 'function') {
+          try { video.cancelVideoFrameCallback(frameRequestId); } catch {}
+        }
+        frameRequestId = null;
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        rafId = null;
+        eventNames.forEach(event => video.removeEventListener(event, checkFrame));
+      };
+
+      const removeLoader = () => {
+        if (disposed) return;
+        disposed = true;
+        clearFrameWatch();
+        if (fadeTimer) clearTimeout(fadeTimer);
+        if (player.swipeLoadError === showError) player.swipeLoadError = null;
+        if (player.swipeLoaderCleanup === cleanup) player.swipeLoaderCleanup = null;
+        loader.remove();
+      };
+
+      const finishReady = () => {
+        if (disposed || resolved) return;
+        resolved = true;
+        loader.setAttribute('aria-busy', 'false');
+        loader.classList.add('fade-out');
+        fadeTimer = setTimeout(removeLoader, 180);
+      };
+
+      const fallbackFrameCheck = () => {
+        if (disposed || resolved || !isRenderable()) return;
+        let frames = 0;
+        const tick = () => {
+          if (disposed || resolved) return;
+          if (++frames >= 2) finishReady();
+          else rafId = requestAnimationFrame(tick);
+        };
+        rafId = requestAnimationFrame(tick);
+      };
+
+      const checkFrame = () => {
+        if (disposed || resolved || !isRenderable()) return;
+        fallbackFrameCheck();
+        if (typeof video.requestVideoFrameCallback === 'function' && frameRequestId === null) {
+          try {
+            frameRequestId = video.requestVideoFrameCallback(() => {
+              frameRequestId = null;
+              finishReady();
+            });
+          } catch {
+            frameRequestId = null;
+          }
+        }
+      };
+
+      const showError = () => {
+        if (disposed || resolved) return;
+        loader.classList.remove('fade-out');
+        loader.setAttribute('aria-busy', 'false');
+        if (spinner) spinner.style.display = 'none';
+        if (message) message.textContent = `Unable to load ${extractTitle(player.container.dataset.url)}.`;
+      };
+
+      const cleanup = () => {
+        if (disposed) return;
+        clearFrameWatch();
+        removeLoader();
+      };
+
+      player.swipeLoadError = showError;
+      player.swipeLoaderCleanup = cleanup;
+      eventNames.forEach(event => video.addEventListener(event, checkFrame));
+      if (video.error) showError();
+      else checkFrame();
+
+      return { loader, cleanup, showError };
+    }
+
+    function updateSwipePosition(drag, rawDx) {
+      const dx = clampSwipeOffset(drag.direction, rawDx, drag.viewportWidth);
+      const targetX = dx - drag.direction * drag.viewportWidth;
+      drag.currentOffset = dx;
+      drag.targetOffset = targetX;
+      drag.current.style.setProperty('--fs-swipe-x', `${dx}px`);
+      drag.target.style.setProperty('--fs-swipe-x', `${targetX}px`);
+      drag.currentTitle.style.transform = `translate3d(${dx}px, 0, 0) translateX(-50%)`;
+      drag.targetTitle.style.transform = `translate3d(${targetX}px, 0, 0) translateX(-50%)`;
+      return dx;
+    }
+
+    function stageSwipeTarget(drag) {
+      const target = drag.target;
+      const targetVideo = drag.targetPlayer.video;
+      target.classList.add('player-swipe-mobile');
+      target.style.setProperty('z-index', '2001', 'important');
+      target.style.transition = 'none';
+
+      if (target.classList.contains('mp4-player')) {
+        drag.targetOriginalControls = targetVideo.controls;
+        targetVideo.controls = false;
+      }
+
+      drag.loaderState = createSwipeLoader(drag.targetPlayer);
+      updateSwipePosition(drag, 0);
+
+      // HLS players are already configured for muted autoplay. Do not start an
+      // unmuted MP4 solely for the preview, since that can create audio overlap.
+      if ((targetVideo.muted || targetVideo.autoplay) && targetVideo.paused) {
+        targetVideo.play().catch(() => {});
+      }
+    }
+
     function startSwipeDrag(direction) {
       const current = document.querySelector('.player-fullscreen-mobile');
-      if (!current || current._swipeTransition) return null;
+      if (!current || current._swipeTransition || activeFullscreenSwipe) return null;
 
       const enabledUrls = getStreamList().filter(stream => stream.enabled).map(stream => stream.url);
       const currentIndex = enabledUrls.indexOf(current.dataset.url);
       if (enabledUrls.length < 2 || currentIndex === -1) return null;
 
       const nextIndex = (currentIndex + direction + enabledUrls.length) % enabledUrls.length;
-      const target = players[enabledUrls[nextIndex]];
-      if (!target || target.container === current) return null;
-
+      const targetPlayer = players[enabledUrls[nextIndex]];
       const currentPlayer = players[current.dataset.url];
-      if (!currentPlayer) return null;
+      if (!targetPlayer || !currentPlayer || targetPlayer.container === current) return null;
 
-      current._swipeTransition = true;
-      const curVid = currentPlayer.video;
-      const nextVid = target.video;
-
-      // Snapshot original DOM locations so we can put the videos back afterwards.
-      const curParent = curVid.parentNode;
-      const curNext = curVid.nextSibling;
-      const nextParent = nextVid.parentNode;
-      const nextNext = nextVid.nextSibling;
-
-      // Play the incoming stream so it has frames to show while peeking in.
-      if (nextVid.paused) nextVid.play().catch(()=>{});
-
-      // Fixed overlay that covers the screen during the drag.
       const overlay = document.createElement('div');
       overlay.id = 'fsSwipeOverlay';
-      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:3000;background:#000;overflow:hidden;pointer-events:auto;will-change:background;transition:background 0.3s ease;';
       document.body.appendChild(overlay);
 
-      const prepReinsert = { curParent, curNext, nextParent, nextNext };
-      const inX = direction > 0 ? '-100%' : '100%'; // Side the incoming video starts on
-      // Give BOTH videos the exact fullscreen sizing. Without it the current
-      // video drops back to its intrinsic (native) resolution once it leaves the
-      // .player-fullscreen-mobile container during the drag, blowing up its size.
-      const prepVideo = (v, xOffset) => {
-        v.style.position = 'absolute';
-        v.style.top = '0';
-        v.style.left = '0';
-        v.style.width = '100%';
-        v.style.height = '100%';
-        v.style.objectFit = 'contain';
-        v.style.margin = '0';
-        v.style.transformOrigin = 'center center';
-        v.style.transition = 'none';
-        v.style.transform = `translateX(${xOffset})`;
-        v.controls = false; // Keep native MP4 controls out of the drag
-        overlay.appendChild(v);
-      };
-      prepVideo(nextVid, inX); // Incoming starts off-screen in the swipe direction
-      prepVideo(curVid, 0);    // Current stays in place, same fullscreen size
-
-      // Don't reveal a neighbor that has no decoded frame yet — it would slide
-      // in as a black box. Hold it invisible and fade it in once it gets data.
-      let revealNext = null;
-      if (nextVid.readyState < 2) {
-        nextVid.style.transition = 'opacity 150ms ease';
-        nextVid.style.opacity = '0';
-        let revealed = false;
-        const check = () => {
-          if (revealed) return;
-          revealed = true;
-          nextVid.style.transition = 'opacity 150ms ease';
-          nextVid.style.opacity = '1';
-        };
-        nextVid.addEventListener('loadeddata', check);
-        nextVid.addEventListener('playing', check);
-        revealNext = () => {
-          nextVid.removeEventListener('loadeddata', check);
-          nextVid.removeEventListener('playing', check);
-          nextVid.style.removeProperty('transition');
-          nextVid.style.removeProperty('opacity');
-        };
-      }
-
-      // Re-insert a video back into its original container, preserving order.
-      const replaceVid = (v, parent, next) => {
-        const styles = ['position','top','left','width','height','objectFit','margin','transformOrigin','transition','transform','inset','opacity'];
-        styles.forEach(s => v.style.removeProperty(s));
-        if (next && next.parentNode === parent) parent.insertBefore(v, next);
-        else parent.appendChild(v);
+      const viewportWidth = Math.max(1, window.innerWidth);
+      const drag = {
+        token: Symbol('fullscreen-swipe'),
+        current,
+        target: targetPlayer.container,
+        currentPlayer,
+        targetPlayer,
+        currentVideo: currentPlayer.video,
+        targetVideo: targetPlayer.video,
+        direction,
+        viewportWidth,
+        currentOffset: 0,
+        targetOffset: -direction * viewportWidth,
+        phase: 'dragging',
+        overlay,
+        currentTitle: makeSwipeTitle(overlay, extractTitle(current.dataset.url)),
+        targetTitle: makeSwipeTitle(overlay, extractTitle(targetPlayer.container.dataset.url)),
+        loaderState: null,
+        targetOriginalControls: null,
+        transitionCleanup: null
       };
 
-      // Title boxes, each centered on its own video and sliding with it.
-      const makeTitle = text => {
-        const box = document.createElement('div');
-        box.className = 'fs-swipe-title';
-        box.style.transform = 'translateX(-50%)';
-        box.textContent = text;
-        overlay.appendChild(box);
-        return box;
-      };
-      const curTitle = makeTitle(extractTitle(current.dataset.url));
-      const nextTitle = makeTitle(extractTitle(target.container.dataset.url));
+      current._swipeTransition = true;
+      targetPlayer.container._swipeTransition = true;
+      activeFullscreenSwipe = drag;
+      stageSwipeTarget(drag);
 
-      // Force reflow so the initial off-screen position is committed.
-      void overlay.offsetWidth;
-
-      return { current, curVid, nextVid, prepReinsert, overlay, curTitle, nextTitle, target, direction, inX, replaceVid, revealNext };
+      // Commit the offscreen destination style before the first finger-follow
+      // update. No media element changes parent here.
+      void drag.target.offsetWidth;
+      return drag;
     }
 
-    function updateSwipeDrag(drag, dx) {
-      const d = drag.direction;
-      const curX = `translateX(${dx}px)`;
-      const nextX = `translateX(calc(${d > 0 ? '-100%' : '100%'} + ${dx}px))`;
-      drag.curVid.style.transform = curX;
-      drag.nextVid.style.transform = nextX;
-      drag.curTitle.style.transform = `translateX(${dx}px) translateX(-50%)`;
-      drag.nextTitle.style.transform = `${nextX} translateX(-50%)`;
+    function updateSwipeDrag(drag, rawDx) {
+      if (!drag || drag.phase !== 'dragging') return;
+      updateSwipePosition(drag, rawDx);
     }
 
-    function endSwipeDrag(drag, dx) {
-      const { current, curVid, nextVid, prepReinsert, overlay, curTitle, nextTitle, target, direction, inX, replaceVid, revealNext } = drag;
-
-      // Commit only when the finger ends up far enough out in the drag's locked direction.
-      const commit = Math.abs(dx) > 50 && dx * direction > 0;
-      const outX = direction > 0 ? '100%' : '-100%';
-      const ease = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
-      const dur = '200ms';
-
-      curVid.style.transition = `transform ${dur} ${ease}`;
-      nextVid.style.transition = `transform ${dur} ${ease}`;
-      curTitle.style.transition = `transform ${dur} ${ease}, opacity 0.25s ease`;
-      nextTitle.style.transition = `transform ${dur} ${ease}, opacity 0.25s ease`;
-
-      if (commit) {
-        curVid.style.transform = `translateX(${outX})`;
-        nextVid.style.transform = 'translateX(0)';
-        curTitle.style.transform = `translateX(${outX}) translateX(-50%)`;
-        nextTitle.style.transform = 'translateX(-50%)';
-      } else {
-        curVid.style.transform = 'translateX(0)';
-        nextVid.style.transform = `translateX(${inX})`;
-        curTitle.style.transform = 'translateX(-50%)';
-        nextTitle.style.transform = `translateX(${inX}) translateX(-50%)`;
+    function finishSwipeCleanup(drag, { committed = false, immediate = false } = {}) {
+      if (!drag || drag.phase === 'done') return;
+      drag.phase = 'done';
+      if (drag.transitionCleanup) {
+        drag.transitionCleanup();
+        drag.transitionCleanup = null;
       }
 
-      setTimeout(() => {
-        if (commit) {
-          // Keep the outgoing video in the overlay while the incoming video
-          // is staged in its real container. Moving the outgoing element back
-          // first can blank its compositor layer for a frame too.
-          replaceVid(nextVid, prepReinsert.nextParent, prepReinsert.nextNext);
-          if (revealNext) revealNext();
+      if (drag.loaderState && !committed) drag.loaderState.cleanup();
+      if (!committed && drag.target.classList.contains('mp4-player') && drag.targetOriginalControls !== null) {
+        drag.targetVideo.controls = drag.targetOriginalControls;
+      }
 
-          // Do not tear down the old fullscreen player and immediately rebuild
-          // the new one. Mobile video elements are composited independently and
-          // that reparent/class toggle can expose the black fullscreen backdrop
-          // for a frame, even when the incoming video is already playing.
-          curTitle.style.opacity = '0';
-          nextTitle.style.opacity = '0';
-          handoffPseudoFullscreen(
-            current,
-            curVid,
-            target.container,
-            nextVid,
-            overlay,
-            () => replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext)
-          )
-            .catch(error => {
-              console.warn('Fullscreen video handoff failed:', error);
-              // Keep the app usable if a browser rejects the frame wait.
-              if (target.container.classList.contains('player-fullscreen-mobile')) {
-                cleanupPseudoFullscreenInstance(target.container, nextVid);
-              }
-              exitPseudoFullscreen(current, curVid);
-              target.container.style.removeProperty('z-index');
-              enterPseudoFullscreen(target.container, nextVid);
-              replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext);
-              current._swipeTransition = false;
-              target.container._swipeTransition = false;
-              overlay.remove();
-            });
-        } else {
-          replaceVid(curVid, prepReinsert.curParent, prepReinsert.curNext);
-          replaceVid(nextVid, prepReinsert.nextParent, prepReinsert.nextNext);
-          if (revealNext) revealNext();
-          current._swipeTransition = false;
-          overlay.style.pointerEvents = 'none';
-          overlay.style.background = 'transparent';
-          curTitle.style.opacity = '0';
-          nextTitle.style.opacity = '0';
-          setTimeout(() => overlay.remove(), 320);
+      drag.current.style.transition = immediate ? 'none' : '';
+      drag.target.style.transition = immediate ? 'none' : '';
+      drag.current.style.setProperty('--fs-swipe-x', '0px');
+      drag.target.style.removeProperty('--fs-swipe-x');
+      drag.target.classList.remove('player-swipe-mobile');
+      drag.target.style.removeProperty('z-index');
+      drag.current._swipeTransition = false;
+      drag.target._swipeTransition = false;
+      if (drag.overlay) drag.overlay.remove();
+      if (activeFullscreenSwipe === drag) activeFullscreenSwipe = null;
+    }
+
+    function commitSwipeHandoff(drag) {
+      if (!drag || drag.phase === 'done') return;
+      drag.phase = 'committing';
+
+      const current = drag.current;
+      const target = drag.target;
+      const currentVideo = drag.currentVideo;
+      const targetVideo = drag.targetVideo;
+
+      // The destination is already at zero offset and already has fullscreen
+      // geometry. Promote it before removing the outgoing fullscreen class.
+      cleanupPseudoFullscreenInstance(current, currentVideo, { keepFullscreenClass: true });
+      target.classList.add('player-fullscreen-mobile');
+      target.style.setProperty('z-index', '2002', 'important');
+      activatePseudoFullscreen(target, targetVideo);
+
+      nextAnimationFrame().then(() => {
+        if (drag.phase === 'done') return;
+        current.classList.remove('player-fullscreen-mobile', 'controls-open', 'tide-panel-open');
+        if (drag.currentPlayer.swipeLoaderCleanup) {
+          drag.currentPlayer.swipeLoaderCleanup();
+          drag.currentPlayer.swipeLoaderCleanup = null;
         }
-      }, 230);
-    }
-
-    // Wait until the incoming element has presented a frame. A decoded video
-    // can still be visually blank for one compositor pass after it is moved
-    // between containers, especially on iOS. requestVideoFrameCallback is the
-    // most precise signal; the double-rAF fallback covers browsers without it.
-    function waitForVideoFrame(video, timeoutMs = 1000) {
-      return new Promise(resolve => {
-        let settled = false;
-        let frameRequested = false;
-        let timeoutId = null;
-        const events = ['loadeddata', 'canplay', 'playing'];
-
-        const finish = () => {
-          if (settled) return;
-          settled = true;
-          if (timeoutId) clearTimeout(timeoutId);
-          events.forEach(event => video.removeEventListener(event, requestFrame));
-          resolve();
-        };
-        const requestFrame = () => {
-          if (settled || frameRequested) return;
-          frameRequested = true;
-          if (typeof video.requestVideoFrameCallback === 'function') {
-            video.requestVideoFrameCallback(() => finish());
-          } else {
-            requestAnimationFrame(() => requestAnimationFrame(finish));
-          }
-        };
-
-        events.forEach(event => video.addEventListener(event, requestFrame));
-        if (video.readyState >= 2) requestFrame();
-        timeoutId = setTimeout(finish, timeoutMs);
+        current.style.transition = 'none';
+        current.style.removeProperty('--fs-swipe-x');
+        target.classList.remove('player-swipe-mobile');
+        target.style.transition = '';
+        target.style.removeProperty('--fs-swipe-x');
+        target.style.removeProperty('z-index');
+        current._swipeTransition = false;
+        target._swipeTransition = false;
+        drag.phase = 'done';
+        if (drag.overlay) drag.overlay.remove();
+        if (activeFullscreenSwipe === drag) activeFullscreenSwipe = null;
       });
     }
 
-    function nextAnimationFrame() {
-      return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    function endSwipeDrag(drag, rawDx) {
+      if (!drag || drag.phase !== 'dragging') return;
+      const dx = clampSwipeOffset(drag.direction, rawDx, drag.viewportWidth);
+      const commit = Math.abs(dx) > SWIPE_COMMIT_PX && dx * drag.direction > 0;
+      drag.phase = commit ? 'settling-commit' : 'settling-cancel';
+
+      const ease = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+      const transition = `transform ${SWIPE_SETTLE_MS}ms ${ease}`;
+      drag.current.style.transition = transition;
+      drag.target.style.transition = transition;
+      drag.currentTitle.style.transition = `transform ${SWIPE_SETTLE_MS}ms ${ease}, opacity 0.15s ease`;
+      drag.targetTitle.style.transition = `transform ${SWIPE_SETTLE_MS}ms ${ease}, opacity 0.15s ease`;
+
+      const finalDx = commit ? drag.direction * drag.viewportWidth : 0;
+      updateSwipePosition(drag, finalDx);
+
+      let done = false;
+      let seenCurrent = false;
+      let seenTarget = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        if (drag.transitionCleanup) drag.transitionCleanup();
+        drag.transitionCleanup = null;
+        drag.currentTitle.style.opacity = '0';
+        drag.targetTitle.style.opacity = '0';
+        if (commit) commitSwipeHandoff(drag);
+        else finishSwipeCleanup(drag);
+      };
+      const onTransitionEnd = event => {
+        if (event.propertyName !== 'transform') return;
+        if (event.target === drag.current) seenCurrent = true;
+        if (event.target === drag.target) seenTarget = true;
+        if (seenCurrent && seenTarget) finish();
+      };
+      const fallback = setTimeout(finish, SWIPE_SETTLE_FALLBACK_MS);
+      drag.current.addEventListener('transitionend', onTransitionEnd);
+      drag.target.addEventListener('transitionend', onTransitionEnd);
+      drag.transitionCleanup = () => {
+        clearTimeout(fallback);
+        drag.current.removeEventListener('transitionend', onTransitionEnd);
+        drag.target.removeEventListener('transitionend', onTransitionEnd);
+      };
     }
 
-    // Switch fullscreen players while the old player remains visible beneath
-    // the incoming one. This keeps a real video frame on screen throughout the
-    // DOM/class handoff instead of revealing the black page background.
-    async function handoffPseudoFullscreen(current, currentVideo, target, targetVideo, overlay, reinsertCurrent) {
-      const htmlEl = document.documentElement;
-
-      // Clean up the old player's controls and gesture listeners, but leave its
-      // fullscreen class in place while its video remains in the overlay as a
-      // visible fallback and the target prepares underneath it.
-      cleanupPseudoFullscreenInstance(current, currentVideo, { keepFullscreenClass: true });
-
-      // Keep the overlay opaque and on top until the target has presented a
-      // frame and the outgoing video has been moved out of the overlay.
-      overlay.style.transition = 'none';
-      overlay.style.background = '#000';
-      overlay.style.pointerEvents = 'none';
-      overlay.style.zIndex = '3000';
-
-      // Put the target below the still-visible current player while its video
-      // gets a compositor frame. The temporary z-index is important when the
-      // target appears earlier than the current player in the DOM.
-      const originalTargetZIndex = target.style.getPropertyValue('z-index');
-      const originalTargetZPriority = target.style.getPropertyPriority('z-index');
-      target.style.setProperty('z-index', '1999', 'important');
-      activatePseudoFullscreen(target, targetVideo);
-      target._swipeTransition = true;
-
-      if (targetVideo.paused) targetVideo.play().catch(() => {});
-      await waitForVideoFrame(targetVideo);
-
-      // Raise the target only after it has a frame, then give the browser one
-      // paint before removing the old fullscreen container.
-      target.style.setProperty('z-index', '2001', 'important');
-      await nextAnimationFrame();
-      await nextAnimationFrame();
-
-      // The overlay still covers this move, so any compositor blanking on the
-      // outgoing element cannot reach the user.
-      reinsertCurrent();
-      current.classList.remove('player-fullscreen-mobile', 'controls-open', 'tide-panel-open');
-      if (!current.classList.contains('mp4-player')) {
-        currentVideo.style.transform = 'scale(1) translate(0px, 0px)';
-        currentVideo.style.transformOrigin = 'center center';
+    function cancelActiveFullscreenSwipe(immediate = true) {
+      const drag = activeFullscreenSwipe;
+      if (!drag || drag.phase === 'done') return;
+      if (drag.transitionCleanup) drag.transitionCleanup();
+      drag.transitionCleanup = null;
+      // A commit promotes the destination before its final animation frame.
+      // If fullscreen is exited during that frame, tear down the promoted
+      // destination as well so two fullscreen containers cannot remain.
+      if (drag.phase === 'committing' && drag.target.classList.contains('player-fullscreen-mobile')) {
+        cleanupPseudoFullscreenInstance(drag.target, drag.targetVideo);
       }
-      current._swipeTransition = false;
-      target._swipeTransition = false;
-
-      // The document is intentionally kept in pseudo-fullscreen mode for the
-      // target; only the old container was removed from that mode.
-      if (!htmlEl.classList.contains('pseudo-fullscreen-mobile')) {
-        htmlEl.classList.add('pseudo-fullscreen-mobile');
-        if (!IS_SAFARI_MOBILE) htmlEl.classList.add('non-safari');
-      }
-
-      // Reveal the already-presenting target for at least one paint before
-      // removing the overlay and restoring its normal stacking order.
-      overlay.style.background = 'transparent';
-      overlay.style.zIndex = '1998';
-      await nextAnimationFrame();
-      if (originalTargetZIndex) {
-        target.style.setProperty('z-index', originalTargetZIndex, originalTargetZPriority);
-      } else {
-        target.style.removeProperty('z-index');
-      }
-      overlay.remove();
+      finishSwipeCleanup(drag, { immediate });
     }
 
     function cleanupPseudoFullscreenInstance(container, video, { keepFullscreenClass = false } = {}) {
@@ -3556,6 +3679,12 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       const fsControls = container.querySelector('.fullscreen-controls');
       if (fsControls) fsControls.remove();
+
+      const player = players[container.dataset.url];
+      if (player && player.swipeLoaderCleanup && !keepFullscreenClass) {
+        player.swipeLoaderCleanup();
+        player.swipeLoaderCleanup = null;
+      }
     }
 
     function activatePseudoFullscreen(container, video) {
@@ -3616,6 +3745,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
     function exitPseudoFullscreen(container, video) {
       if (!container || !container.classList.contains('player-fullscreen-mobile')) return;
+
+      if (activeFullscreenSwipe) cancelActiveFullscreenSwipe(true);
 
       const htmlEl = document.documentElement;
 
@@ -3961,7 +4092,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         // Ignore touches starting on controls
         if (e.target.closest('.fullscreen-controls')) return;
         // Only handle gestures on the fullscreen player (or the body-level swipe overlay).
-        if (!e.target.closest('.player-fullscreen-mobile, #fsSwipeOverlay')) return;
+        if (!e.target.closest('.player-fullscreen-mobile, .player-swipe-mobile, #fsSwipeOverlay')) return;
         isGesturing = true; // Mark gesture active
 
         if (e.touches.length === 1) {
@@ -3985,7 +4116,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           // Start pinch-zoom/pan gesture
           // Cancel any in-progress stream-swap drag before the pinch takes over.
           if (swipeDrag) {
-            endSwipeDrag(swipeDrag, 0);
+            cancelActiveFullscreenSwipe(true);
             swipeDrag = null;
           }
           isPanning = false; // Cancel any single-finger pan
@@ -4034,7 +4165,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           }
           // Finger-follow drag: once horizontal movement dominates, snap the
           // videos to the finger and keep them tracking until release.
-          if (!swipeDrag && Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy)) {
+          if (!swipeDrag && Math.abs(dx) > SWIPE_START_PX && Math.abs(dx) > Math.abs(dy)) {
             swipeDrag = startSwipeDrag(dx > 0 ? 1 : -1);
           }
           if (swipeDrag) {
@@ -4127,12 +4258,24 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         }
       };
 
-      // Listen on the document so gestures keep working while a swipe drag
-      // reparents the video into the body-level overlay mid-touch.
+      const handleResize = () => {
+        if (activeFullscreenSwipe && activeFullscreenSwipe.current === container) {
+          cancelActiveFullscreenSwipe(true);
+        }
+        applyTransform();
+      };
+
+      // Listen on the document so gestures continue to work while the staged
+      // player is fixed outside its normal card position.
       addListener(document, 'touchstart', handleTouchStart, { passive: false }); // Need active for preventDefault
       addListener(document, 'touchmove', handleTouchMove, { passive: false }); // Need active for preventDefault
       addListener(document, 'touchend', handleTouchEnd);
-      addListener(document, 'touchcancel', handleTouchEnd); // Handle cancellation
+      addListener(document, 'touchcancel', e => {
+        if (swipeDrag) cancelActiveFullscreenSwipe(true);
+        swipeDrag = null;
+        handleTouchEnd(e);
+      }); // Handle cancellation
+      addListener(window, 'resize', handleResize);
 
       // Apply initial transform state (in case loaded with zoom/pan)
       applyTransform();
