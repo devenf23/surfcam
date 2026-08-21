@@ -740,17 +740,18 @@
       overflow: hidden;
       pointer-events: none;
     }
-    #fsSwipeOverlay .fs-swipe-title {
+    #fsSwipeOverlay .fs-swipe-title,
+    .player-container.player-fullscreen-mobile > .fs-swipe-title {
       position: absolute;
       top: 16px;
       left: 50%;
-      padding: 8px 16px;
-      font-size: 15px;
+      padding: 16px 32px;
+      font-size: 30px;
       line-height: 1.3;
       color: #fff;
       background: rgba(0, 0, 0, 0.75);
       border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 12px;
+      border-radius: 16px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
       white-space: nowrap;
       max-width: 85%;
@@ -759,6 +760,9 @@
       z-index: 1;
       pointer-events: none;
       will-change: transform, opacity;
+    }
+    .player-container.player-fullscreen-mobile > .fs-swipe-title {
+      z-index: 2060;
     }
 
     .fullscreen-controls {
@@ -1900,6 +1904,10 @@
             existing.swipeLoaderCleanup();
             existing.swipeLoaderCleanup = null;
           }
+          if (existing.swipeTitleCleanup) {
+            existing.swipeTitleCleanup();
+            existing.swipeTitleCleanup = null;
+          }
           if (existing.swipeWarmCleanup) {
             existing.swipeWarmCleanup();
             existing.swipeWarmCleanup = null;
@@ -2013,6 +2021,7 @@
           resizeHandler: null,   // Reference to the resize handler function
           swipeLoaderCleanup: null,
           swipeLoadError: null,
+          swipeTitleCleanup: null,
           swipeWarmCleanup: null,
           swipeWarmReady: false,
           swipeWarmError: false
@@ -3339,6 +3348,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
     const SWIPE_COMMIT_PX = 50;
     const SWIPE_SETTLE_MS = 200;
     const SWIPE_SETTLE_FALLBACK_MS = 350;
+    const SWIPE_TITLE_VISIBLE_MS = 1000;
+    const SWIPE_TITLE_FADE_MS = 180;
 
     function clampSwipeOffset(direction, dx, width) {
       if (direction > 0) return Math.max(0, Math.min(width, dx));
@@ -3590,9 +3601,46 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       drag.targetOffset = targetX;
       drag.current.style.setProperty('--fs-swipe-x', `${dx}px`);
       drag.target.style.setProperty('--fs-swipe-x', `${targetX}px`);
-      drag.currentTitle.style.transform = `translate3d(${dx}px, 0, 0) translateX(-50%)`;
+      if (drag.currentTitle) {
+        drag.currentTitle.style.transform = `translate3d(${dx}px, 0, 0) translateX(-50%)`;
+      }
       drag.targetTitle.style.transform = `translate3d(${targetX}px, 0, 0) translateX(-50%)`;
       return dx;
+    }
+
+    function promoteSwipeTitle(drag) {
+      const title = drag.targetTitle;
+      const player = drag.targetPlayer;
+      if (!title || !player) return;
+
+      if (player.swipeTitleCleanup) player.swipeTitleCleanup();
+      title.style.transform = 'translate3d(0, 0, 0) translateX(-50%)';
+      title.style.opacity = '1';
+      title.style.zIndex = '2060';
+      title.style.transition = `opacity ${SWIPE_TITLE_FADE_MS}ms ease`;
+      drag.target.appendChild(title);
+
+      let disposed = false;
+      let hideTimer = null;
+      let removeTimer = null;
+      const cleanup = () => {
+        if (disposed) return;
+        disposed = true;
+        if (hideTimer) clearTimeout(hideTimer);
+        if (removeTimer) clearTimeout(removeTimer);
+        title.remove();
+        if (player.swipeTitleCleanup === cleanup) player.swipeTitleCleanup = null;
+        if (drag.titleCleanup === cleanup) drag.titleCleanup = null;
+      };
+      const dismiss = () => {
+        if (disposed) return;
+        title.style.opacity = '0';
+        removeTimer = setTimeout(cleanup, SWIPE_TITLE_FADE_MS);
+      };
+
+      player.swipeTitleCleanup = cleanup;
+      drag.titleCleanup = cleanup;
+      hideTimer = setTimeout(dismiss, SWIPE_TITLE_VISIBLE_MS);
     }
 
     function stageSwipeTarget(drag) {
@@ -3655,11 +3703,12 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         targetOffset: -direction * viewportWidth,
         phase: 'dragging',
         overlay,
-        currentTitle: makeSwipeTitle(overlay, extractTitle(current.dataset.url)),
+        currentTitle: null,
         targetTitle: makeSwipeTitle(overlay, extractTitle(targetPlayer.container.dataset.url)),
         loaderState: null,
         targetOriginalControls: null,
-        transitionCleanup: null
+        transitionCleanup: null,
+        titleCleanup: null
       };
 
       current._swipeTransition = true;
@@ -3697,6 +3746,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       drag.target.style.removeProperty('--fs-swipe-x');
       drag.target.classList.remove('player-swipe-mobile');
       drag.target.style.removeProperty('z-index');
+      if (drag.titleCleanup) drag.titleCleanup();
       drag.current._swipeTransition = false;
       drag.target._swipeTransition = false;
       if (drag.overlay) drag.overlay.remove();
@@ -3736,6 +3786,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         current._swipeTransition = false;
         target._swipeTransition = false;
         drag.phase = 'done';
+        promoteSwipeTitle(drag);
         if (drag.overlay) drag.overlay.remove();
         if (activeFullscreenSwipe === drag) activeFullscreenSwipe = null;
       });
@@ -3751,7 +3802,9 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const transition = `transform ${SWIPE_SETTLE_MS}ms ${ease}`;
       drag.current.style.transition = transition;
       drag.target.style.transition = transition;
-      drag.currentTitle.style.transition = `transform ${SWIPE_SETTLE_MS}ms ${ease}, opacity 0.15s ease`;
+      if (drag.currentTitle) {
+        drag.currentTitle.style.transition = `transform ${SWIPE_SETTLE_MS}ms ${ease}, opacity 0.15s ease`;
+      }
       drag.targetTitle.style.transition = `transform ${SWIPE_SETTLE_MS}ms ${ease}, opacity 0.15s ease`;
 
       const finalDx = commit ? drag.direction * drag.viewportWidth : 0;
@@ -3765,10 +3818,14 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         done = true;
         if (drag.transitionCleanup) drag.transitionCleanup();
         drag.transitionCleanup = null;
-        drag.currentTitle.style.opacity = '0';
-        drag.targetTitle.style.opacity = '0';
-        if (commit) commitSwipeHandoff(drag);
-        else finishSwipeCleanup(drag);
+        if (drag.currentTitle) drag.currentTitle.style.opacity = '0';
+        if (commit) {
+          drag.targetTitle.style.opacity = '1';
+          commitSwipeHandoff(drag);
+        } else {
+          drag.targetTitle.style.opacity = '0';
+          finishSwipeCleanup(drag);
+        }
       };
       const onTransitionEnd = event => {
         if (event.propertyName !== 'transform') return;
@@ -3822,6 +3879,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       if (fsControls) fsControls.remove();
 
       const player = players[container.dataset.url];
+      if (player && player.swipeTitleCleanup) {
+        player.swipeTitleCleanup();
+        player.swipeTitleCleanup = null;
+      }
       if (player && player.swipeLoaderCleanup && !keepFullscreenClass) {
         player.swipeLoaderCleanup();
         player.swipeLoaderCleanup = null;
