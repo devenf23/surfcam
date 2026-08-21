@@ -186,6 +186,12 @@
       return indicator;
     }
 
+    function refreshBufferingIndicators() {
+      Object.values(players).forEach(player => {
+        if (player.syncBufferingIndicator) player.syncBufferingIndicator();
+      });
+    }
+
     function setupStreamBuffering(player) {
       const { video, container, bufferingIndicator } = player;
       if (!bufferingIndicator) return;
@@ -209,6 +215,30 @@
         else container.removeAttribute('aria-busy');
       };
 
+      const canShowIndicator = () => {
+        if (!player.isBuffering) return false;
+
+        // A stale buffering flag must not cover a frame that is already being
+        // played. `playing` normally clears the flag; this guard also handles
+        // browsers that omit or delay that event during HLS recovery.
+        const isActuallyPlaying = !video.paused &&
+          video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+        if (isActuallyPlaying) return false;
+
+        // While mobile pseudo-fullscreen is active, only the active player may
+        // own the shared buffering surface. A staged swipe target has its own
+        // opaque transition loader, so it is suppressed here as well.
+        if (IS_MOBILE && document.documentElement.classList.contains('pseudo-fullscreen-mobile')) {
+          if (!container.classList.contains('player-fullscreen-mobile') || player.suppressBufferingIndicator) {
+            return false;
+          }
+        }
+        return true;
+      };
+
+      const syncBufferingIndicator = () => setIndicatorVisible(canShowIndicator());
+      player.syncBufferingIndicator = syncBufferingIndicator;
+
       const clearBuffering = () => {
         if (!player.isBuffering && bufferingIndicator.hidden) return;
         player.isBuffering = false;
@@ -231,7 +261,6 @@
         player.isBuffering = true;
         player.stallPause = player.wantsToPlay;
         resumeAttemptInFlight = false;
-        setIndicatorVisible(true);
 
         // pause() changes video.paused immediately but queues the pause event.
         // Count that event instead of using a synchronous boolean guard, or the
@@ -240,6 +269,7 @@
           internalPauseEvents += 1;
           video.pause();
         }
+        syncBufferingIndicator();
         notifyStateChange();
       };
 
@@ -306,6 +336,7 @@
       });
       player.addListener(video, 'play', () => {
         player.wantsToPlay = true;
+        syncBufferingIndicator();
         notifyStateChange();
       });
       player.addListener(video, 'playing', clearBuffering);
@@ -953,6 +984,8 @@
           stallPause: false,     // True when we paused the video ourselves due to a network stall
           wantsToPlay: video.autoplay,
           bufferingIndicator: null,
+          suppressBufferingIndicator: false,
+          syncBufferingIndicator: null,
           updateTimeline: null,
           canvas: null,          // Reference to the main canvas
           resizeHandler: null,   // Reference to the resize handler function
@@ -1452,15 +1485,12 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
                     offsetY = (actualCanvasHeight - drawHeight) / 2;
                 }
             } else {
-                // Video dimensions not ready, show loading and request next frame
+                // The shared buffering indicator owns loading UI. Keep the
+                // canvas neutral here so startup cannot show a second loader.
                 mainCtx.save();
                 mainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-                mainCtx.fillStyle = '#555';
+                mainCtx.fillStyle = '#000';
                 mainCtx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight); // Clear with loading background
-                mainCtx.fillStyle = '#fff';
-                mainCtx.textAlign = 'center';
-                mainCtx.font = '16px Arial';
-                mainCtx.fillText('Loading...', actualCanvasWidth / 2, actualCanvasHeight / 2);
                 mainCtx.restore();
                 scheduleCanvasFrame();
                 return;
@@ -2350,6 +2380,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           <div class="fs-swipe-loader-message">Loading ${extractTitle(player.container.dataset.url)}…</div>
         </div>`;
       player.container.appendChild(loader);
+      player.suppressBufferingIndicator = true;
+      if (player.syncBufferingIndicator) player.syncBufferingIndicator();
 
       const message = loader.querySelector('.fs-swipe-loader-message');
       const spinner = loader.querySelector('.fs-swipe-loader-spinner');
@@ -2365,6 +2397,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         if (fadeTimer) clearTimeout(fadeTimer);
         if (player.swipeLoadError === showError) player.swipeLoadError = null;
         if (player.swipeLoaderCleanup === cleanup) player.swipeLoaderCleanup = null;
+        player.suppressBufferingIndicator = false;
+        if (player.syncBufferingIndicator) player.syncBufferingIndicator();
         loader.remove();
       };
 
@@ -2547,6 +2581,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       const targetIsWarm = drag.targetPlayer.swipeWarmReady && !drag.targetPlayer.swipeWarmError;
       drag.loaderState = targetIsWarm ? null : createSwipeLoader(drag.targetPlayer);
+      refreshBufferingIndicators();
       updateSwipePosition(drag, 0);
 
       // HLS players are already configured for muted autoplay. Do not start an
@@ -2637,6 +2672,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       drag.target.style.removeProperty('--fs-swipe-x');
       drag.target.classList.remove('player-swipe-mobile');
       drag.target.style.removeProperty('z-index');
+      refreshBufferingIndicators();
       if (drag.titleCleanup) drag.titleCleanup();
       drag.current._swipeTransition = false;
       drag.target._swipeTransition = false;
@@ -2659,6 +2695,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       target.classList.add('player-fullscreen-mobile');
       target.style.setProperty('z-index', '2002', 'important');
       activatePseudoFullscreen(target, targetVideo);
+      refreshBufferingIndicators();
       updateFullscreenSwipeWarm(target.dataset.url);
 
       nextAnimationFrame().then(() => {
@@ -2674,6 +2711,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         target.style.transition = '';
         target.style.removeProperty('--fs-swipe-x');
         target.style.removeProperty('z-index');
+        refreshBufferingIndicators();
         current._swipeTransition = false;
         target._swipeTransition = false;
         drag.phase = 'done';
@@ -2758,6 +2796,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       if (!keepFullscreenClass) {
         container.classList.remove('player-fullscreen-mobile');
       }
+      refreshBufferingIndicators();
 
       if (container.classList.contains('mp4-player')) {
         video.controls = true;
@@ -2839,6 +2878,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       if (!IS_SAFARI_MOBILE) htmlEl.classList.add("non-safari"); // Specific style tweaks if needed
       activatePseudoFullscreen(container, video);
       updateFullscreenSwipeWarm(container.dataset.url);
+      refreshBufferingIndicators();
     }
 
     function exitPseudoFullscreen(container, video) {
@@ -2861,6 +2901,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       htmlEl.style.height = '';
       htmlEl.style.overflow = '';
       htmlEl.style.minHeight = '';
+      refreshBufferingIndicators();
     }
 
 
