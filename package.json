@@ -1,0 +1,14 @@
+{
+  "name": "surfcam",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "node-fetch": "2.7.0"
+  },
+  "scripts": {
+    "check": "node --check api/proxy.js && node --check api/stormglass.js && bash -n scripts/mobile-webkit.sh",
+    "test": "node --test test/**/*.test.cjs"
+  }
+}
