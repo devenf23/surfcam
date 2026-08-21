@@ -648,6 +648,13 @@
       display: block !important;
     }
 
+    /* Background players may continue warming for fullscreen swipes, but
+       their buffering surfaces must never appear in the active fullscreen
+       viewport. The staged target uses .fs-swipe-loader instead. */
+    html.pseudo-fullscreen-mobile .player-container.mobile:not(.player-fullscreen-mobile) .buffering-indicator {
+      display: none !important;
+    }
+
     .player-container.player-fullscreen-mobile,
     .player-container.player-swipe-mobile {
       position: fixed !important;
