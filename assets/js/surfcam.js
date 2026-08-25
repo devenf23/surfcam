@@ -15,6 +15,8 @@
     const PROXY_PREFIX = "https://surfcam-alpha.vercel.app/api/proxy?url=";
     const PLAYER_SETTINGS_KEY = "liveDvrPlayerSettings_v1";
     const STREAM_CONFIGS_KEY = "liveDvrStreamConfigs_v1";
+    const TIMESTAMP_REFRESH_MS = 12000;
+    const TIMESTAMP_RESYNC_DRIFT_MS = 3000;
     const playerSettingsTimers = new Map();
     const pendingPlayerSettings = new Map();
 
@@ -77,6 +79,194 @@
     function extractTitle(url) {
       const m = url.match(/wc-([^\/]+)\/playlist/);
       return m ? m[1] : url;
+    }
+    function resolvePlaylistUrl(value, base) {
+      try {
+        return new URL(value, base).toString();
+      } catch {
+        return value;
+      }
+    }
+
+    function parseHlsDateTime(value) {
+      if (value == null) return null;
+      const ms = typeof value === 'number' ? value : Date.parse(String(value));
+      return Number.isFinite(ms) ? ms : null;
+    }
+
+    function parseHlsProgramDateTimes(text, baseUrl = '') {
+      const lines = String(text || '').split(/\r?\n/);
+      const variants = [];
+      const segments = [];
+      let nextDuration = null;
+      let nextProgramDateTimeMs = null;
+      let mediaSequence = 0;
+      let sequence = 0;
+      let discontinuity = 0;
+
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index].trim();
+        if (!line) continue;
+        if (line.startsWith('#EXT-X-MEDIA-SEQUENCE:')) {
+          const parsed = Number(line.slice(line.indexOf(':') + 1));
+          if (Number.isFinite(parsed)) {
+            mediaSequence = parsed;
+            sequence = parsed;
+          }
+        } else if (line.startsWith('#EXT-X-PROGRAM-DATE-TIME:')) {
+          nextProgramDateTimeMs = parseHlsDateTime(line.slice(line.indexOf(':') + 1));
+        } else if (line.startsWith('#EXTINF:')) {
+          const durationText = line.slice(line.indexOf(':') + 1).split(',')[0];
+          const parsed = Number(durationText);
+          nextDuration = Number.isFinite(parsed) ? parsed : null;
+        } else if (line.startsWith('#EXT-X-DISCONTINUITY')) {
+          discontinuity += 1;
+          nextProgramDateTimeMs = null;
+        } else if (line.startsWith('#EXT-X-STREAM-INF:')) {
+          const nextLine = lines[index + 1]?.trim();
+          if (nextLine && !nextLine.startsWith('#')) {
+            variants.push(resolvePlaylistUrl(nextLine, baseUrl));
+            index += 1;
+          }
+        } else if (!line.startsWith('#')) {
+          if (nextDuration != null && nextProgramDateTimeMs != null) {
+            segments.push({
+              uri: resolvePlaylistUrl(line, baseUrl),
+              duration: nextDuration,
+              mediaSequence: sequence,
+              discontinuity,
+              startWallTimeMs: nextProgramDateTimeMs,
+              endWallTimeMs: nextProgramDateTimeMs + nextDuration * 1000
+            });
+            nextProgramDateTimeMs += nextDuration * 1000;
+          } else if (nextDuration != null && nextProgramDateTimeMs == null) {
+            sequence += 1;
+            nextDuration = null;
+            continue;
+          }
+          sequence += 1;
+          nextDuration = null;
+        }
+      }
+
+      return { mediaSequence, variants, segments };
+    }
+
+    async function fetchTextWithProxyFallback(url) {
+      const proxiedUrl = PROXY_PREFIX + encodeURIComponent(url);
+      const response = await fetch(proxiedUrl, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Manifest fetch failed: ${response.status}`);
+      return response.text();
+    }
+
+    async function loadTimestampManifest(url, depth = 0) {
+      const text = await fetchTextWithProxyFallback(url);
+      const parsed = parseHlsProgramDateTimes(text, url);
+      if (!parsed.segments.length && parsed.variants.length && depth < 1) {
+        return loadTimestampManifest(parsed.variants[0], depth + 1);
+      }
+      return parsed;
+    }
+
+    function formatTimestampTime(ms) {
+      const date = new Date(ms);
+      const pad = value => String(value).padStart(2, '0');
+      return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
+    }
+
+    function setTimestampAnchor(player, mediaTime, wallTimeMs, source, confidence) {
+      if (!player || !Number.isFinite(mediaTime) || !Number.isFinite(wallTimeMs)) return;
+      const current = player.timestampAnchor;
+      if (current?.confidence === 'exact' && confidence !== 'exact') return;
+      if (current) {
+        const expectedMs = current.wallTimeMs + (mediaTime - current.mediaTime) * 1000;
+        if (Math.abs(expectedMs - wallTimeMs) < TIMESTAMP_RESYNC_DRIFT_MS && current.confidence === confidence) return;
+      }
+      player.timestampAnchor = {
+        mediaTime,
+        wallTimeMs,
+        source,
+        confidence,
+        updatedAt: Date.now()
+      };
+    }
+
+    function setEstimatedLiveTimestampAnchor(player) {
+      if (!player || player.timestampAnchor?.confidence === 'exact') return;
+      const range = getVideoRange(player.video);
+      if (!range || !Number.isFinite(range.end)) return;
+      setTimestampAnchor(player, range.end, Date.now(), 'browser-live-edge', 'estimated');
+    }
+
+    function applyHlsFragmentTimestamp(player, frag) {
+      if (!frag) return;
+      const programDateTimeMs = parseHlsDateTime(frag.programDateTime ?? frag.rawProgramDateTime);
+      const mediaTime = Number.isFinite(frag.start) ? frag.start : player.video?.currentTime;
+      if (programDateTimeMs != null && Number.isFinite(mediaTime)) {
+        setTimestampAnchor(player, mediaTime, programDateTimeMs, 'program-date-time', 'exact');
+      }
+    }
+
+    function getPlayerTimestamp(player, mediaTime = player?.video?.currentTime) {
+      const anchor = player?.timestampAnchor;
+      if (!anchor || !Number.isFinite(mediaTime)) return null;
+      return {
+        ms: anchor.wallTimeMs + (mediaTime - anchor.mediaTime) * 1000,
+        source: anchor.source,
+        confidence: anchor.confidence
+      };
+    }
+
+    function createTimestampScrubBubble(progressBar) {
+      const bubble = document.createElement('div');
+      bubble.className = 'timestamp-scrub-bubble is-estimated';
+      bubble.textContent = '--:-- --/--';
+      bubble.hidden = true;
+      progressBar.appendChild(bubble);
+      return bubble;
+    }
+
+    function updateTimestampScrubBubble(player, bubble, mediaTime, percent) {
+      if (!bubble) return;
+      const timestamp = getPlayerTimestamp(player, mediaTime);
+      if (!timestamp) {
+        bubble.textContent = '--:-- --/--';
+        bubble.classList.add('is-estimated');
+      } else {
+        bubble.textContent = formatTimestampTime(timestamp.ms);
+        bubble.classList.toggle('is-estimated', timestamp.confidence === 'estimated');
+      }
+      bubble.style.left = `${Math.max(0, Math.min(100, percent))}%`;
+    }
+
+    function startManifestTimestampSync(player, url) {
+      if (!player || !url) return;
+      const sync = async () => {
+        if (player.disposed || player.timestampManifestInFlight) return;
+        player.timestampManifestInFlight = true;
+        try {
+          const parsed = await loadTimestampManifest(url);
+          const last = parsed.segments[parsed.segments.length - 1];
+          const video = player.video;
+          const range = getVideoRange(video);
+          if (last && range && Number.isFinite(range.end)) {
+            setTimestampAnchor(player, range.end, last.endWallTimeMs, 'manifest-live-edge', 'estimated');
+          } else {
+            setEstimatedLiveTimestampAnchor(player);
+          }
+        } catch (error) {
+          console.warn('Timestamp manifest sync failed:', error);
+          setEstimatedLiveTimestampAnchor(player);
+        } finally {
+          player.timestampManifestInFlight = false;
+        }
+      };
+      sync();
+      player.trackInterval(sync, TIMESTAMP_REFRESH_MS);
+    }
+
+    if (typeof module !== 'undefined' && module.exports) {
+      module.exports._test = { parseHlsProgramDateTimes, resolvePlaylistUrl };
     }
     // Helper to create safe IDs for elements
     function createSafeId(prefix, url) {
@@ -987,6 +1177,8 @@
           suppressBufferingIndicator: false,
           syncBufferingIndicator: null,
           updateTimeline: null,
+          timestampAnchor: null,
+          timestampManifestInFlight: false,
           canvas: null,          // Reference to the main canvas
           resizeHandler: null,   // Reference to the resize handler function
           fullscreenPreload: null,
@@ -1034,6 +1226,7 @@
         playerObject.timers.clear();
         if (playerObject.animationFrameId) cancelAnimationFrame(playerObject.animationFrameId);
         playerObject.animationFrameId = null;
+        playerObject.timestampManifestInFlight = false;
       };
 
 
@@ -1154,6 +1347,7 @@
         const mPlayed = document.createElement("div"); mPlayed.className = "played";
         const mThumb = document.createElement("div"); mThumb.className = "thumb";
         mPb.appendChild(mBuf); mPb.appendChild(mPlayed); mPb.appendChild(mThumb);
+        const mTimestampBubble = createTimestampScrubBubble(mPb);
         cbM.appendChild(mPb);
 
         let mIsSeeking = false, mPendingSeek = -1, mLastThrottle = 0, mWasPlaying = false;
@@ -1199,6 +1393,7 @@
               mPendingSeek = st;
               const pp = Math.min(100, ((st - range.start) / span) * 100);
               mPlayed.style.width = `${pp}%`; mThumb.style.left = `${pp}%`;
+              updateTimestampScrubBubble(playerObject, mTimestampBubble, st, pp);
               const now = performance.now();
               const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
               if (now - mLastThrottle >= throttle) { mLastThrottle = now; video.currentTime = st; }
@@ -1215,13 +1410,14 @@
         }
 
         const onMMove = e => { if (!mIsSeeking) return; e.preventDefault(); const t = e.touches[0] || e.changedTouches[0]; if (t) mSeek(t.clientX); };
-        const onMEnd  = () => { if (!mIsSeeking) return; mIsSeeking = false; mPb.classList.remove('seeking'); window.removeEventListener('touchmove', onMMove); window.removeEventListener('touchend', onMEnd); applyMSeek(); };
+        const onMEnd  = () => { if (!mIsSeeking) return; mIsSeeking = false; mPb.classList.remove('seeking'); mTimestampBubble.hidden = true; window.removeEventListener('touchmove', onMMove); window.removeEventListener('touchend', onMEnd); applyMSeek(); };
 
         mPb.addEventListener('touchstart', e => {
           e.preventDefault(); // Must prevent default before browser commits to scroll
           e.stopPropagation();
           mIsSeeking = true; mWasPlaying = !video.paused;
           mPb.classList.add('seeking');
+          mTimestampBubble.hidden = false;
           const t = e.touches[0]; if (t) mSeek(t.clientX);
           playerObject.addListener(window, 'touchmove', onMMove, { passive: false });
           playerObject.addListener(window, 'touchend', onMEnd);
@@ -1809,6 +2005,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         progressBar.appendChild(bufferedBar);
         progressBar.appendChild(playedBar);
         progressBar.appendChild(thumb);
+        const timestampBubble = createTimestampScrubBubble(progressBar);
         controlBar.appendChild(progressBar);
 
         // Progress Bar Seeking Logic — declared here so updateProgressBar can reference them
@@ -1889,6 +2086,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
               const pp = Math.min(100, (st / d) * 100);
               playedBar.style.width = `${pp}%`;
               thumb.style.left = `${pp}%`;
+              updateTimestampScrubBubble(playerObject, timestampBubble, st, pp);
               // Throttled seek so canvas shows the frame at the scrub position;
               // use a short interval when already buffered, longer when a fetch is needed
               const now = performance.now();
@@ -1899,6 +2097,18 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
               }
             }
           }
+        }
+        function showHoverTimestamp(event) {
+          if (IS_MOBILE || isSeeking) return;
+          const d = video.duration;
+          if (isNaN(d) || d <= 0 || !isFinite(d)) return;
+          const pr = progressBar.getBoundingClientRect();
+          const sp = Math.max(0, Math.min(1, (event.clientX - pr.left) / pr.width));
+          updateTimestampScrubBubble(playerObject, timestampBubble, sp * d, sp * 100);
+          timestampBubble.hidden = false;
+        }
+        function hideHoverTimestamp() {
+          if (!isSeeking) timestampBubble.hidden = true;
         }
         function applyPendingSeek() {
           if (pendingSeekTime >= 0) {
@@ -1915,6 +2125,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           if (!isSeeking) return;
           isSeeking = false;
           progressBar.classList.remove('seeking');
+          timestampBubble.hidden = true;
           progressBar.style.cursor = 'pointer';
           document.body.style.userSelect = '';
           applyPendingSeek();
@@ -1926,6 +2137,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             isSeeking = true;
             wasPlayingBeforeScrub = !video.paused;
             progressBar.classList.add('seeking');
+            timestampBubble.hidden = false;
             document.body.style.userSelect = 'none';
             seek(e);
             progressBar.style.cursor = 'grabbing';
@@ -1936,6 +2148,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           isSeeking = true;
           wasPlayingBeforeScrub = !video.paused;
           progressBar.classList.add('seeking');
+          timestampBubble.hidden = false;
           document.body.style.webkitUserSelect = 'none';
           seek(e);
         }, { passive: true });
@@ -1962,10 +2175,14 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           if (isSeeking) {
             isSeeking = false;
             progressBar.classList.remove('seeking');
+            timestampBubble.hidden = true;
             document.body.style.webkitUserSelect = '';
             applyPendingSeek();
           }
         });
+        playerObject.addListener(progressBar, "mouseenter", showHoverTimestamp);
+        playerObject.addListener(progressBar, "mousemove", showHoverTimestamp);
+        playerObject.addListener(progressBar, "mouseleave", hideHoverTimestamp);
 
         // Fullscreen Button (Desktop Native)
         const fsBtnDesktop = document.createElement("button");
@@ -2137,6 +2354,24 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             }
           });
 
+          if (Hls.Events.FRAG_CHANGED) {
+            hlsInstance.on(Hls.Events.FRAG_CHANGED, (_event, data) => {
+              applyHlsFragmentTimestamp(playerObject, data?.frag);
+            });
+          }
+          hlsInstance.on(Hls.Events.FRAG_BUFFERED, (_event, data) => {
+            applyHlsFragmentTimestamp(playerObject, data?.frag);
+          });
+          if (Hls.Events.LEVEL_UPDATED) {
+            hlsInstance.on(Hls.Events.LEVEL_UPDATED, (_event, data) => {
+              const fragments = data?.details?.fragments || [];
+              const currentTime = video.currentTime;
+              const currentFrag = fragments.find(frag => currentTime >= frag.start && currentTime < frag.start + frag.duration);
+              applyHlsFragmentTimestamp(playerObject, currentFrag || fragments[fragments.length - 1]);
+            });
+          }
+          startManifestTimestampSync(playerObject, url);
+
           // HLS.js error handling - Enhanced
           hlsInstance.on(Hls.Events.ERROR, (event, data) => {
             console.error(`HLS Error: Type=${data.type}, Details=${data.details}`, data);
@@ -2217,6 +2452,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           console.log(`Using native HLS for ${url}`);
           // Conditionally use proxy
           video.src = IS_MOBILE ? PROXY_PREFIX + encodeURIComponent(url) : url;
+          startManifestTimestampSync(playerObject, url);
           // Native HLS often requires explicit play action
           if (video.autoplay) {
              playerObject.requestPlay({ allowWhileBuffering: true });
@@ -3015,6 +3251,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       fsProgressBar.appendChild(fsBufferedBar);
       fsProgressBar.appendChild(fsPlayedBar);
       fsProgressBar.appendChild(fsThumb);
+      const fsTimestampBubble = createTimestampScrubBubble(fsProgressBar);
       fsControlBar.appendChild(fsProgressBar);
 
       const fsTidesControl = document.createElement('div');
@@ -3116,6 +3353,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             const pp = Math.min(100, ((st - range.start) / span) * 100);
             fsPlayedBar.style.width = `${pp}%`;
             fsThumb.style.left = `${pp}%`;
+            updateTimestampScrubBubble(players[container.dataset.url], fsTimestampBubble, st, pp);
             const now = performance.now();
             const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
             if (now - fsLastThrottledSeek >= throttle) {
@@ -3139,6 +3377,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       const finishFsSeek = () => {
         if (!isFsSeeking) return;
         isFsSeeking = false;
+        fsProgressBar.classList.remove('seeking');
+        fsTimestampBubble.hidden = true;
         fsProgressBar.style.cursor = 'pointer';
         applyFsPendingSeek();
       };
@@ -3147,6 +3387,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           e.preventDefault();
           isFsSeeking = true;
           fsWasPlayingBeforeScrub = !video.paused;
+          fsProgressBar.classList.add('seeking');
+          fsTimestampBubble.hidden = false;
           fsSeek(e);
           fsProgressBar.style.cursor = 'grabbing';
         }
@@ -3155,6 +3397,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         e.preventDefault(); // Must prevent default before browser commits to scroll
         isFsSeeking = true;
         fsWasPlayingBeforeScrub = !video.paused;
+        fsProgressBar.classList.add('seeking');
+        fsTimestampBubble.hidden = false;
         fsSeek(e);
       }, { passive: false });
       // Use window listeners for move/end to catch events outside the bar
