@@ -59,3 +59,21 @@ test("frontend timestamp parser reports master playlist variants", () => {
   assert.equal(result.variants[0], "https://cdn.example.com/variant/high.m3u8");
   assert.equal(result.segments.length, 0);
 });
+
+test("frontend timestamp formatters use 24 hour clock and lag format", () => {
+  const { formatTimestampTime, formatLagBehind } = loadTimestampHelpers();
+  const sample = new Date("2026-08-25T17:04:09Z");
+  const pad = value => String(value).padStart(2, "0");
+
+  assert.equal(formatTimestampTime(sample.getTime()), `${pad(sample.getHours())}:${pad(sample.getMinutes())}:${pad(sample.getSeconds())}`);
+  assert.equal(formatLagBehind(0), "-00:00:00");
+  assert.equal(formatLagBehind(3661), "-01:01:01");
+});
+
+test("frontend preview cache buckets round to half seconds", () => {
+  const { getPreviewCacheKey } = loadTimestampHelpers();
+
+  assert.equal(getPreviewCacheKey(12.24), "12.0");
+  assert.equal(getPreviewCacheKey(12.26), "12.5");
+  assert.equal(getPreviewCacheKey(12.74), "12.5");
+});

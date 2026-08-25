@@ -17,6 +17,11 @@
     const STREAM_CONFIGS_KEY = "liveDvrStreamConfigs_v1";
     const TIMESTAMP_REFRESH_MS = 12000;
     const TIMESTAMP_RESYNC_DRIFT_MS = 3000;
+    const TIMESTAMP_SCRUB_LINGER_MS = 1000;
+    const PREVIEW_FRAME_WIDTH = 160;
+    const PREVIEW_FRAME_HEIGHT = 90;
+    const PREVIEW_CACHE_BUCKET_SECONDS = 0.5;
+    const PREVIEW_CACHE_MAX_ENTRIES = 180;
     const playerSettingsTimers = new Map();
     const pendingPlayerSettings = new Map();
 
@@ -171,7 +176,16 @@
     function formatTimestampTime(ms) {
       const date = new Date(ms);
       const pad = value => String(value).padStart(2, '0');
-      return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
+      return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    }
+
+    function formatLagBehind(seconds) {
+      const totalSeconds = Math.max(0, Math.round(seconds));
+      const pad = value => String(value).padStart(2, '0');
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const secs = totalSeconds % 60;
+      return `-${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
     }
 
     function setTimestampAnchor(player, mediaTime, wallTimeMs, source, confidence) {
@@ -217,26 +231,163 @@
       };
     }
 
-    function createTimestampScrubBubble(progressBar) {
-      const bubble = document.createElement('div');
-      bubble.className = 'timestamp-scrub-bubble is-estimated';
-      bubble.textContent = '--:-- --/--';
-      bubble.hidden = true;
-      progressBar.appendChild(bubble);
-      return bubble;
+    function createTimelinePreviewHud(progressBar) {
+      const hud = document.createElement('div');
+      hud.className = 'timeline-preview-hud';
+      hud.hidden = true;
+
+      const frame = document.createElement('div');
+      frame.className = 'timeline-preview-frame is-missing';
+
+      const image = document.createElement('img');
+      image.className = 'timeline-preview-image';
+      image.alt = '';
+      image.draggable = false;
+
+      const missing = document.createElement('div');
+      missing.className = 'timeline-preview-missing';
+      missing.textContent = 'No frame';
+
+      const label = document.createElement('div');
+      label.className = 'timestamp-scrub-bubble';
+      label.textContent = '-00:00:00';
+
+      frame.appendChild(image);
+      frame.appendChild(missing);
+      hud.appendChild(frame);
+      hud.appendChild(label);
+      progressBar.appendChild(hud);
+      return { root: hud, frame, image, missing, label };
     }
 
-    function updateTimestampScrubBubble(player, bubble, mediaTime, percent) {
-      if (!bubble) return;
+    function createCornerTimestampOverlay(parent) {
+      const overlay = document.createElement('div');
+      overlay.className = 'corner-timestamp-overlay is-estimated';
+      overlay.textContent = '--:--:--';
+      overlay.hidden = true;
+      parent.appendChild(overlay);
+      return overlay;
+    }
+
+    function getPreviewCacheKey(mediaTime) {
+      const bucketed = Math.round(mediaTime / PREVIEW_CACHE_BUCKET_SECONDS) * PREVIEW_CACHE_BUCKET_SECONDS;
+      return bucketed.toFixed(1);
+    }
+
+    function getCachedPreviewFrame(player, mediaTime) {
+      if (!player?.timelineFrameCache || !Number.isFinite(mediaTime)) return null;
+      return player.timelineFrameCache.get(getPreviewCacheKey(mediaTime)) || null;
+    }
+
+    function storePreviewFrame(player, mediaTime) {
+      if (!player || !Number.isFinite(mediaTime)) return false;
+      const video = player.video;
+      if (!video || video.readyState < 2 || video.videoWidth <= 0 || video.videoHeight <= 0) return false;
+      try {
+        const canvas = player.previewCaptureCanvas || document.createElement('canvas');
+        canvas.width = PREVIEW_FRAME_WIDTH;
+        canvas.height = PREVIEW_FRAME_HEIGHT;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return false;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        player.previewCaptureCanvas = canvas;
+        if (!player.timelineFrameCache) player.timelineFrameCache = new Map();
+        player.timelineFrameCache.set(getPreviewCacheKey(mediaTime), canvas.toDataURL('image/jpeg', 0.65));
+        while (player.timelineFrameCache.size > PREVIEW_CACHE_MAX_ENTRIES) {
+          const oldestKey = player.timelineFrameCache.keys().next().value;
+          player.timelineFrameCache.delete(oldestKey);
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function updateCornerTimestampOverlay(player, overlay, mediaTime) {
+      if (!overlay) return;
       const timestamp = getPlayerTimestamp(player, mediaTime);
       if (!timestamp) {
-        bubble.textContent = '--:-- --/--';
-        bubble.classList.add('is-estimated');
+        overlay.textContent = '--:--:--';
+        overlay.classList.add('is-estimated');
       } else {
-        bubble.textContent = formatTimestampTime(timestamp.ms);
-        bubble.classList.toggle('is-estimated', timestamp.confidence === 'estimated');
+        overlay.textContent = formatTimestampTime(timestamp.ms);
+        overlay.classList.toggle('is-estimated', timestamp.confidence === 'estimated');
       }
-      bubble.style.left = `${Math.max(0, Math.min(100, percent))}%`;
+    }
+
+    function updateTimelinePreviewHud(player, hud, mediaTime, percent) {
+      if (!hud) return;
+      const range = getVideoRange(player?.video);
+      const lagSeconds = range && Number.isFinite(range.end) ? Math.max(0, range.end - mediaTime) : 0;
+      const cachedFrame = getCachedPreviewFrame(player, mediaTime);
+      hud.label.textContent = formatLagBehind(lagSeconds);
+      const clampedPercent = Math.max(0, Math.min(100, percent));
+      const trackWidth = hud.root.parentElement?.clientWidth || 0;
+      const hudWidth = hud.root.offsetWidth || 0;
+      if (trackWidth > 0 && hudWidth > 0) {
+        const targetX = trackWidth * (clampedPercent / 100);
+        const halfHudWidth = hudWidth / 2;
+        const clampedX = Math.max(halfHudWidth, Math.min(trackWidth - halfHudWidth, targetX));
+        hud.root.style.left = `${clampedX}px`;
+      } else {
+        hud.root.style.left = `${clampedPercent}%`;
+      }
+      hud.frame.classList.toggle('is-missing', !cachedFrame);
+      if (cachedFrame) hud.image.src = cachedFrame;
+    }
+
+    function showTimelinePreview(player, hud, cornerOverlay, mediaTime, percent) {
+      if (!player || !hud) return;
+      player.timelinePreviewState = { hud, cornerOverlay, mediaTime, percent };
+      if (player.cornerTimestampHideTimer) {
+        clearTimeout(player.cornerTimestampHideTimer);
+        player.cornerTimestampHideTimer = null;
+      }
+      hud.root.hidden = false;
+      if (cornerOverlay) cornerOverlay.hidden = false;
+      updateTimelinePreviewHud(player, hud, mediaTime, percent);
+      updateCornerTimestampOverlay(player, cornerOverlay, mediaTime);
+    }
+
+    function hideTimelinePreview(player, hud) {
+      if (!hud) return;
+      hud.root.hidden = true;
+      if (player?.timelinePreviewState?.hud === hud) player.timelinePreviewState = null;
+    }
+
+    function hideCornerTimestampOverlay(player, overlay, linger = false) {
+      if (!overlay) return;
+      if (player?.cornerTimestampHideTimer) {
+        clearTimeout(player.cornerTimestampHideTimer);
+        player.cornerTimestampHideTimer = null;
+      }
+      if (!linger || !player?.trackTimeout) {
+        overlay.hidden = true;
+        return;
+      }
+      player.cornerTimestampHideTimer = player.trackTimeout(() => {
+        overlay.hidden = true;
+        player.cornerTimestampHideTimer = null;
+      }, TIMESTAMP_SCRUB_LINGER_MS);
+    }
+
+    function refreshTimelinePreview(player) {
+      const state = player?.timelinePreviewState;
+      if (!state) return;
+      updateTimelinePreviewHud(player, state.hud, state.mediaTime, state.percent);
+      updateCornerTimestampOverlay(player, state.cornerOverlay, state.mediaTime);
+    }
+
+    function captureCurrentPreviewFrame(player) {
+      if (!player?.video || !Number.isFinite(player.video.currentTime)) return;
+      const key = getPreviewCacheKey(player.video.currentTime);
+      if (player.lastPreviewCaptureKey === key) return;
+      if (storePreviewFrame(player, player.video.currentTime)) {
+        player.lastPreviewCaptureKey = key;
+        refreshTimelinePreview(player);
+      }
     }
 
     function startManifestTimestampSync(player, url) {
@@ -266,7 +417,7 @@
     }
 
     if (typeof module !== 'undefined' && module.exports) {
-      module.exports._test = { parseHlsProgramDateTimes, resolvePlaylistUrl };
+      module.exports._test = { parseHlsProgramDateTimes, resolvePlaylistUrl, formatTimestampTime, formatLagBehind, getPreviewCacheKey };
     }
     // Helper to create safe IDs for elements
     function createSafeId(prefix, url) {
@@ -1179,6 +1330,11 @@
           updateTimeline: null,
           timestampAnchor: null,
           timestampManifestInFlight: false,
+          timelineFrameCache: new Map(),
+          previewCaptureCanvas: null,
+          timelinePreviewState: null,
+          cornerTimestampHideTimer: null,
+          lastPreviewCaptureKey: null,
           canvas: null,          // Reference to the main canvas
           resizeHandler: null,   // Reference to the resize handler function
           fullscreenPreload: null,
@@ -1227,6 +1383,14 @@
         if (playerObject.animationFrameId) cancelAnimationFrame(playerObject.animationFrameId);
         playerObject.animationFrameId = null;
         playerObject.timestampManifestInFlight = false;
+        playerObject.timelineFrameCache.clear();
+        playerObject.previewCaptureCanvas = null;
+        playerObject.timelinePreviewState = null;
+        playerObject.lastPreviewCaptureKey = null;
+        if (playerObject.cornerTimestampHideTimer) {
+          clearTimeout(playerObject.cornerTimestampHideTimer);
+          playerObject.cornerTimestampHideTimer = null;
+        }
       };
 
 
@@ -1324,6 +1488,7 @@
         const mobileBufferingIndicator = createBufferingIndicator();
         container.appendChild(mobileBufferingIndicator);
         playerObject.bufferingIndicator = mobileBufferingIndicator;
+        const mobileCornerTimestamp = createCornerTimestampOverlay(container);
 
         // Simple controls (Play/Pause + scrub bar) below the video
         const ctrM = document.createElement("div");
@@ -1347,7 +1512,7 @@
         const mPlayed = document.createElement("div"); mPlayed.className = "played";
         const mThumb = document.createElement("div"); mThumb.className = "thumb";
         mPb.appendChild(mBuf); mPb.appendChild(mPlayed); mPb.appendChild(mThumb);
-        const mTimestampBubble = createTimestampScrubBubble(mPb);
+        const mTimelinePreview = createTimelinePreviewHud(mPb);
         cbM.appendChild(mPb);
 
         let mIsSeeking = false, mPendingSeek = -1, mLastThrottle = 0, mWasPlaying = false;
@@ -1393,7 +1558,7 @@
               mPendingSeek = st;
               const pp = Math.min(100, ((st - range.start) / span) * 100);
               mPlayed.style.width = `${pp}%`; mThumb.style.left = `${pp}%`;
-              updateTimestampScrubBubble(playerObject, mTimestampBubble, st, pp);
+              showTimelinePreview(playerObject, mTimelinePreview, mobileCornerTimestamp, st, pp);
               const now = performance.now();
               const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
               if (now - mLastThrottle >= throttle) { mLastThrottle = now; video.currentTime = st; }
@@ -1410,14 +1575,13 @@
         }
 
         const onMMove = e => { if (!mIsSeeking) return; e.preventDefault(); const t = e.touches[0] || e.changedTouches[0]; if (t) mSeek(t.clientX); };
-        const onMEnd  = () => { if (!mIsSeeking) return; mIsSeeking = false; mPb.classList.remove('seeking'); mTimestampBubble.hidden = true; window.removeEventListener('touchmove', onMMove); window.removeEventListener('touchend', onMEnd); applyMSeek(); };
+        const onMEnd  = () => { if (!mIsSeeking) return; mIsSeeking = false; mPb.classList.remove('seeking'); hideTimelinePreview(playerObject, mTimelinePreview); hideCornerTimestampOverlay(playerObject, mobileCornerTimestamp, true); window.removeEventListener('touchmove', onMMove); window.removeEventListener('touchend', onMEnd); applyMSeek(); };
 
         mPb.addEventListener('touchstart', e => {
           e.preventDefault(); // Must prevent default before browser commits to scroll
           e.stopPropagation();
           mIsSeeking = true; mWasPlaying = !video.paused;
           mPb.classList.add('seeking');
-          mTimestampBubble.hidden = false;
           const t = e.touches[0]; if (t) mSeek(t.clientX);
           playerObject.addListener(window, 'touchmove', onMMove, { passive: false });
           playerObject.addListener(window, 'touchend', onMEnd);
@@ -1479,6 +1643,7 @@
         const desktopBufferingIndicator = createBufferingIndicator();
         canvasWrapper.appendChild(desktopBufferingIndicator);
         playerObject.bufferingIndicator = desktopBufferingIndicator;
+        const desktopCornerTimestamp = createCornerTimestampOverlay(canvasWrapper);
 
         // Create offscreen canvas for masking operations
         playerObject.offscreenCanvas = document.createElement('canvas');
@@ -2005,7 +2170,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         progressBar.appendChild(bufferedBar);
         progressBar.appendChild(playedBar);
         progressBar.appendChild(thumb);
-        const timestampBubble = createTimestampScrubBubble(progressBar);
+        const timelinePreview = createTimelinePreviewHud(progressBar);
         controlBar.appendChild(progressBar);
 
         // Progress Bar Seeking Logic — declared here so updateProgressBar can reference them
@@ -2086,7 +2251,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
               const pp = Math.min(100, (st / d) * 100);
               playedBar.style.width = `${pp}%`;
               thumb.style.left = `${pp}%`;
-              updateTimestampScrubBubble(playerObject, timestampBubble, st, pp);
+              showTimelinePreview(playerObject, timelinePreview, desktopCornerTimestamp, st, pp);
               // Throttled seek so canvas shows the frame at the scrub position;
               // use a short interval when already buffered, longer when a fetch is needed
               const now = performance.now();
@@ -2104,11 +2269,12 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           if (isNaN(d) || d <= 0 || !isFinite(d)) return;
           const pr = progressBar.getBoundingClientRect();
           const sp = Math.max(0, Math.min(1, (event.clientX - pr.left) / pr.width));
-          updateTimestampScrubBubble(playerObject, timestampBubble, sp * d, sp * 100);
-          timestampBubble.hidden = false;
+          showTimelinePreview(playerObject, timelinePreview, desktopCornerTimestamp, sp * d, sp * 100);
         }
         function hideHoverTimestamp() {
-          if (!isSeeking) timestampBubble.hidden = true;
+          if (isSeeking) return;
+          hideTimelinePreview(playerObject, timelinePreview);
+          hideCornerTimestampOverlay(playerObject, desktopCornerTimestamp);
         }
         function applyPendingSeek() {
           if (pendingSeekTime >= 0) {
@@ -2125,7 +2291,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           if (!isSeeking) return;
           isSeeking = false;
           progressBar.classList.remove('seeking');
-          timestampBubble.hidden = true;
+          hideTimelinePreview(playerObject, timelinePreview);
+          hideCornerTimestampOverlay(playerObject, desktopCornerTimestamp, true);
           progressBar.style.cursor = 'pointer';
           document.body.style.userSelect = '';
           applyPendingSeek();
@@ -2137,7 +2304,6 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             isSeeking = true;
             wasPlayingBeforeScrub = !video.paused;
             progressBar.classList.add('seeking');
-            timestampBubble.hidden = false;
             document.body.style.userSelect = 'none';
             seek(e);
             progressBar.style.cursor = 'grabbing';
@@ -2148,7 +2314,6 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           isSeeking = true;
           wasPlayingBeforeScrub = !video.paused;
           progressBar.classList.add('seeking');
-          timestampBubble.hidden = false;
           document.body.style.webkitUserSelect = 'none';
           seek(e);
         }, { passive: true });
@@ -2167,7 +2332,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         }, { passive: false });
         // Mouse up — apply the single deferred seek
         playerObject.addListener(document, "mouseup", e => {
-          if (e.button === 0) finishSeek();
+          if (e.button !== 0) return;
+          const wasSeeking = isSeeking;
+          finishSeek();
+          if (wasSeeking && progressBar.matches(':hover')) showHoverTimestamp(e);
         });
         playerObject.addListener(window, "blur", finishSeek);
         // Touch end — apply the single deferred seek
@@ -2175,7 +2343,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           if (isSeeking) {
             isSeeking = false;
             progressBar.classList.remove('seeking');
-            timestampBubble.hidden = true;
+            hideTimelinePreview(playerObject, timelinePreview);
+            hideCornerTimestampOverlay(playerObject, desktopCornerTimestamp, true);
             document.body.style.webkitUserSelect = '';
             applyPendingSeek();
           }
@@ -2301,6 +2470,10 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       /* --- HLS.js Setup (Common for Mobile/Desktop HLS) --- */
       if (!isMp4) {
         setupStreamBuffering(playerObject);
+        ["loadeddata", "playing", "seeked"].forEach(evt => {
+          playerObject.addListener(video, evt, () => captureCurrentPreviewFrame(playerObject));
+        });
+        playerObject.trackInterval(() => captureCurrentPreviewFrame(playerObject), 500);
         // On desktop Safari, prefer native HLS to avoid MSE quirks.
         // On mobile, always try hls.js first: its custom loader routes every request
         // (manifest + segments) through the proxy, and it reports a finite duration for
@@ -3086,6 +3259,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
 
       const fsControls = container.querySelector('.fullscreen-controls');
       if (fsControls) fsControls.remove();
+      const fsCornerTimestamp = container.querySelector('.corner-timestamp-overlay.pseudo-fullscreen-corner');
+      if (fsCornerTimestamp) fsCornerTimestamp.remove();
 
       const player = players[container.dataset.url];
       if (player && player.swipeTitleCleanup) {
@@ -3230,6 +3405,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       // Create controls HTML
       fsControls = document.createElement("div");
       fsControls.className = "controls-container fullscreen-controls";
+      const fsCornerTimestamp = createCornerTimestampOverlay(container);
+      fsCornerTimestamp.classList.add('pseudo-fullscreen-corner');
 
       const fsControlBar = document.createElement("div");
       fsControlBar.className = "control-bar";
@@ -3251,7 +3428,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
       fsProgressBar.appendChild(fsBufferedBar);
       fsProgressBar.appendChild(fsPlayedBar);
       fsProgressBar.appendChild(fsThumb);
-      const fsTimestampBubble = createTimestampScrubBubble(fsProgressBar);
+      const fsTimelinePreview = createTimelinePreviewHud(fsProgressBar);
       fsControlBar.appendChild(fsProgressBar);
 
       const fsTidesControl = document.createElement('div');
@@ -3353,7 +3530,7 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
             const pp = Math.min(100, ((st - range.start) / span) * 100);
             fsPlayedBar.style.width = `${pp}%`;
             fsThumb.style.left = `${pp}%`;
-            updateTimestampScrubBubble(players[container.dataset.url], fsTimestampBubble, st, pp);
+            showTimelinePreview(players[container.dataset.url], fsTimelinePreview, fsCornerTimestamp, st, pp);
             const now = performance.now();
             const throttle = isTimeBuffered(video, st) ? SEEK_THROTTLE_BUFFERED_MS : SEEK_THROTTLE_MS;
             if (now - fsLastThrottledSeek >= throttle) {
@@ -3378,7 +3555,8 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         if (!isFsSeeking) return;
         isFsSeeking = false;
         fsProgressBar.classList.remove('seeking');
-        fsTimestampBubble.hidden = true;
+        hideTimelinePreview(players[container.dataset.url], fsTimelinePreview);
+        hideCornerTimestampOverlay(players[container.dataset.url], fsCornerTimestamp, true);
         fsProgressBar.style.cursor = 'pointer';
         applyFsPendingSeek();
       };
@@ -3388,7 +3566,6 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
           isFsSeeking = true;
           fsWasPlayingBeforeScrub = !video.paused;
           fsProgressBar.classList.add('seeking');
-          fsTimestampBubble.hidden = false;
           fsSeek(e);
           fsProgressBar.style.cursor = 'grabbing';
         }
@@ -3398,7 +3575,6 @@ const mainCtx = canvas.getContext("2d"); // Context for visible canvas
         isFsSeeking = true;
         fsWasPlayingBeforeScrub = !video.paused;
         fsProgressBar.classList.add('seeking');
-        fsTimestampBubble.hidden = false;
         fsSeek(e);
       }, { passive: false });
       // Use window listeners for move/end to catch events outside the bar
