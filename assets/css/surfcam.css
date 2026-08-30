@@ -1084,6 +1084,8 @@
       z-index: 2200;
       user-select: none;
       -webkit-user-select: none;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
     }
     .tide-panel[hidden] { display: none; }
     .tide-close {
@@ -1145,6 +1147,8 @@
       background: rgba(3, 13, 19, .55);
       border: 1px solid rgba(119, 211, 218, .17);
       border-radius: 11px;
+      overscroll-behavior: contain;
+      touch-action: none;
     }
     .tide-graph {
       display: block;
@@ -1228,6 +1232,71 @@
       .tide-panel-location { font-size: 10px; }
       .tide-graph-wrap { height: 245px; }
       .tide-extremes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-height: 520px) {
+      .tide-panel {
+        width: min(900px, calc(100vw - 18px));
+        bottom: 82px;
+        max-height: calc(100vh - 92px);
+        max-height: calc(100dvh - 92px);
+        padding: 11px 12px 9px;
+        border-radius: 12px;
+      }
+      .tide-close {
+        top: 7px;
+        right: 8px;
+        width: 28px;
+        height: 28px;
+        font-size: 20px !important;
+        line-height: 25px;
+      }
+      .tide-panel-header {
+        align-items: center;
+        margin: 0 32px 5px 4px;
+      }
+      .tide-panel-kicker { font-size: 9px; }
+      .tide-panel-title { font-size: 16px; }
+      .tide-panel-location { display: none; }
+      .tide-panel-status {
+        min-height: 16px;
+        margin-bottom: 5px;
+        font-size: 11px;
+      }
+      .tide-graph-wrap {
+        height: clamp(150px, calc(100vh - 215px), 205px);
+        height: clamp(150px, calc(100dvh - 215px), 205px);
+      }
+      .tide-axis-label,
+      .tide-extreme-label,
+      .tide-current-label {
+        font-size: 10px;
+      }
+      .tide-extremes {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 5px;
+        margin-top: 6px;
+      }
+      .tide-extreme {
+        padding: 5px 6px;
+        font-size: 10px;
+        line-height: 1.2;
+      }
+      .tide-extreme strong { font-size: 10px; }
+      .tide-panel-foot { display: none; }
+    }
+
+    @media (max-height: 380px) {
+      .tide-panel {
+        bottom: 72px;
+        max-height: calc(100vh - 82px);
+        max-height: calc(100dvh - 82px);
+      }
+      .tide-graph-wrap {
+        height: clamp(150px, calc(100vh - 175px), 190px);
+        height: clamp(150px, calc(100dvh - 175px), 190px);
+      }
+      .tide-extremes { display: none; }
     }
 
     @media all and (display-mode: standalone) {

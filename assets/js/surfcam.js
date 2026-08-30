@@ -964,12 +964,37 @@
         panel.tooltip.style.top = `${Math.max(33, rect.top - wrapRect.top + svgOffsetY + y * scale - 9)}px`;
         panel.tooltip.hidden = false;
       };
-      panel.graph.onpointermove = event => updateHover(event.clientX);
-      panel.graph.onpointerleave = () => {
+      const clearHover = () => {
         hoverLine.setAttribute('visibility', 'hidden');
         hoverDot.setAttribute('visibility', 'hidden');
         panel.tooltip.hidden = true;
       };
+      const handleGraphPointer = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        updateHover(event.clientX);
+      };
+      const releaseGraphPointer = event => {
+        event.stopPropagation();
+        try { panel.graph.releasePointerCapture(event.pointerId); } catch {}
+      };
+      const handleGraphTouch = event => {
+        const touch = event.touches[0] || event.changedTouches[0];
+        if (!touch) return;
+        event.preventDefault();
+        event.stopPropagation();
+        updateHover(touch.clientX);
+      };
+      panel.graph.onpointerdown = event => {
+        handleGraphPointer(event);
+        try { panel.graph.setPointerCapture(event.pointerId); } catch {}
+      };
+      panel.graph.onpointermove = handleGraphPointer;
+      panel.graph.onpointerup = releaseGraphPointer;
+      panel.graph.onpointercancel = releaseGraphPointer;
+      panel.graph.onpointerleave = clearHover;
+      panel.graph.ontouchstart = handleGraphTouch;
+      panel.graph.ontouchmove = handleGraphTouch;
     }
 
     function renderFullscreenTidePanel(panel, data) {
@@ -1058,6 +1083,11 @@
           closePanel();
         }
       };
+      const panelInteractionEvents = [
+        'touchstart', 'touchmove', 'touchend', 'touchcancel',
+        'pointerdown', 'pointermove', 'pointerup', 'pointercancel',
+        'mousedown', 'mousemove', 'mouseup'
+      ];
       const cleanup = () => {
         disposed = true;
         clearInterval(refreshId);
@@ -1066,17 +1096,24 @@
         button.removeEventListener('click', openPanel);
         panel.close.removeEventListener('click', handleClose);
         panel.root.removeEventListener('click', stopPanelClick);
+        panelInteractionEvents.forEach(type => {
+          panel.root.removeEventListener(type, stopPanelInteraction);
+        });
         document.removeEventListener('fullscreenchange', handleFullscreenChange);
         document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
         panel.root.remove();
         preview.remove();
       };
       const stopPanelClick = event => event.stopPropagation();
+      const stopPanelInteraction = event => event.stopPropagation();
       button.addEventListener('mouseenter', preload);
       button.addEventListener('focus', preload);
       button.addEventListener('click', openPanel);
       panel.close.addEventListener('click', handleClose);
       panel.root.addEventListener('click', stopPanelClick);
+      panelInteractionEvents.forEach(type => {
+        panel.root.addEventListener(type, stopPanelInteraction);
+      });
       document.addEventListener('fullscreenchange', handleFullscreenChange);
       document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
       return cleanup;
