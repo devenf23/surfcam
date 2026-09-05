@@ -36,7 +36,34 @@
     <button id="saveUrls">Save and Close</button>
   </div>
 
+  <!--
+    Keep the small platform globals available while GitHub Pages replaces a
+    cached JavaScript asset. The current module imports these values from
+    platform.mjs; this fallback lets an older cached classic surfcam.js finish
+    booting instead of failing before the stream controls are created.
+  -->
+  <script>
+    var IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    var IS_SAFARI_MOBILE = IS_MOBILE && /iPhone|iPad|iPod/.test(navigator.userAgent) &&
+      /AppleWebKit/.test(navigator.userAgent) && !/CriOS/.test(navigator.userAgent) &&
+      !/FxiOS/.test(navigator.userAgent);
+    var spaceHeld = false;
+    window.addEventListener('keydown', event => {
+      if (event.code === 'Space' && !['input', 'textarea', 'button'].includes(document.activeElement.tagName.toLowerCase())) {
+        event.preventDefault();
+        spaceHeld = true;
+      }
+    });
+    window.addEventListener('keyup', event => {
+      if (event.code === 'Space') spaceHeld = false;
+    });
+    function hideBrowserUI() {
+      if (!window.matchMedia('(display-mode: standalone)').matches && !IS_SAFARI_MOBILE) {
+        setTimeout(() => window.scrollTo(0, 1), 300);
+      }
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.7.1/dist/hls.min.js"></script>
-  <script type="module" src="assets/js/surfcam.js"></script>
+  <script type="module" src="assets/js/surfcam.js?v=20260905-1"></script>
 </body>
 </html>

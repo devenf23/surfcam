@@ -58,6 +58,10 @@ That command requires Playwright (or a globally installed `playwright-cli`).
 These checks cover browser behavior with fixtures and do not establish that a
 live provider is currently available or reliable.
 
+After deploying to GitHub Pages, do a hard refresh once if an older cached
+asset was previously loaded. The module entry has a version query so future
+deployments invalidate the stale script automatically.
+
 For the mobile WebKit workflow, put one public HTTP(S) stream URL per line in
 an ignored `.env` file and run `scripts/mobile-webkit.sh`.
 
