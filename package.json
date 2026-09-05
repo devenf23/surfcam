@@ -8,7 +8,10 @@
     "node-fetch": "2.7.0"
   },
   "scripts": {
-    "check": "node --check api/proxy.js && node --check api/stormglass.js && bash -n scripts/mobile-webkit.sh",
-    "test": "node --test test/**/*.test.cjs"
+    "check": "node scripts/check.cjs",
+    "test": "node --test test/**/*.test.cjs",
+    "test:browser": "node scripts/browser-regression.cjs",
+    "dev": "node scripts/serve.cjs",
+    "start": "node scripts/serve.cjs"
   }
 }

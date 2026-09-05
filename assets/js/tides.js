@@ -1,15 +1,9 @@
 
+  import { config } from './config.mjs';
+  import { buildStormGlassUrl, dateKey, fetchNoaaTides, interpolateTide, normalizeStormGlass } from './tide-data.mjs';
+
   /* ───────────────────────── GLOBAL CONFIG ───────────────────────── */
   let displayDate = new Date();
-
-  /* NOAA reference station (Monterey) */
-  const stationId       = '9413450',
-        product         = 'predictions',
-        units           = 'english',
-        timeZone        = 'lst_ldt',
-        datum           = 'MLLW',
-        format          = 'json',
-        applicationName = 'GeminiTideChart';
 
   /* Santa Cruz lat/lng for Storm Glass & sun times */
   const santaCruzLat = 36.9583,
@@ -17,33 +11,10 @@
 
   /* Storm Glass is called through the serverless API so the credential never
      ships to browsers. */
-  const stormGlassEndpoint = 'https://surfcam-alpha.vercel.app/api/stormglass?date=';
-
-  /* Monterey → Santa Cruz offsets */
-  const scOffsets = {
-    H : { timeMin:-6,  heightAdd:0.97 },
-    L : { timeMin:-11, heightAdd:0.99 },
-    avgTimeMin  : (-6 + -11)/2,
-    avgHeightFt : (0.97 + 0.99)/2
-  };
+  const stormGlassEndpoint = config.stormGlassEndpoint;
 
   const maxFutureDays = 7,
         maxPastDays   = 30;
-
-  /* ───────────────────────── URL BUILDERS ───────────────────────── */
-  function buildNoaaURL(dateString, intervalParam='') {
-    const datumPart    = datum ? `&datum=${datum}` : '';
-    const intervalPart = intervalParam ? `&interval=${intervalParam}` : '';
-    return `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter` +
-           `?begin_date=${dateString}&end_date=${dateString}` +
-           `&station=${stationId}&product=${product}` +
-           `${datumPart}&units=${units}&time_zone=${timeZone}` +
-           `${intervalPart}&format=${format}&application=${applicationName}`;
-  }
-
-  function buildStormGlassURL(dateISO) {
-    return stormGlassEndpoint + encodeURIComponent(dateISO);
-  }
 
   /* ───────────────────────── DOM REFS ───────────────────────── */
   const chartDateEl       = document.getElementById('chartDate'),
@@ -100,17 +71,7 @@
   /* ───────────────────────── UTILITIES ───────────────────────── */
   function formatTime24(t){ const d=new Date(t); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
   function interpolate(target,preds){
-    if(!preds?.length) return null;
-    const tMS=new Date(target).getTime();
-    let p1=null,p2=null;
-    for(const p of preds){
-      const pMS=new Date(p.t).getTime(), v=parseFloat(p.v);
-      if(pMS===tMS) return v;
-      if(pMS<tMS) p1={t:pMS,v};
-      if(pMS>tMS){p2={t:pMS,v}; break;}
-    }
-    if(p1&&p2) return p1.v + (p2.v-p1.v)*(tMS-p1.t)/(p2.t-p1.t);
-    return p1?.v ?? p2?.v ?? null;
+    return interpolateTide(target, preds);
   }
 
   /* ───────────────────────── ERROR DISPLAY ───────────────────────── */
@@ -138,9 +99,7 @@
     tideChartCanvas.parentElement.classList.add('hidden');
     hoverTideInfoEl.innerHTML='&nbsp;';
 
-    const Y=displayDate.getFullYear(), M=String(displayDate.getMonth()+1).padStart(2,'0'),
-          D=String(displayDate.getDate()).padStart(2,'0'),
-          noaaDate=`${Y}${M}${D}`, dateISO=`${Y}-${M}-${D}`,
+    const dateISO=dateKey(displayDate),
           source=document.querySelector('input[name="dataSource"]:checked').value;
 
     // fetch sun/sunset
@@ -164,36 +123,14 @@
       let curve=[], hiLo=[];
 
       if(source==='noaa'){
-        const [rHr,rHL]=await Promise.all([
-          fetch(buildNoaaURL(noaaDate), { signal }),
-          fetch(buildNoaaURL(noaaDate,'hilo'), { signal })
-        ]);
-        if(!rHr.ok||!rHL.ok) throw new Error(`NOAA HTTP ${rHr.status}/${rHL.status}`);
-        const dataHr=await rHr.json(), dataHL=await rHL.json();
-        if(dataHr.error||dataHL.error||!dataHr.predictions?.length) throw new Error(dataHr.error?.message||dataHL.error?.message||'No predictions');
-        hiLo = dataHL.predictions.map(p=>{
-          const o=scOffsets[p.type], tMs=new Date(p.t).getTime()+o.timeMin*60_000;
-          return { t:new Date(tMs).toISOString(), v:parseFloat(p.v)+o.heightAdd, type:p.type };
-        });
-        curve = dataHr.predictions.map(p=>{
-          const tMs=new Date(p.t).getTime()+scOffsets.avgTimeMin*60_000;
-          return { t:new Date(tMs).toISOString(), v:parseFloat(p.v)+scOffsets.avgHeightFt };
-        });
+        ({ curve, hiLo } = await fetchNoaaTides(dateISO, { signal }));
       } else {
-        const urlSG=buildStormGlassURL(dateISO);
+        const urlSG=buildStormGlassUrl(dateISO, stormGlassEndpoint);
         const rSG = await fetch(urlSG, { signal });
         if(!rSG.ok) throw new Error(`Storm Glass HTTP ${rSG.status}`);
         const dataSG=await rSG.json();
         if(!dataSG.hours?.length) throw new Error('Storm Glass: no data');
-        const M2FT=3.28084;
-        curve = dataSG.hours.map(h=>({ t:h.time, v:h.sg*M2FT }));
-        if(dataSG.extremes){
-          hiLo = dataSG.extremes.map(e=>({
-            t:e.time,
-            v:e.height*M2FT,
-            type:e.type==='high'?'H':'L'
-          }));
-        }
+        ({ curve, hiLo } = normalizeStormGlass(dataSG));
       }
 
       if (requestId !== tideRequestId) return;
